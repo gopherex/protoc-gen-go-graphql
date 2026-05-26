@@ -2,10 +2,12 @@
 package gqlapi
 
 import (
+	"encoding/json"
 	"context"
 
 	pb "github.com/gopherex/protoc-gen-go-graphql/example/gen"
 	"github.com/gopherex/protoc-gen-go-graphql/example/gen/gqlapi/pbgql"
+	"google.golang.org/protobuf/encoding/protojson"
 	"github.com/gopherex/protoc-gen-go-graphql/runtime"
 	"github.com/gopherex/protoc-gen-go-graphql/example/gen/gqlapi/exec"
 )
@@ -17,21 +19,75 @@ type Resolver struct {
 	Library pb.LibraryServer
 }
 
-func (r *Resolver) Book() exec.BookResolver                     { return bookResolver{r} }
-func (r *Resolver) SearchResponse() exec.SearchResponseResolver { return searchResponseResolver{r} }
+func (r *Resolver) Book() exec.BookResolver             { return bookResolver{r} }
+func (r *Resolver) Everything() exec.EverythingResolver { return everythingResolver{r} }
+func (r *Resolver) MapMessage() exec.MapMessageResolver { return mapMessageResolver{r} }
+func (r *Resolver) MultiOneof() exec.MultiOneofResolver { return multiOneofResolver{r} }
+func (r *Resolver) MultiOneofChoiceChoiceBook() exec.MultiOneofChoiceChoiceBookResolver {
+	return multiOneofChoiceChoiceBookResolver{r}
+}
+func (r *Resolver) OptionalScalars() exec.OptionalScalarsResolver { return optionalScalarsResolver{r} }
+func (r *Resolver) RepeatedScalars() exec.RepeatedScalarsResolver { return repeatedScalarsResolver{r} }
+func (r *Resolver) ScalarTypes() exec.ScalarTypesResolver         { return scalarTypesResolver{r} }
+func (r *Resolver) SearchResponse() exec.SearchResponseResolver   { return searchResponseResolver{r} }
 func (r *Resolver) SearchResponseResultBook() exec.SearchResponseResultBookResolver {
 	return searchResponseResultBookResolver{r}
 }
+func (r *Resolver) WKTMessage() exec.WKTMessageResolver     { return wKTMessageResolver{r} }
 func (r *Resolver) Query() exec.QueryResolver               { return queryResolver{r} }
 func (r *Resolver) Mutation() exec.MutationResolver         { return mutationResolver{r} }
 func (r *Resolver) Subscription() exec.SubscriptionResolver { return subscriptionResolver{r} }
 
 type bookResolver struct{ *Resolver }
+type everythingResolver struct{ *Resolver }
+type mapMessageResolver struct{ *Resolver }
+type multiOneofResolver struct{ *Resolver }
+type multiOneofChoiceChoiceBookResolver struct{ *Resolver }
+type optionalScalarsResolver struct{ *Resolver }
+type repeatedScalarsResolver struct{ *Resolver }
+type scalarTypesResolver struct{ *Resolver }
 type searchResponseResolver struct{ *Resolver }
 type searchResponseResultBookResolver struct{ *Resolver }
+type wKTMessageResolver struct{ *Resolver }
 type queryResolver struct{ *Resolver }
 type mutationResolver struct{ *Resolver }
 type subscriptionResolver struct{ *Resolver }
+
+// StringMap exposes the proto map field as a JSON scalar (field
+// resolver, because the JSON scalar's Go type `any` cannot bind a concrete map).
+func (r mapMessageResolver) StringMap(ctx context.Context, obj *pb.MapMessage) (any, error) {
+	return obj.GetStringMap(), nil
+}
+
+// Int64Map exposes the proto map field as a JSON scalar (field
+// resolver, because the JSON scalar's Go type `any` cannot bind a concrete map).
+func (r mapMessageResolver) Int64Map(ctx context.Context, obj *pb.MapMessage) (any, error) {
+	return obj.GetInt64Map(), nil
+}
+
+// BoolMap exposes the proto map field as a JSON scalar (field
+// resolver, because the JSON scalar's Go type `any` cannot bind a concrete map).
+func (r mapMessageResolver) BoolMap(ctx context.Context, obj *pb.MapMessage) (any, error) {
+	return obj.GetBoolMap(), nil
+}
+
+// Int32Key exposes the proto map field as a JSON scalar (field
+// resolver, because the JSON scalar's Go type `any` cannot bind a concrete map).
+func (r mapMessageResolver) Int32Key(ctx context.Context, obj *pb.MapMessage) (any, error) {
+	return obj.GetInt32Key(), nil
+}
+
+// EnumMap exposes the proto map field as a JSON scalar (field
+// resolver, because the JSON scalar's Go type `any` cannot bind a concrete map).
+func (r mapMessageResolver) EnumMap(ctx context.Context, obj *pb.MapMessage) (any, error) {
+	return obj.GetEnumMap(), nil
+}
+
+// MsgMap exposes the proto map field as a JSON scalar (field
+// resolver, because the JSON scalar's Go type `any` cannot bind a concrete map).
+func (r mapMessageResolver) MsgMap(ctx context.Context, obj *pb.MapMessage) (any, error) {
+	return obj.GetMsgMap(), nil
+}
 
 // Tags exposes the proto map field as a JSON scalar (field
 // resolver, because the JSON scalar's Go type `any` cannot bind a concrete map).
@@ -45,14 +101,190 @@ func (r searchResponseResultBookResolver) Tags(ctx context.Context, obj *pbgql.S
 	return obj.GetTags(), nil
 }
 
+// Tags exposes the proto map field as a JSON scalar (field
+// resolver, because the JSON scalar's Go type `any` cannot bind a concrete map).
+func (r multiOneofChoiceChoiceBookResolver) Tags(ctx context.Context, obj *pbgql.MultiOneofChoiceChoiceBook) (any, error) {
+	return obj.GetTags(), nil
+}
+
+// FieldFloat coerces the proto field to the gqlgen-compatible type.
+func (r scalarTypesResolver) FieldFloat(ctx context.Context, obj *pb.ScalarTypes) (float64, error) {
+	return float64(obj.GetFieldFloat()), nil
+}
+
+// FieldUint32 coerces the proto field to the gqlgen-compatible type.
+func (r scalarTypesResolver) FieldUint32(ctx context.Context, obj *pb.ScalarTypes) (int, error) {
+	return int(obj.GetFieldUint32()), nil
+}
+
+// FieldFixed32 coerces the proto field to the gqlgen-compatible type.
+func (r scalarTypesResolver) FieldFixed32(ctx context.Context, obj *pb.ScalarTypes) (int, error) {
+	return int(obj.GetFieldFixed32()), nil
+}
+
+// FieldFloat coerces the proto field to the gqlgen-compatible type.
+func (r optionalScalarsResolver) FieldFloat(ctx context.Context, obj *pb.OptionalScalars) (*float64, error) {
+	if obj.FieldFloat == nil {
+		return nil, nil
+	}
+	c := float64(obj.GetFieldFloat())
+	return &c, nil
+}
+
+// FieldUint32 coerces the proto field to the gqlgen-compatible type.
+func (r optionalScalarsResolver) FieldUint32(ctx context.Context, obj *pb.OptionalScalars) (*int, error) {
+	if obj.FieldUint32 == nil {
+		return nil, nil
+	}
+	c := int(obj.GetFieldUint32())
+	return &c, nil
+}
+
+// FieldFloat coerces the proto field to the gqlgen-compatible type.
+func (r repeatedScalarsResolver) FieldFloat(ctx context.Context, obj *pb.RepeatedScalars) ([]float64, error) {
+	src := obj.GetFieldFloat()
+	out := make([]float64, len(src))
+	for i, v := range src {
+		out[i] = float64(v)
+	}
+	return out, nil
+}
+
+// Any coerces the proto field to the gqlgen-compatible type.
+func (r wKTMessageResolver) Any(ctx context.Context, obj *pb.WKTMessage) (any, error) {
+	v := obj.GetAny()
+	if v == nil {
+		return nil, nil
+	}
+	b, err := protojson.Marshal(v)
+	if err != nil {
+		return nil, err
+	}
+	var out any
+	if err := json.Unmarshal(b, &out); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+// Empty coerces the proto field to the gqlgen-compatible type.
+func (r wKTMessageResolver) Empty(ctx context.Context, obj *pb.WKTMessage) (any, error) {
+	v := obj.GetEmpty()
+	if v == nil {
+		return nil, nil
+	}
+	b, err := protojson.Marshal(v)
+	if err != nil {
+		return nil, err
+	}
+	var out any
+	if err := json.Unmarshal(b, &out); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+// Struct coerces the proto field to the gqlgen-compatible type.
+func (r wKTMessageResolver) Struct(ctx context.Context, obj *pb.WKTMessage) (any, error) {
+	v := obj.GetStruct()
+	if v == nil {
+		return nil, nil
+	}
+	b, err := protojson.Marshal(v)
+	if err != nil {
+		return nil, err
+	}
+	var out any
+	if err := json.Unmarshal(b, &out); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+// Value coerces the proto field to the gqlgen-compatible type.
+func (r wKTMessageResolver) Value(ctx context.Context, obj *pb.WKTMessage) (any, error) {
+	v := obj.GetValue()
+	if v == nil {
+		return nil, nil
+	}
+	b, err := protojson.Marshal(v)
+	if err != nil {
+		return nil, err
+	}
+	var out any
+	if err := json.Unmarshal(b, &out); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+// ListValue coerces the proto field to the gqlgen-compatible type.
+func (r wKTMessageResolver) ListValue(ctx context.Context, obj *pb.WKTMessage) (any, error) {
+	v := obj.GetListValue()
+	if v == nil {
+		return nil, nil
+	}
+	b, err := protojson.Marshal(v)
+	if err != nil {
+		return nil, err
+	}
+	var out any
+	if err := json.Unmarshal(b, &out); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // Result resolves the oneof field "result" as a SearchResponseResult union.
 // It wraps the pb oneof variant into the appropriate pbgql wrapper type.
 func (r searchResponseResolver) Result(ctx context.Context, obj *pb.SearchResponse) (pbgql.SearchResponseResult, error) {
 	return pbgql.WrapSearchResponseResult(obj), nil
 }
 
-func (r queryResolver) GetBook(ctx context.Context, input pb.GetBookRequest) (*pb.GetBookResponse, error) {
-	resp, err := r.Library.GetBook(ctx, &input)
+// Choice resolves the oneof field "choice" as a MultiOneofChoice union.
+// It wraps the pb oneof variant into the appropriate pbgql wrapper type.
+func (r multiOneofResolver) Choice(ctx context.Context, obj *pb.MultiOneof) (pbgql.MultiOneofChoice, error) {
+	return pbgql.WrapMultiOneofChoice(obj), nil
+}
+
+// Status resolves the oneof field "status" as a MultiOneofStatus union.
+// It wraps the pb oneof variant into the appropriate pbgql wrapper type.
+func (r multiOneofResolver) Status(ctx context.Context, obj *pb.MultiOneof) (pbgql.MultiOneofStatus, error) {
+	return pbgql.WrapMultiOneofStatus(obj), nil
+}
+
+// Terminal resolves the oneof field "terminal" as a EverythingTerminal union.
+// It wraps the pb oneof variant into the appropriate pbgql wrapper type.
+func (r everythingResolver) Terminal(ctx context.Context, obj *pb.Everything) (pbgql.EverythingTerminal, error) {
+	return pbgql.WrapEverythingTerminal(obj), nil
+}
+
+func (r queryResolver) GetEverything(ctx context.Context, input pb.GetEverythingRequest) (*pb.GetEverythingResponse, error) {
+	resp, err := r.Library.GetEverything(ctx, &input)
+	if err != nil {
+		return nil, runtime.GraphQLError(ctx, err)
+	}
+	return resp, nil
+}
+
+func (r queryResolver) GetScalars(ctx context.Context, input pb.GetScalarsRequest) (*pb.GetScalarsResponse, error) {
+	resp, err := r.Library.GetScalars(ctx, &input)
+	if err != nil {
+		return nil, runtime.GraphQLError(ctx, err)
+	}
+	return resp, nil
+}
+
+func (r queryResolver) SearchBooks(ctx context.Context, input pbgql.SearchRequestInput) (*pb.SearchResponse, error) {
+	resp, err := r.Library.SearchBooks(ctx, pbgql.ToPbSearchRequest(&input))
+	if err != nil {
+		return nil, runtime.GraphQLError(ctx, err)
+	}
+	return resp, nil
+}
+
+func (r mutationResolver) EchoInput(ctx context.Context, input pb.EchoRequest) (*pb.EchoResponse, error) {
+	resp, err := r.Library.EchoInput(ctx, &input)
 	if err != nil {
 		return nil, runtime.GraphQLError(ctx, err)
 	}
@@ -67,16 +299,8 @@ func (r mutationResolver) AddBook(ctx context.Context, input pb.AddBookRequest) 
 	return resp, nil
 }
 
-func (r subscriptionResolver) WatchBooks(ctx context.Context, input pb.WatchBooksRequest) (<-chan *pb.Book, error) {
-	return runtime.PumpServerStream[pb.Book](ctx, func(ss *runtime.StreamServer[pb.Book]) error {
-		return r.Library.WatchBooks(&input, ss)
+func (r subscriptionResolver) WatchItems(ctx context.Context, input pb.WatchRequest) (<-chan *pb.WatchEvent, error) {
+	return runtime.PumpServerStream[pb.WatchEvent](ctx, func(ss *runtime.StreamServer[pb.WatchEvent]) error {
+		return r.Library.WatchItems(&input, ss)
 	}), nil
-}
-
-func (r queryResolver) SearchBooks(ctx context.Context, input pbgql.SearchRequestInput) (*pb.SearchResponse, error) {
-	resp, err := r.Library.SearchBooks(ctx, pbgql.ToPbSearchRequest(&input))
-	if err != nil {
-		return nil, runtime.GraphQLError(ctx, err)
-	}
-	return resp, nil
 }

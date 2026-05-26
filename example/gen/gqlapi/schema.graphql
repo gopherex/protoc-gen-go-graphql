@@ -2,11 +2,25 @@ directive @goField(forceResolver: Boolean, name: String) on FIELD_DEFINITION | I
 directive @oneOf on INPUT_OBJECT
 
 scalar Int64
+scalar Uint64
 scalar Bytes
 scalar Timestamp
+scalar Duration
 scalar JSON
+scalar FieldMask
+scalar DoubleValue
+scalar FloatValue
+scalar Int32Value
+scalar UInt32Value
+scalar Int64Value
+scalar UInt64Value
+scalar BoolValue
+scalar StringValue
+scalar BytesValue
 
 enum Genre { GENRE_UNSPECIFIED FICTION NONFICTION }
+
+enum Status { STATUS_UNSPECIFIED STATUS_ACTIVE STATUS_RUNNING STATUS_INACTIVE }
 
 type SearchResponseResultBook {
   id: String!
@@ -20,8 +34,25 @@ type SearchResponseResultBook {
 }
 type SearchResponseResultNotFound { reason: String! }
 union SearchResponseResult = SearchResponseResultBook | SearchResponseResultNotFound
-
-type Author { name: String! }
+type MultiOneofChoiceChoiceString { value: String! }
+type MultiOneofChoiceChoiceInt64 { value: Int64! }
+type MultiOneofChoiceChoiceBook {
+  id: String!
+  title: String!
+  genre: Genre!
+  copies: Int64!
+  cover: Bytes!
+  publishedAt: Timestamp
+  tags: JSON @goField(forceResolver: true)
+  author: Author
+}
+union MultiOneofChoice = MultiOneofChoiceChoiceString | MultiOneofChoiceChoiceInt64 | MultiOneofChoiceChoiceBook
+type MultiOneofStatusStatusOk { value: Boolean! }
+type MultiOneofStatusStatusError { value: String! }
+union MultiOneofStatus = MultiOneofStatusStatusOk | MultiOneofStatusStatusError
+type EverythingTerminalDone { value: Boolean! }
+type EverythingTerminalError { value: String! }
+union EverythingTerminal = EverythingTerminalDone | EverythingTerminalError
 
 type Book {
   id: String!
@@ -34,8 +65,25 @@ type Book {
   author: Author
 }
 
-input GetBookRequest { id: String! }
-input AddBookRequest { book: BookInput }
+type Author { name: String! }
+
+input GetEverythingRequest { id: String! }
+input GetScalarsRequest {
+  id: String!
+  limit: Int64
+  tags: [String!]!
+  genre: Genre!
+}
+input SearchRequest { query: SearchRequestQuery }
+input SearchRequestQuery @oneOf {
+  text: String
+  author: String
+}
+input EchoRequest {
+  book: BookInput
+  genre: Genre!
+  note: String
+}
 input BookInput {
   id: String!
   title: String!
@@ -46,22 +94,132 @@ input BookInput {
   author: AuthorInput
 }
 input AuthorInput { name: String! }
-input WatchBooksRequest { genre: Genre! }
-input SearchRequest { query: SearchRequestQuery }
-input SearchRequestQuery @oneOf {
-  text: String
-  author: String
-}
+input AddBookRequest { book: BookInput }
+input WatchRequest { genre: Genre! }
 
-type GetBookResponse { book: Book }
-type AddBookResponse { book: Book }
+type ScalarTypes {
+  fieldDouble: Float!
+  fieldFloat: Float! @goField(forceResolver: true)
+  fieldInt32: Int!
+  fieldInt64: Int64!
+  fieldUint32: Int! @goField(forceResolver: true)
+  fieldUint64: Uint64!
+  fieldSint32: Int!
+  fieldSint64: Int64!
+  fieldFixed32: Int! @goField(forceResolver: true)
+  fieldFixed64: Uint64!
+  fieldSfixed32: Int!
+  fieldSfixed64: Int64!
+  fieldBool: Boolean!
+  fieldString: String!
+  fieldBytes: Bytes!
+}
+type OptionalScalars {
+  fieldDouble: Float
+  fieldFloat: Float @goField(forceResolver: true)
+  fieldInt32: Int
+  fieldInt64: Int64
+  fieldUint32: Int @goField(forceResolver: true)
+  fieldUint64: Uint64
+  fieldBool: Boolean
+  fieldString: String
+  fieldBytes: Bytes
+}
+type RepeatedScalars {
+  fieldDouble: [Float!]!
+  fieldFloat: [Float!]! @goField(forceResolver: true)
+  fieldInt32: [Int!]!
+  fieldInt64: [Int64!]!
+  fieldUint64: [Uint64!]!
+  fieldBool: [Boolean!]!
+  fieldString: [String!]!
+  fieldBytes: [Bytes!]!
+}
+type Outer {
+  inner: Outer_Inner
+  tag: String!
+}
+type Outer_Inner {
+  label: String!
+  deep: Outer_Inner_DeepInner
+}
+type Outer_Inner_DeepInner { value: String! }
+type WKTMessage {
+  timestamp: Timestamp
+  duration: Duration
+  any: JSON @goField(forceResolver: true)
+  empty: JSON @goField(forceResolver: true)
+  fieldMask: FieldMask
+  struct: JSON @goField(forceResolver: true)
+  value: JSON @goField(forceResolver: true)
+  listValue: JSON @goField(forceResolver: true)
+  doubleWrapper: DoubleValue
+  floatWrapper: FloatValue
+  int32Wrapper: Int32Value
+  int64Wrapper: Int64Value
+  uint32Wrapper: UInt32Value
+  uint64Wrapper: UInt64Value
+  boolWrapper: BoolValue
+  stringWrapper: StringValue
+  bytesWrapper: BytesValue
+  repeatedTimestamps: [Timestamp!]!
+}
+type MapMessage {
+  stringMap: JSON @goField(forceResolver: true)
+  int64Map: JSON @goField(forceResolver: true)
+  boolMap: JSON @goField(forceResolver: true)
+  int32Key: JSON @goField(forceResolver: true)
+  enumMap: JSON @goField(forceResolver: true)
+  msgMap: JSON @goField(forceResolver: true)
+}
 type NotFound { reason: String! }
 type SearchResponse { result: SearchResponseResult @goField(forceResolver: true) }
+type MultiOneof {
+  choice: MultiOneofChoice @goField(forceResolver: true)
+  status: MultiOneofStatus @goField(forceResolver: true)
+  outside: String!
+}
+type TreeNode {
+  id: String!
+  parent: TreeNode
+  children: [TreeNode]!
+}
+type MutualA { b: MutualB }
+type MutualB { a: MutualA }
+type Everything {
+  scalars: ScalarTypes
+  optionals: OptionalScalars
+  repeateds: RepeatedScalars
+  wkt: WKTMessage
+  maps: MapMessage
+  multi: MultiOneof
+  tree: TreeNode
+  mutual: MutualA
+  outer: Outer
+  recursive: [Everything]!
+  terminal: EverythingTerminal @goField(forceResolver: true)
+}
+type GetEverythingResponse { everything: Everything }
+type GetScalarsResponse {
+  scalars: ScalarTypes
+  optionals: OptionalScalars
+  repeateds: RepeatedScalars
+}
+type EchoResponse { book: Book }
+type AddBookResponse { book: Book }
+type WatchEvent {
+  book: Book
+  at: Timestamp
+}
 
 type Query {
-  getBook(input: GetBookRequest!): GetBookResponse!
+  getEverything(input: GetEverythingRequest!): GetEverythingResponse!
+  getScalars(input: GetScalarsRequest!): GetScalarsResponse!
   searchBooks(input: SearchRequest!): SearchResponse!
 }
-type Mutation { addBook(input: AddBookRequest!): AddBookResponse! }
-type Subscription { watchBooks(input: WatchBooksRequest!): Book! }
+type Mutation {
+  echoInput(input: EchoRequest!): EchoResponse!
+  addBook(input: AddBookRequest!): AddBookResponse!
+}
+type Subscription { watchItems(input: WatchRequest!): WatchEvent! }
 

@@ -19,20 +19,27 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	Library_GetBook_FullMethodName     = "/golden.v1.Library/GetBook"
-	Library_AddBook_FullMethodName     = "/golden.v1.Library/AddBook"
-	Library_WatchBooks_FullMethodName  = "/golden.v1.Library/WatchBooks"
-	Library_SearchBooks_FullMethodName = "/golden.v1.Library/SearchBooks"
+	Library_GetEverything_FullMethodName = "/golden.v1.Library/GetEverything"
+	Library_GetScalars_FullMethodName    = "/golden.v1.Library/GetScalars"
+	Library_SearchBooks_FullMethodName   = "/golden.v1.Library/SearchBooks"
+	Library_EchoInput_FullMethodName     = "/golden.v1.Library/EchoInput"
+	Library_AddBook_FullMethodName       = "/golden.v1.Library/AddBook"
+	Library_WatchItems_FullMethodName    = "/golden.v1.Library/WatchItems"
 )
 
 // LibraryClient is the client API for Library service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type LibraryClient interface {
-	GetBook(ctx context.Context, in *GetBookRequest, opts ...grpc.CallOption) (*GetBookResponse, error)
-	AddBook(ctx context.Context, in *AddBookRequest, opts ...grpc.CallOption) (*AddBookResponse, error)
-	WatchBooks(ctx context.Context, in *WatchBooksRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[Book], error)
+	// Queries (NO_SIDE_EFFECTS → Query root).
+	GetEverything(ctx context.Context, in *GetEverythingRequest, opts ...grpc.CallOption) (*GetEverythingResponse, error)
+	GetScalars(ctx context.Context, in *GetScalarsRequest, opts ...grpc.CallOption) (*GetScalarsResponse, error)
 	SearchBooks(ctx context.Context, in *SearchRequest, opts ...grpc.CallOption) (*SearchResponse, error)
+	// Mutations (default → Mutation root).
+	EchoInput(ctx context.Context, in *EchoRequest, opts ...grpc.CallOption) (*EchoResponse, error)
+	AddBook(ctx context.Context, in *AddBookRequest, opts ...grpc.CallOption) (*AddBookResponse, error)
+	// Subscription (server-streaming → Subscription root).
+	WatchItems(ctx context.Context, in *WatchRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[WatchEvent], error)
 }
 
 type libraryClient struct {
@@ -43,10 +50,40 @@ func NewLibraryClient(cc grpc.ClientConnInterface) LibraryClient {
 	return &libraryClient{cc}
 }
 
-func (c *libraryClient) GetBook(ctx context.Context, in *GetBookRequest, opts ...grpc.CallOption) (*GetBookResponse, error) {
+func (c *libraryClient) GetEverything(ctx context.Context, in *GetEverythingRequest, opts ...grpc.CallOption) (*GetEverythingResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(GetBookResponse)
-	err := c.cc.Invoke(ctx, Library_GetBook_FullMethodName, in, out, cOpts...)
+	out := new(GetEverythingResponse)
+	err := c.cc.Invoke(ctx, Library_GetEverything_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *libraryClient) GetScalars(ctx context.Context, in *GetScalarsRequest, opts ...grpc.CallOption) (*GetScalarsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetScalarsResponse)
+	err := c.cc.Invoke(ctx, Library_GetScalars_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *libraryClient) SearchBooks(ctx context.Context, in *SearchRequest, opts ...grpc.CallOption) (*SearchResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(SearchResponse)
+	err := c.cc.Invoke(ctx, Library_SearchBooks_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *libraryClient) EchoInput(ctx context.Context, in *EchoRequest, opts ...grpc.CallOption) (*EchoResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(EchoResponse)
+	err := c.cc.Invoke(ctx, Library_EchoInput_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -63,13 +100,13 @@ func (c *libraryClient) AddBook(ctx context.Context, in *AddBookRequest, opts ..
 	return out, nil
 }
 
-func (c *libraryClient) WatchBooks(ctx context.Context, in *WatchBooksRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[Book], error) {
+func (c *libraryClient) WatchItems(ctx context.Context, in *WatchRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[WatchEvent], error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	stream, err := c.cc.NewStream(ctx, &Library_ServiceDesc.Streams[0], Library_WatchBooks_FullMethodName, cOpts...)
+	stream, err := c.cc.NewStream(ctx, &Library_ServiceDesc.Streams[0], Library_WatchItems_FullMethodName, cOpts...)
 	if err != nil {
 		return nil, err
 	}
-	x := &grpc.GenericClientStream[WatchBooksRequest, Book]{ClientStream: stream}
+	x := &grpc.GenericClientStream[WatchRequest, WatchEvent]{ClientStream: stream}
 	if err := x.ClientStream.SendMsg(in); err != nil {
 		return nil, err
 	}
@@ -80,26 +117,21 @@ func (c *libraryClient) WatchBooks(ctx context.Context, in *WatchBooksRequest, o
 }
 
 // This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
-type Library_WatchBooksClient = grpc.ServerStreamingClient[Book]
-
-func (c *libraryClient) SearchBooks(ctx context.Context, in *SearchRequest, opts ...grpc.CallOption) (*SearchResponse, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(SearchResponse)
-	err := c.cc.Invoke(ctx, Library_SearchBooks_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
+type Library_WatchItemsClient = grpc.ServerStreamingClient[WatchEvent]
 
 // LibraryServer is the server API for Library service.
 // All implementations must embed UnimplementedLibraryServer
 // for forward compatibility.
 type LibraryServer interface {
-	GetBook(context.Context, *GetBookRequest) (*GetBookResponse, error)
-	AddBook(context.Context, *AddBookRequest) (*AddBookResponse, error)
-	WatchBooks(*WatchBooksRequest, grpc.ServerStreamingServer[Book]) error
+	// Queries (NO_SIDE_EFFECTS → Query root).
+	GetEverything(context.Context, *GetEverythingRequest) (*GetEverythingResponse, error)
+	GetScalars(context.Context, *GetScalarsRequest) (*GetScalarsResponse, error)
 	SearchBooks(context.Context, *SearchRequest) (*SearchResponse, error)
+	// Mutations (default → Mutation root).
+	EchoInput(context.Context, *EchoRequest) (*EchoResponse, error)
+	AddBook(context.Context, *AddBookRequest) (*AddBookResponse, error)
+	// Subscription (server-streaming → Subscription root).
+	WatchItems(*WatchRequest, grpc.ServerStreamingServer[WatchEvent]) error
 	mustEmbedUnimplementedLibraryServer()
 }
 
@@ -110,17 +142,23 @@ type LibraryServer interface {
 // pointer dereference when methods are called.
 type UnimplementedLibraryServer struct{}
 
-func (UnimplementedLibraryServer) GetBook(context.Context, *GetBookRequest) (*GetBookResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "method GetBook not implemented")
+func (UnimplementedLibraryServer) GetEverything(context.Context, *GetEverythingRequest) (*GetEverythingResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetEverything not implemented")
+}
+func (UnimplementedLibraryServer) GetScalars(context.Context, *GetScalarsRequest) (*GetScalarsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetScalars not implemented")
+}
+func (UnimplementedLibraryServer) SearchBooks(context.Context, *SearchRequest) (*SearchResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method SearchBooks not implemented")
+}
+func (UnimplementedLibraryServer) EchoInput(context.Context, *EchoRequest) (*EchoResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method EchoInput not implemented")
 }
 func (UnimplementedLibraryServer) AddBook(context.Context, *AddBookRequest) (*AddBookResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method AddBook not implemented")
 }
-func (UnimplementedLibraryServer) WatchBooks(*WatchBooksRequest, grpc.ServerStreamingServer[Book]) error {
-	return status.Error(codes.Unimplemented, "method WatchBooks not implemented")
-}
-func (UnimplementedLibraryServer) SearchBooks(context.Context, *SearchRequest) (*SearchResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "method SearchBooks not implemented")
+func (UnimplementedLibraryServer) WatchItems(*WatchRequest, grpc.ServerStreamingServer[WatchEvent]) error {
+	return status.Error(codes.Unimplemented, "method WatchItems not implemented")
 }
 func (UnimplementedLibraryServer) mustEmbedUnimplementedLibraryServer() {}
 func (UnimplementedLibraryServer) testEmbeddedByValue()                 {}
@@ -143,20 +181,74 @@ func RegisterLibraryServer(s grpc.ServiceRegistrar, srv LibraryServer) {
 	s.RegisterService(&Library_ServiceDesc, srv)
 }
 
-func _Library_GetBook_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(GetBookRequest)
+func _Library_GetEverything_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetEverythingRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(LibraryServer).GetBook(ctx, in)
+		return srv.(LibraryServer).GetEverything(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: Library_GetBook_FullMethodName,
+		FullMethod: Library_GetEverything_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(LibraryServer).GetBook(ctx, req.(*GetBookRequest))
+		return srv.(LibraryServer).GetEverything(ctx, req.(*GetEverythingRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Library_GetScalars_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetScalarsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(LibraryServer).GetScalars(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Library_GetScalars_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(LibraryServer).GetScalars(ctx, req.(*GetScalarsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Library_SearchBooks_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SearchRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(LibraryServer).SearchBooks(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Library_SearchBooks_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(LibraryServer).SearchBooks(ctx, req.(*SearchRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Library_EchoInput_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(EchoRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(LibraryServer).EchoInput(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Library_EchoInput_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(LibraryServer).EchoInput(ctx, req.(*EchoRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -179,34 +271,16 @@ func _Library_AddBook_Handler(srv interface{}, ctx context.Context, dec func(int
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Library_WatchBooks_Handler(srv interface{}, stream grpc.ServerStream) error {
-	m := new(WatchBooksRequest)
+func _Library_WatchItems_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(WatchRequest)
 	if err := stream.RecvMsg(m); err != nil {
 		return err
 	}
-	return srv.(LibraryServer).WatchBooks(m, &grpc.GenericServerStream[WatchBooksRequest, Book]{ServerStream: stream})
+	return srv.(LibraryServer).WatchItems(m, &grpc.GenericServerStream[WatchRequest, WatchEvent]{ServerStream: stream})
 }
 
 // This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
-type Library_WatchBooksServer = grpc.ServerStreamingServer[Book]
-
-func _Library_SearchBooks_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(SearchRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(LibraryServer).SearchBooks(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: Library_SearchBooks_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(LibraryServer).SearchBooks(ctx, req.(*SearchRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
+type Library_WatchItemsServer = grpc.ServerStreamingServer[WatchEvent]
 
 // Library_ServiceDesc is the grpc.ServiceDesc for Library service.
 // It's only intended for direct use with grpc.RegisterService,
@@ -216,22 +290,30 @@ var Library_ServiceDesc = grpc.ServiceDesc{
 	HandlerType: (*LibraryServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
-			MethodName: "GetBook",
-			Handler:    _Library_GetBook_Handler,
+			MethodName: "GetEverything",
+			Handler:    _Library_GetEverything_Handler,
 		},
 		{
-			MethodName: "AddBook",
-			Handler:    _Library_AddBook_Handler,
+			MethodName: "GetScalars",
+			Handler:    _Library_GetScalars_Handler,
 		},
 		{
 			MethodName: "SearchBooks",
 			Handler:    _Library_SearchBooks_Handler,
 		},
+		{
+			MethodName: "EchoInput",
+			Handler:    _Library_EchoInput_Handler,
+		},
+		{
+			MethodName: "AddBook",
+			Handler:    _Library_AddBook_Handler,
+		},
 	},
 	Streams: []grpc.StreamDesc{
 		{
-			StreamName:    "WatchBooks",
-			Handler:       _Library_WatchBooks_Handler,
+			StreamName:    "WatchItems",
+			Handler:       _Library_WatchItems_Handler,
 			ServerStreams: true,
 		},
 	},

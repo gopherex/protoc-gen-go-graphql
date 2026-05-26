@@ -9,7 +9,13 @@ package gen
 import (
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
+	anypb "google.golang.org/protobuf/types/known/anypb"
+	durationpb "google.golang.org/protobuf/types/known/durationpb"
+	emptypb "google.golang.org/protobuf/types/known/emptypb"
+	fieldmaskpb "google.golang.org/protobuf/types/known/fieldmaskpb"
+	structpb "google.golang.org/protobuf/types/known/structpb"
 	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
+	wrapperspb "google.golang.org/protobuf/types/known/wrapperspb"
 	reflect "reflect"
 	sync "sync"
 	unsafe "unsafe"
@@ -71,27 +77,95 @@ func (Genre) EnumDescriptor() ([]byte, []int) {
 	return file_golden_proto_rawDescGZIP(), []int{0}
 }
 
-type Author struct {
+// Enum with allow_alias: two names for the same numeric value.
+type Status int32
+
+const (
+	Status_STATUS_UNSPECIFIED Status = 0
+	Status_STATUS_ACTIVE      Status = 1
+	Status_STATUS_RUNNING     Status = 1 // alias of ACTIVE
+	Status_STATUS_INACTIVE    Status = 2
+)
+
+// Enum value maps for Status.
+var (
+	Status_name = map[int32]string{
+		0: "STATUS_UNSPECIFIED",
+		1: "STATUS_ACTIVE",
+		// Duplicate value: 1: "STATUS_RUNNING",
+		2: "STATUS_INACTIVE",
+	}
+	Status_value = map[string]int32{
+		"STATUS_UNSPECIFIED": 0,
+		"STATUS_ACTIVE":      1,
+		"STATUS_RUNNING":     1,
+		"STATUS_INACTIVE":    2,
+	}
+)
+
+func (x Status) Enum() *Status {
+	p := new(Status)
+	*p = x
+	return p
+}
+
+func (x Status) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (Status) Descriptor() protoreflect.EnumDescriptor {
+	return file_golden_proto_enumTypes[1].Descriptor()
+}
+
+func (Status) Type() protoreflect.EnumType {
+	return &file_golden_proto_enumTypes[1]
+}
+
+func (x Status) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use Status.Descriptor instead.
+func (Status) EnumDescriptor() ([]byte, []int) {
+	return file_golden_proto_rawDescGZIP(), []int{1}
+}
+
+// All singular proto3 scalar types.
+type ScalarTypes struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Name          string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	FieldDouble   float64                `protobuf:"fixed64,1,opt,name=field_double,json=fieldDouble,proto3" json:"field_double,omitempty"`
+	FieldFloat    float32                `protobuf:"fixed32,2,opt,name=field_float,json=fieldFloat,proto3" json:"field_float,omitempty"`
+	FieldInt32    int32                  `protobuf:"varint,3,opt,name=field_int32,json=fieldInt32,proto3" json:"field_int32,omitempty"`
+	FieldInt64    int64                  `protobuf:"varint,4,opt,name=field_int64,json=fieldInt64,proto3" json:"field_int64,omitempty"`
+	FieldUint32   uint32                 `protobuf:"varint,5,opt,name=field_uint32,json=fieldUint32,proto3" json:"field_uint32,omitempty"`
+	FieldUint64   uint64                 `protobuf:"varint,6,opt,name=field_uint64,json=fieldUint64,proto3" json:"field_uint64,omitempty"`
+	FieldSint32   int32                  `protobuf:"zigzag32,7,opt,name=field_sint32,json=fieldSint32,proto3" json:"field_sint32,omitempty"`
+	FieldSint64   int64                  `protobuf:"zigzag64,8,opt,name=field_sint64,json=fieldSint64,proto3" json:"field_sint64,omitempty"`
+	FieldFixed32  uint32                 `protobuf:"fixed32,9,opt,name=field_fixed32,json=fieldFixed32,proto3" json:"field_fixed32,omitempty"`
+	FieldFixed64  uint64                 `protobuf:"fixed64,10,opt,name=field_fixed64,json=fieldFixed64,proto3" json:"field_fixed64,omitempty"`
+	FieldSfixed32 int32                  `protobuf:"fixed32,11,opt,name=field_sfixed32,json=fieldSfixed32,proto3" json:"field_sfixed32,omitempty"`
+	FieldSfixed64 int64                  `protobuf:"fixed64,12,opt,name=field_sfixed64,json=fieldSfixed64,proto3" json:"field_sfixed64,omitempty"`
+	FieldBool     bool                   `protobuf:"varint,13,opt,name=field_bool,json=fieldBool,proto3" json:"field_bool,omitempty"`
+	FieldString   string                 `protobuf:"bytes,14,opt,name=field_string,json=fieldString,proto3" json:"field_string,omitempty"`
+	FieldBytes    []byte                 `protobuf:"bytes,15,opt,name=field_bytes,json=fieldBytes,proto3" json:"field_bytes,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *Author) Reset() {
-	*x = Author{}
+func (x *ScalarTypes) Reset() {
+	*x = ScalarTypes{}
 	mi := &file_golden_proto_msgTypes[0]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *Author) String() string {
+func (x *ScalarTypes) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*Author) ProtoMessage() {}
+func (*ScalarTypes) ProtoMessage() {}
 
-func (x *Author) ProtoReflect() protoreflect.Message {
+func (x *ScalarTypes) ProtoReflect() protoreflect.Message {
 	mi := &file_golden_proto_msgTypes[0]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -103,35 +177,662 @@ func (x *Author) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use Author.ProtoReflect.Descriptor instead.
-func (*Author) Descriptor() ([]byte, []int) {
+// Deprecated: Use ScalarTypes.ProtoReflect.Descriptor instead.
+func (*ScalarTypes) Descriptor() ([]byte, []int) {
 	return file_golden_proto_rawDescGZIP(), []int{0}
 }
 
-func (x *Author) GetName() string {
+func (x *ScalarTypes) GetFieldDouble() float64 {
 	if x != nil {
-		return x.Name
+		return x.FieldDouble
+	}
+	return 0
+}
+
+func (x *ScalarTypes) GetFieldFloat() float32 {
+	if x != nil {
+		return x.FieldFloat
+	}
+	return 0
+}
+
+func (x *ScalarTypes) GetFieldInt32() int32 {
+	if x != nil {
+		return x.FieldInt32
+	}
+	return 0
+}
+
+func (x *ScalarTypes) GetFieldInt64() int64 {
+	if x != nil {
+		return x.FieldInt64
+	}
+	return 0
+}
+
+func (x *ScalarTypes) GetFieldUint32() uint32 {
+	if x != nil {
+		return x.FieldUint32
+	}
+	return 0
+}
+
+func (x *ScalarTypes) GetFieldUint64() uint64 {
+	if x != nil {
+		return x.FieldUint64
+	}
+	return 0
+}
+
+func (x *ScalarTypes) GetFieldSint32() int32 {
+	if x != nil {
+		return x.FieldSint32
+	}
+	return 0
+}
+
+func (x *ScalarTypes) GetFieldSint64() int64 {
+	if x != nil {
+		return x.FieldSint64
+	}
+	return 0
+}
+
+func (x *ScalarTypes) GetFieldFixed32() uint32 {
+	if x != nil {
+		return x.FieldFixed32
+	}
+	return 0
+}
+
+func (x *ScalarTypes) GetFieldFixed64() uint64 {
+	if x != nil {
+		return x.FieldFixed64
+	}
+	return 0
+}
+
+func (x *ScalarTypes) GetFieldSfixed32() int32 {
+	if x != nil {
+		return x.FieldSfixed32
+	}
+	return 0
+}
+
+func (x *ScalarTypes) GetFieldSfixed64() int64 {
+	if x != nil {
+		return x.FieldSfixed64
+	}
+	return 0
+}
+
+func (x *ScalarTypes) GetFieldBool() bool {
+	if x != nil {
+		return x.FieldBool
+	}
+	return false
+}
+
+func (x *ScalarTypes) GetFieldString() string {
+	if x != nil {
+		return x.FieldString
 	}
 	return ""
 }
 
+func (x *ScalarTypes) GetFieldBytes() []byte {
+	if x != nil {
+		return x.FieldBytes
+	}
+	return nil
+}
+
+// Optional (proto3 explicit presence) scalars.
+type OptionalScalars struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	FieldDouble   *float64               `protobuf:"fixed64,1,opt,name=field_double,json=fieldDouble,proto3,oneof" json:"field_double,omitempty"`
+	FieldFloat    *float32               `protobuf:"fixed32,2,opt,name=field_float,json=fieldFloat,proto3,oneof" json:"field_float,omitempty"`
+	FieldInt32    *int32                 `protobuf:"varint,3,opt,name=field_int32,json=fieldInt32,proto3,oneof" json:"field_int32,omitempty"`
+	FieldInt64    *int64                 `protobuf:"varint,4,opt,name=field_int64,json=fieldInt64,proto3,oneof" json:"field_int64,omitempty"`
+	FieldUint32   *uint32                `protobuf:"varint,5,opt,name=field_uint32,json=fieldUint32,proto3,oneof" json:"field_uint32,omitempty"`
+	FieldUint64   *uint64                `protobuf:"varint,6,opt,name=field_uint64,json=fieldUint64,proto3,oneof" json:"field_uint64,omitempty"`
+	FieldBool     *bool                  `protobuf:"varint,7,opt,name=field_bool,json=fieldBool,proto3,oneof" json:"field_bool,omitempty"`
+	FieldString   *string                `protobuf:"bytes,8,opt,name=field_string,json=fieldString,proto3,oneof" json:"field_string,omitempty"`
+	FieldBytes    []byte                 `protobuf:"bytes,9,opt,name=field_bytes,json=fieldBytes,proto3,oneof" json:"field_bytes,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *OptionalScalars) Reset() {
+	*x = OptionalScalars{}
+	mi := &file_golden_proto_msgTypes[1]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *OptionalScalars) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*OptionalScalars) ProtoMessage() {}
+
+func (x *OptionalScalars) ProtoReflect() protoreflect.Message {
+	mi := &file_golden_proto_msgTypes[1]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use OptionalScalars.ProtoReflect.Descriptor instead.
+func (*OptionalScalars) Descriptor() ([]byte, []int) {
+	return file_golden_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *OptionalScalars) GetFieldDouble() float64 {
+	if x != nil && x.FieldDouble != nil {
+		return *x.FieldDouble
+	}
+	return 0
+}
+
+func (x *OptionalScalars) GetFieldFloat() float32 {
+	if x != nil && x.FieldFloat != nil {
+		return *x.FieldFloat
+	}
+	return 0
+}
+
+func (x *OptionalScalars) GetFieldInt32() int32 {
+	if x != nil && x.FieldInt32 != nil {
+		return *x.FieldInt32
+	}
+	return 0
+}
+
+func (x *OptionalScalars) GetFieldInt64() int64 {
+	if x != nil && x.FieldInt64 != nil {
+		return *x.FieldInt64
+	}
+	return 0
+}
+
+func (x *OptionalScalars) GetFieldUint32() uint32 {
+	if x != nil && x.FieldUint32 != nil {
+		return *x.FieldUint32
+	}
+	return 0
+}
+
+func (x *OptionalScalars) GetFieldUint64() uint64 {
+	if x != nil && x.FieldUint64 != nil {
+		return *x.FieldUint64
+	}
+	return 0
+}
+
+func (x *OptionalScalars) GetFieldBool() bool {
+	if x != nil && x.FieldBool != nil {
+		return *x.FieldBool
+	}
+	return false
+}
+
+func (x *OptionalScalars) GetFieldString() string {
+	if x != nil && x.FieldString != nil {
+		return *x.FieldString
+	}
+	return ""
+}
+
+func (x *OptionalScalars) GetFieldBytes() []byte {
+	if x != nil {
+		return x.FieldBytes
+	}
+	return nil
+}
+
+// Repeated scalars.
+type RepeatedScalars struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	FieldDouble   []float64              `protobuf:"fixed64,1,rep,packed,name=field_double,json=fieldDouble,proto3" json:"field_double,omitempty"`
+	FieldFloat    []float32              `protobuf:"fixed32,2,rep,packed,name=field_float,json=fieldFloat,proto3" json:"field_float,omitempty"`
+	FieldInt32    []int32                `protobuf:"varint,3,rep,packed,name=field_int32,json=fieldInt32,proto3" json:"field_int32,omitempty"`
+	FieldInt64    []int64                `protobuf:"varint,4,rep,packed,name=field_int64,json=fieldInt64,proto3" json:"field_int64,omitempty"`
+	FieldUint64   []uint64               `protobuf:"varint,5,rep,packed,name=field_uint64,json=fieldUint64,proto3" json:"field_uint64,omitempty"`
+	FieldBool     []bool                 `protobuf:"varint,6,rep,packed,name=field_bool,json=fieldBool,proto3" json:"field_bool,omitempty"`
+	FieldString   []string               `protobuf:"bytes,7,rep,name=field_string,json=fieldString,proto3" json:"field_string,omitempty"`
+	FieldBytes    [][]byte               `protobuf:"bytes,8,rep,name=field_bytes,json=fieldBytes,proto3" json:"field_bytes,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RepeatedScalars) Reset() {
+	*x = RepeatedScalars{}
+	mi := &file_golden_proto_msgTypes[2]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RepeatedScalars) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RepeatedScalars) ProtoMessage() {}
+
+func (x *RepeatedScalars) ProtoReflect() protoreflect.Message {
+	mi := &file_golden_proto_msgTypes[2]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RepeatedScalars.ProtoReflect.Descriptor instead.
+func (*RepeatedScalars) Descriptor() ([]byte, []int) {
+	return file_golden_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *RepeatedScalars) GetFieldDouble() []float64 {
+	if x != nil {
+		return x.FieldDouble
+	}
+	return nil
+}
+
+func (x *RepeatedScalars) GetFieldFloat() []float32 {
+	if x != nil {
+		return x.FieldFloat
+	}
+	return nil
+}
+
+func (x *RepeatedScalars) GetFieldInt32() []int32 {
+	if x != nil {
+		return x.FieldInt32
+	}
+	return nil
+}
+
+func (x *RepeatedScalars) GetFieldInt64() []int64 {
+	if x != nil {
+		return x.FieldInt64
+	}
+	return nil
+}
+
+func (x *RepeatedScalars) GetFieldUint64() []uint64 {
+	if x != nil {
+		return x.FieldUint64
+	}
+	return nil
+}
+
+func (x *RepeatedScalars) GetFieldBool() []bool {
+	if x != nil {
+		return x.FieldBool
+	}
+	return nil
+}
+
+func (x *RepeatedScalars) GetFieldString() []string {
+	if x != nil {
+		return x.FieldString
+	}
+	return nil
+}
+
+func (x *RepeatedScalars) GetFieldBytes() [][]byte {
+	if x != nil {
+		return x.FieldBytes
+	}
+	return nil
+}
+
+// Deep nesting: Outer.Inner.DeepInner.
+type Outer struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Inner         *Outer_Inner           `protobuf:"bytes,1,opt,name=inner,proto3" json:"inner,omitempty"`
+	Tag           string                 `protobuf:"bytes,2,opt,name=tag,proto3" json:"tag,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *Outer) Reset() {
+	*x = Outer{}
+	mi := &file_golden_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Outer) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Outer) ProtoMessage() {}
+
+func (x *Outer) ProtoReflect() protoreflect.Message {
+	mi := &file_golden_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Outer.ProtoReflect.Descriptor instead.
+func (*Outer) Descriptor() ([]byte, []int) {
+	return file_golden_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *Outer) GetInner() *Outer_Inner {
+	if x != nil {
+		return x.Inner
+	}
+	return nil
+}
+
+func (x *Outer) GetTag() string {
+	if x != nil {
+		return x.Tag
+	}
+	return ""
+}
+
+type WKTMessage struct {
+	state     protoimpl.MessageState `protogen:"open.v1"`
+	Timestamp *timestamppb.Timestamp `protobuf:"bytes,1,opt,name=timestamp,proto3" json:"timestamp,omitempty"`
+	Duration  *durationpb.Duration   `protobuf:"bytes,2,opt,name=duration,proto3" json:"duration,omitempty"`
+	Any       *anypb.Any             `protobuf:"bytes,3,opt,name=any,proto3" json:"any,omitempty"`
+	Empty     *emptypb.Empty         `protobuf:"bytes,4,opt,name=empty,proto3" json:"empty,omitempty"`
+	FieldMask *fieldmaskpb.FieldMask `protobuf:"bytes,5,opt,name=field_mask,json=fieldMask,proto3" json:"field_mask,omitempty"`
+	Struct    *structpb.Struct       `protobuf:"bytes,6,opt,name=struct,proto3" json:"struct,omitempty"`
+	Value     *structpb.Value        `protobuf:"bytes,7,opt,name=value,proto3" json:"value,omitempty"`
+	ListValue *structpb.ListValue    `protobuf:"bytes,8,opt,name=list_value,json=listValue,proto3" json:"list_value,omitempty"`
+	// Wrapper types (nullable scalars).
+	DoubleWrapper      *wrapperspb.DoubleValue  `protobuf:"bytes,9,opt,name=double_wrapper,json=doubleWrapper,proto3" json:"double_wrapper,omitempty"`
+	FloatWrapper       *wrapperspb.FloatValue   `protobuf:"bytes,10,opt,name=float_wrapper,json=floatWrapper,proto3" json:"float_wrapper,omitempty"`
+	Int32Wrapper       *wrapperspb.Int32Value   `protobuf:"bytes,11,opt,name=int32_wrapper,json=int32Wrapper,proto3" json:"int32_wrapper,omitempty"`
+	Int64Wrapper       *wrapperspb.Int64Value   `protobuf:"bytes,12,opt,name=int64_wrapper,json=int64Wrapper,proto3" json:"int64_wrapper,omitempty"`
+	Uint32Wrapper      *wrapperspb.UInt32Value  `protobuf:"bytes,13,opt,name=uint32_wrapper,json=uint32Wrapper,proto3" json:"uint32_wrapper,omitempty"`
+	Uint64Wrapper      *wrapperspb.UInt64Value  `protobuf:"bytes,14,opt,name=uint64_wrapper,json=uint64Wrapper,proto3" json:"uint64_wrapper,omitempty"`
+	BoolWrapper        *wrapperspb.BoolValue    `protobuf:"bytes,15,opt,name=bool_wrapper,json=boolWrapper,proto3" json:"bool_wrapper,omitempty"`
+	StringWrapper      *wrapperspb.StringValue  `protobuf:"bytes,16,opt,name=string_wrapper,json=stringWrapper,proto3" json:"string_wrapper,omitempty"`
+	BytesWrapper       *wrapperspb.BytesValue   `protobuf:"bytes,17,opt,name=bytes_wrapper,json=bytesWrapper,proto3" json:"bytes_wrapper,omitempty"`
+	RepeatedTimestamps []*timestamppb.Timestamp `protobuf:"bytes,18,rep,name=repeated_timestamps,json=repeatedTimestamps,proto3" json:"repeated_timestamps,omitempty"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
+}
+
+func (x *WKTMessage) Reset() {
+	*x = WKTMessage{}
+	mi := &file_golden_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *WKTMessage) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*WKTMessage) ProtoMessage() {}
+
+func (x *WKTMessage) ProtoReflect() protoreflect.Message {
+	mi := &file_golden_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use WKTMessage.ProtoReflect.Descriptor instead.
+func (*WKTMessage) Descriptor() ([]byte, []int) {
+	return file_golden_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *WKTMessage) GetTimestamp() *timestamppb.Timestamp {
+	if x != nil {
+		return x.Timestamp
+	}
+	return nil
+}
+
+func (x *WKTMessage) GetDuration() *durationpb.Duration {
+	if x != nil {
+		return x.Duration
+	}
+	return nil
+}
+
+func (x *WKTMessage) GetAny() *anypb.Any {
+	if x != nil {
+		return x.Any
+	}
+	return nil
+}
+
+func (x *WKTMessage) GetEmpty() *emptypb.Empty {
+	if x != nil {
+		return x.Empty
+	}
+	return nil
+}
+
+func (x *WKTMessage) GetFieldMask() *fieldmaskpb.FieldMask {
+	if x != nil {
+		return x.FieldMask
+	}
+	return nil
+}
+
+func (x *WKTMessage) GetStruct() *structpb.Struct {
+	if x != nil {
+		return x.Struct
+	}
+	return nil
+}
+
+func (x *WKTMessage) GetValue() *structpb.Value {
+	if x != nil {
+		return x.Value
+	}
+	return nil
+}
+
+func (x *WKTMessage) GetListValue() *structpb.ListValue {
+	if x != nil {
+		return x.ListValue
+	}
+	return nil
+}
+
+func (x *WKTMessage) GetDoubleWrapper() *wrapperspb.DoubleValue {
+	if x != nil {
+		return x.DoubleWrapper
+	}
+	return nil
+}
+
+func (x *WKTMessage) GetFloatWrapper() *wrapperspb.FloatValue {
+	if x != nil {
+		return x.FloatWrapper
+	}
+	return nil
+}
+
+func (x *WKTMessage) GetInt32Wrapper() *wrapperspb.Int32Value {
+	if x != nil {
+		return x.Int32Wrapper
+	}
+	return nil
+}
+
+func (x *WKTMessage) GetInt64Wrapper() *wrapperspb.Int64Value {
+	if x != nil {
+		return x.Int64Wrapper
+	}
+	return nil
+}
+
+func (x *WKTMessage) GetUint32Wrapper() *wrapperspb.UInt32Value {
+	if x != nil {
+		return x.Uint32Wrapper
+	}
+	return nil
+}
+
+func (x *WKTMessage) GetUint64Wrapper() *wrapperspb.UInt64Value {
+	if x != nil {
+		return x.Uint64Wrapper
+	}
+	return nil
+}
+
+func (x *WKTMessage) GetBoolWrapper() *wrapperspb.BoolValue {
+	if x != nil {
+		return x.BoolWrapper
+	}
+	return nil
+}
+
+func (x *WKTMessage) GetStringWrapper() *wrapperspb.StringValue {
+	if x != nil {
+		return x.StringWrapper
+	}
+	return nil
+}
+
+func (x *WKTMessage) GetBytesWrapper() *wrapperspb.BytesValue {
+	if x != nil {
+		return x.BytesWrapper
+	}
+	return nil
+}
+
+func (x *WKTMessage) GetRepeatedTimestamps() []*timestamppb.Timestamp {
+	if x != nil {
+		return x.RepeatedTimestamps
+	}
+	return nil
+}
+
+type MapMessage struct {
+	state         protoimpl.MessageState  `protogen:"open.v1"`
+	StringMap     map[string]string       `protobuf:"bytes,1,rep,name=string_map,json=stringMap,proto3" json:"string_map,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	Int64Map      map[string]int64        `protobuf:"bytes,2,rep,name=int64_map,json=int64Map,proto3" json:"int64_map,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"varint,2,opt,name=value"`
+	BoolMap       map[string]bool         `protobuf:"bytes,3,rep,name=bool_map,json=boolMap,proto3" json:"bool_map,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"varint,2,opt,name=value"`
+	Int32Key      map[int32]string        `protobuf:"bytes,4,rep,name=int32_key,json=int32Key,proto3" json:"int32_key,omitempty" protobuf_key:"varint,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	EnumMap       map[string]Genre        `protobuf:"bytes,5,rep,name=enum_map,json=enumMap,proto3" json:"enum_map,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"varint,2,opt,name=value,enum=golden.v1.Genre"`
+	MsgMap        map[string]*ScalarTypes `protobuf:"bytes,6,rep,name=msg_map,json=msgMap,proto3" json:"msg_map,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *MapMessage) Reset() {
+	*x = MapMessage{}
+	mi := &file_golden_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *MapMessage) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*MapMessage) ProtoMessage() {}
+
+func (x *MapMessage) ProtoReflect() protoreflect.Message {
+	mi := &file_golden_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use MapMessage.ProtoReflect.Descriptor instead.
+func (*MapMessage) Descriptor() ([]byte, []int) {
+	return file_golden_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *MapMessage) GetStringMap() map[string]string {
+	if x != nil {
+		return x.StringMap
+	}
+	return nil
+}
+
+func (x *MapMessage) GetInt64Map() map[string]int64 {
+	if x != nil {
+		return x.Int64Map
+	}
+	return nil
+}
+
+func (x *MapMessage) GetBoolMap() map[string]bool {
+	if x != nil {
+		return x.BoolMap
+	}
+	return nil
+}
+
+func (x *MapMessage) GetInt32Key() map[int32]string {
+	if x != nil {
+		return x.Int32Key
+	}
+	return nil
+}
+
+func (x *MapMessage) GetEnumMap() map[string]Genre {
+	if x != nil {
+		return x.EnumMap
+	}
+	return nil
+}
+
+func (x *MapMessage) GetMsgMap() map[string]*ScalarTypes {
+	if x != nil {
+		return x.MsgMap
+	}
+	return nil
+}
+
+// Book: used as both output type and input (via BookInput).
 type Book struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
 	Title         string                 `protobuf:"bytes,2,opt,name=title,proto3" json:"title,omitempty"`
 	Genre         Genre                  `protobuf:"varint,3,opt,name=genre,proto3,enum=golden.v1.Genre" json:"genre,omitempty"`
-	Copies        int64                  `protobuf:"varint,4,opt,name=copies,proto3" json:"copies,omitempty"`                                                                      // -> String scalar
-	Cover         []byte                 `protobuf:"bytes,5,opt,name=cover,proto3" json:"cover,omitempty"`                                                                         // -> base64 String
-	PublishedAt   *timestamppb.Timestamp `protobuf:"bytes,6,opt,name=published_at,json=publishedAt,proto3" json:"published_at,omitempty"`                                          // -> Timestamp scalar
-	Tags          map[string]string      `protobuf:"bytes,7,rep,name=tags,proto3" json:"tags,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"` // -> JSON scalar
-	Author        *Author                `protobuf:"bytes,8,opt,name=author,proto3" json:"author,omitempty"`                                                                       // nested message
+	Copies        int64                  `protobuf:"varint,4,opt,name=copies,proto3" json:"copies,omitempty"`
+	Cover         []byte                 `protobuf:"bytes,5,opt,name=cover,proto3" json:"cover,omitempty"`
+	PublishedAt   *timestamppb.Timestamp `protobuf:"bytes,6,opt,name=published_at,json=publishedAt,proto3" json:"published_at,omitempty"`
+	Tags          map[string]string      `protobuf:"bytes,7,rep,name=tags,proto3" json:"tags,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	Author        *Author                `protobuf:"bytes,8,opt,name=author,proto3" json:"author,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *Book) Reset() {
 	*x = Book{}
-	mi := &file_golden_proto_msgTypes[1]
+	mi := &file_golden_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -143,7 +844,7 @@ func (x *Book) String() string {
 func (*Book) ProtoMessage() {}
 
 func (x *Book) ProtoReflect() protoreflect.Message {
-	mi := &file_golden_proto_msgTypes[1]
+	mi := &file_golden_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -156,7 +857,7 @@ func (x *Book) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Book.ProtoReflect.Descriptor instead.
 func (*Book) Descriptor() ([]byte, []int) {
-	return file_golden_proto_rawDescGZIP(), []int{1}
+	return file_golden_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *Book) GetId() string {
@@ -215,253 +916,27 @@ func (x *Book) GetAuthor() *Author {
 	return nil
 }
 
-type GetBookRequest struct {
+type Author struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Name          string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *GetBookRequest) Reset() {
-	*x = GetBookRequest{}
-	mi := &file_golden_proto_msgTypes[2]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *GetBookRequest) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*GetBookRequest) ProtoMessage() {}
-
-func (x *GetBookRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_golden_proto_msgTypes[2]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use GetBookRequest.ProtoReflect.Descriptor instead.
-func (*GetBookRequest) Descriptor() ([]byte, []int) {
-	return file_golden_proto_rawDescGZIP(), []int{2}
-}
-
-func (x *GetBookRequest) GetId() string {
-	if x != nil {
-		return x.Id
-	}
-	return ""
-}
-
-type GetBookResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Book          *Book                  `protobuf:"bytes,1,opt,name=book,proto3" json:"book,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *GetBookResponse) Reset() {
-	*x = GetBookResponse{}
-	mi := &file_golden_proto_msgTypes[3]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *GetBookResponse) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*GetBookResponse) ProtoMessage() {}
-
-func (x *GetBookResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_golden_proto_msgTypes[3]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use GetBookResponse.ProtoReflect.Descriptor instead.
-func (*GetBookResponse) Descriptor() ([]byte, []int) {
-	return file_golden_proto_rawDescGZIP(), []int{3}
-}
-
-func (x *GetBookResponse) GetBook() *Book {
-	if x != nil {
-		return x.Book
-	}
-	return nil
-}
-
-type AddBookRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Book          *Book                  `protobuf:"bytes,1,opt,name=book,proto3" json:"book,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *AddBookRequest) Reset() {
-	*x = AddBookRequest{}
-	mi := &file_golden_proto_msgTypes[4]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *AddBookRequest) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*AddBookRequest) ProtoMessage() {}
-
-func (x *AddBookRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_golden_proto_msgTypes[4]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use AddBookRequest.ProtoReflect.Descriptor instead.
-func (*AddBookRequest) Descriptor() ([]byte, []int) {
-	return file_golden_proto_rawDescGZIP(), []int{4}
-}
-
-func (x *AddBookRequest) GetBook() *Book {
-	if x != nil {
-		return x.Book
-	}
-	return nil
-}
-
-type AddBookResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Book          *Book                  `protobuf:"bytes,1,opt,name=book,proto3" json:"book,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *AddBookResponse) Reset() {
-	*x = AddBookResponse{}
-	mi := &file_golden_proto_msgTypes[5]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *AddBookResponse) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*AddBookResponse) ProtoMessage() {}
-
-func (x *AddBookResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_golden_proto_msgTypes[5]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use AddBookResponse.ProtoReflect.Descriptor instead.
-func (*AddBookResponse) Descriptor() ([]byte, []int) {
-	return file_golden_proto_rawDescGZIP(), []int{5}
-}
-
-func (x *AddBookResponse) GetBook() *Book {
-	if x != nil {
-		return x.Book
-	}
-	return nil
-}
-
-type WatchBooksRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Genre         Genre                  `protobuf:"varint,1,opt,name=genre,proto3,enum=golden.v1.Genre" json:"genre,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *WatchBooksRequest) Reset() {
-	*x = WatchBooksRequest{}
-	mi := &file_golden_proto_msgTypes[6]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *WatchBooksRequest) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*WatchBooksRequest) ProtoMessage() {}
-
-func (x *WatchBooksRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_golden_proto_msgTypes[6]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use WatchBooksRequest.ProtoReflect.Descriptor instead.
-func (*WatchBooksRequest) Descriptor() ([]byte, []int) {
-	return file_golden_proto_rawDescGZIP(), []int{6}
-}
-
-func (x *WatchBooksRequest) GetGenre() Genre {
-	if x != nil {
-		return x.Genre
-	}
-	return Genre_GENRE_UNSPECIFIED
-}
-
-// SearchRequest demonstrates input oneof: the caller provides exactly one of
-// text (full-text search) or author (author name search).
-type SearchRequest struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// Types that are valid to be assigned to Query:
-	//
-	//	*SearchRequest_Text
-	//	*SearchRequest_Author
-	Query         isSearchRequest_Query `protobuf_oneof:"query"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *SearchRequest) Reset() {
-	*x = SearchRequest{}
+func (x *Author) Reset() {
+	*x = Author{}
 	mi := &file_golden_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *SearchRequest) String() string {
+func (x *Author) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*SearchRequest) ProtoMessage() {}
+func (*Author) ProtoMessage() {}
 
-func (x *SearchRequest) ProtoReflect() protoreflect.Message {
+func (x *Author) ProtoReflect() protoreflect.Message {
 	mi := &file_golden_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -473,53 +948,18 @@ func (x *SearchRequest) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use SearchRequest.ProtoReflect.Descriptor instead.
-func (*SearchRequest) Descriptor() ([]byte, []int) {
+// Deprecated: Use Author.ProtoReflect.Descriptor instead.
+func (*Author) Descriptor() ([]byte, []int) {
 	return file_golden_proto_rawDescGZIP(), []int{7}
 }
 
-func (x *SearchRequest) GetQuery() isSearchRequest_Query {
+func (x *Author) GetName() string {
 	if x != nil {
-		return x.Query
-	}
-	return nil
-}
-
-func (x *SearchRequest) GetText() string {
-	if x != nil {
-		if x, ok := x.Query.(*SearchRequest_Text); ok {
-			return x.Text
-		}
+		return x.Name
 	}
 	return ""
 }
 
-func (x *SearchRequest) GetAuthor() string {
-	if x != nil {
-		if x, ok := x.Query.(*SearchRequest_Author); ok {
-			return x.Author
-		}
-	}
-	return ""
-}
-
-type isSearchRequest_Query interface {
-	isSearchRequest_Query()
-}
-
-type SearchRequest_Text struct {
-	Text string `protobuf:"bytes,1,opt,name=text,proto3,oneof"`
-}
-
-type SearchRequest_Author struct {
-	Author string `protobuf:"bytes,2,opt,name=author,proto3,oneof"`
-}
-
-func (*SearchRequest_Text) isSearchRequest_Query() {}
-
-func (*SearchRequest_Author) isSearchRequest_Query() {}
-
-// NotFound is returned when no book matches the search.
 type NotFound struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Reason        string                 `protobuf:"bytes,1,opt,name=reason,proto3" json:"reason,omitempty"`
@@ -564,8 +1004,7 @@ func (x *NotFound) GetReason() string {
 	return ""
 }
 
-// SearchResponse demonstrates output oneof → GraphQL union.
-// The result is either a Book match or a NotFound explanation.
+// SearchResponse: output oneof → GraphQL union.
 type SearchResponse struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Types that are valid to be assigned to Result:
@@ -648,13 +1087,1285 @@ func (*SearchResponse_Book) isSearchResponse_Result() {}
 
 func (*SearchResponse_NotFound) isSearchResponse_Result() {}
 
+// SearchRequest: input oneof → @oneOf input type.
+type SearchRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Types that are valid to be assigned to Query:
+	//
+	//	*SearchRequest_Text
+	//	*SearchRequest_Author
+	Query         isSearchRequest_Query `protobuf_oneof:"query"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SearchRequest) Reset() {
+	*x = SearchRequest{}
+	mi := &file_golden_proto_msgTypes[10]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SearchRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SearchRequest) ProtoMessage() {}
+
+func (x *SearchRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_golden_proto_msgTypes[10]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SearchRequest.ProtoReflect.Descriptor instead.
+func (*SearchRequest) Descriptor() ([]byte, []int) {
+	return file_golden_proto_rawDescGZIP(), []int{10}
+}
+
+func (x *SearchRequest) GetQuery() isSearchRequest_Query {
+	if x != nil {
+		return x.Query
+	}
+	return nil
+}
+
+func (x *SearchRequest) GetText() string {
+	if x != nil {
+		if x, ok := x.Query.(*SearchRequest_Text); ok {
+			return x.Text
+		}
+	}
+	return ""
+}
+
+func (x *SearchRequest) GetAuthor() string {
+	if x != nil {
+		if x, ok := x.Query.(*SearchRequest_Author); ok {
+			return x.Author
+		}
+	}
+	return ""
+}
+
+type isSearchRequest_Query interface {
+	isSearchRequest_Query()
+}
+
+type SearchRequest_Text struct {
+	Text string `protobuf:"bytes,1,opt,name=text,proto3,oneof"`
+}
+
+type SearchRequest_Author struct {
+	Author string `protobuf:"bytes,2,opt,name=author,proto3,oneof"`
+}
+
+func (*SearchRequest_Text) isSearchRequest_Query() {}
+
+func (*SearchRequest_Author) isSearchRequest_Query() {}
+
+// Container with MULTIPLE oneofs and a regular field.
+type MultiOneof struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// First oneof: scalar + message member.
+	//
+	// Types that are valid to be assigned to Choice:
+	//
+	//	*MultiOneof_ChoiceString
+	//	*MultiOneof_ChoiceInt64
+	//	*MultiOneof_ChoiceBook
+	Choice isMultiOneof_Choice `protobuf_oneof:"choice"`
+	// Second oneof: scalars only.
+	//
+	// Types that are valid to be assigned to Status:
+	//
+	//	*MultiOneof_StatusOk
+	//	*MultiOneof_StatusError
+	Status        isMultiOneof_Status `protobuf_oneof:"status"`
+	Outside       string              `protobuf:"bytes,6,opt,name=outside,proto3" json:"outside,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *MultiOneof) Reset() {
+	*x = MultiOneof{}
+	mi := &file_golden_proto_msgTypes[11]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *MultiOneof) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*MultiOneof) ProtoMessage() {}
+
+func (x *MultiOneof) ProtoReflect() protoreflect.Message {
+	mi := &file_golden_proto_msgTypes[11]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use MultiOneof.ProtoReflect.Descriptor instead.
+func (*MultiOneof) Descriptor() ([]byte, []int) {
+	return file_golden_proto_rawDescGZIP(), []int{11}
+}
+
+func (x *MultiOneof) GetChoice() isMultiOneof_Choice {
+	if x != nil {
+		return x.Choice
+	}
+	return nil
+}
+
+func (x *MultiOneof) GetChoiceString() string {
+	if x != nil {
+		if x, ok := x.Choice.(*MultiOneof_ChoiceString); ok {
+			return x.ChoiceString
+		}
+	}
+	return ""
+}
+
+func (x *MultiOneof) GetChoiceInt64() int64 {
+	if x != nil {
+		if x, ok := x.Choice.(*MultiOneof_ChoiceInt64); ok {
+			return x.ChoiceInt64
+		}
+	}
+	return 0
+}
+
+func (x *MultiOneof) GetChoiceBook() *Book {
+	if x != nil {
+		if x, ok := x.Choice.(*MultiOneof_ChoiceBook); ok {
+			return x.ChoiceBook
+		}
+	}
+	return nil
+}
+
+func (x *MultiOneof) GetStatus() isMultiOneof_Status {
+	if x != nil {
+		return x.Status
+	}
+	return nil
+}
+
+func (x *MultiOneof) GetStatusOk() bool {
+	if x != nil {
+		if x, ok := x.Status.(*MultiOneof_StatusOk); ok {
+			return x.StatusOk
+		}
+	}
+	return false
+}
+
+func (x *MultiOneof) GetStatusError() string {
+	if x != nil {
+		if x, ok := x.Status.(*MultiOneof_StatusError); ok {
+			return x.StatusError
+		}
+	}
+	return ""
+}
+
+func (x *MultiOneof) GetOutside() string {
+	if x != nil {
+		return x.Outside
+	}
+	return ""
+}
+
+type isMultiOneof_Choice interface {
+	isMultiOneof_Choice()
+}
+
+type MultiOneof_ChoiceString struct {
+	ChoiceString string `protobuf:"bytes,1,opt,name=choice_string,json=choiceString,proto3,oneof"`
+}
+
+type MultiOneof_ChoiceInt64 struct {
+	ChoiceInt64 int64 `protobuf:"varint,2,opt,name=choice_int64,json=choiceInt64,proto3,oneof"`
+}
+
+type MultiOneof_ChoiceBook struct {
+	ChoiceBook *Book `protobuf:"bytes,3,opt,name=choice_book,json=choiceBook,proto3,oneof"`
+}
+
+func (*MultiOneof_ChoiceString) isMultiOneof_Choice() {}
+
+func (*MultiOneof_ChoiceInt64) isMultiOneof_Choice() {}
+
+func (*MultiOneof_ChoiceBook) isMultiOneof_Choice() {}
+
+type isMultiOneof_Status interface {
+	isMultiOneof_Status()
+}
+
+type MultiOneof_StatusOk struct {
+	StatusOk bool `protobuf:"varint,4,opt,name=status_ok,json=statusOk,proto3,oneof"`
+}
+
+type MultiOneof_StatusError struct {
+	StatusError string `protobuf:"bytes,5,opt,name=status_error,json=statusError,proto3,oneof"`
+}
+
+func (*MultiOneof_StatusOk) isMultiOneof_Status() {}
+
+func (*MultiOneof_StatusError) isMultiOneof_Status() {}
+
+// Self-referential tree node.
+type TreeNode struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Parent        *TreeNode              `protobuf:"bytes,2,opt,name=parent,proto3" json:"parent,omitempty"`
+	Children      []*TreeNode            `protobuf:"bytes,3,rep,name=children,proto3" json:"children,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *TreeNode) Reset() {
+	*x = TreeNode{}
+	mi := &file_golden_proto_msgTypes[12]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *TreeNode) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*TreeNode) ProtoMessage() {}
+
+func (x *TreeNode) ProtoReflect() protoreflect.Message {
+	mi := &file_golden_proto_msgTypes[12]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use TreeNode.ProtoReflect.Descriptor instead.
+func (*TreeNode) Descriptor() ([]byte, []int) {
+	return file_golden_proto_rawDescGZIP(), []int{12}
+}
+
+func (x *TreeNode) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *TreeNode) GetParent() *TreeNode {
+	if x != nil {
+		return x.Parent
+	}
+	return nil
+}
+
+func (x *TreeNode) GetChildren() []*TreeNode {
+	if x != nil {
+		return x.Children
+	}
+	return nil
+}
+
+// Mutually recursive.
+type MutualA struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	B             *MutualB               `protobuf:"bytes,1,opt,name=b,proto3" json:"b,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *MutualA) Reset() {
+	*x = MutualA{}
+	mi := &file_golden_proto_msgTypes[13]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *MutualA) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*MutualA) ProtoMessage() {}
+
+func (x *MutualA) ProtoReflect() protoreflect.Message {
+	mi := &file_golden_proto_msgTypes[13]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use MutualA.ProtoReflect.Descriptor instead.
+func (*MutualA) Descriptor() ([]byte, []int) {
+	return file_golden_proto_rawDescGZIP(), []int{13}
+}
+
+func (x *MutualA) GetB() *MutualB {
+	if x != nil {
+		return x.B
+	}
+	return nil
+}
+
+type MutualB struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	A             *MutualA               `protobuf:"bytes,1,opt,name=a,proto3" json:"a,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *MutualB) Reset() {
+	*x = MutualB{}
+	mi := &file_golden_proto_msgTypes[14]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *MutualB) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*MutualB) ProtoMessage() {}
+
+func (x *MutualB) ProtoReflect() protoreflect.Message {
+	mi := &file_golden_proto_msgTypes[14]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use MutualB.ProtoReflect.Descriptor instead.
+func (*MutualB) Descriptor() ([]byte, []int) {
+	return file_golden_proto_rawDescGZIP(), []int{14}
+}
+
+func (x *MutualB) GetA() *MutualA {
+	if x != nil {
+		return x.A
+	}
+	return nil
+}
+
+type Everything struct {
+	state     protoimpl.MessageState `protogen:"open.v1"`
+	Scalars   *ScalarTypes           `protobuf:"bytes,1,opt,name=scalars,proto3" json:"scalars,omitempty"`
+	Optionals *OptionalScalars       `protobuf:"bytes,2,opt,name=optionals,proto3" json:"optionals,omitempty"`
+	Repeateds *RepeatedScalars       `protobuf:"bytes,3,opt,name=repeateds,proto3" json:"repeateds,omitempty"`
+	Wkt       *WKTMessage            `protobuf:"bytes,4,opt,name=wkt,proto3" json:"wkt,omitempty"`
+	Maps      *MapMessage            `protobuf:"bytes,5,opt,name=maps,proto3" json:"maps,omitempty"`
+	Multi     *MultiOneof            `protobuf:"bytes,6,opt,name=multi,proto3" json:"multi,omitempty"`
+	Tree      *TreeNode              `protobuf:"bytes,7,opt,name=tree,proto3" json:"tree,omitempty"`
+	Mutual    *MutualA               `protobuf:"bytes,8,opt,name=mutual,proto3" json:"mutual,omitempty"`
+	Outer     *Outer                 `protobuf:"bytes,9,opt,name=outer,proto3" json:"outer,omitempty"`
+	Recursive []*Everything          `protobuf:"bytes,10,rep,name=recursive,proto3" json:"recursive,omitempty"`
+	// Types that are valid to be assigned to Terminal:
+	//
+	//	*Everything_Done
+	//	*Everything_Error
+	Terminal      isEverything_Terminal `protobuf_oneof:"terminal"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *Everything) Reset() {
+	*x = Everything{}
+	mi := &file_golden_proto_msgTypes[15]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Everything) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Everything) ProtoMessage() {}
+
+func (x *Everything) ProtoReflect() protoreflect.Message {
+	mi := &file_golden_proto_msgTypes[15]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Everything.ProtoReflect.Descriptor instead.
+func (*Everything) Descriptor() ([]byte, []int) {
+	return file_golden_proto_rawDescGZIP(), []int{15}
+}
+
+func (x *Everything) GetScalars() *ScalarTypes {
+	if x != nil {
+		return x.Scalars
+	}
+	return nil
+}
+
+func (x *Everything) GetOptionals() *OptionalScalars {
+	if x != nil {
+		return x.Optionals
+	}
+	return nil
+}
+
+func (x *Everything) GetRepeateds() *RepeatedScalars {
+	if x != nil {
+		return x.Repeateds
+	}
+	return nil
+}
+
+func (x *Everything) GetWkt() *WKTMessage {
+	if x != nil {
+		return x.Wkt
+	}
+	return nil
+}
+
+func (x *Everything) GetMaps() *MapMessage {
+	if x != nil {
+		return x.Maps
+	}
+	return nil
+}
+
+func (x *Everything) GetMulti() *MultiOneof {
+	if x != nil {
+		return x.Multi
+	}
+	return nil
+}
+
+func (x *Everything) GetTree() *TreeNode {
+	if x != nil {
+		return x.Tree
+	}
+	return nil
+}
+
+func (x *Everything) GetMutual() *MutualA {
+	if x != nil {
+		return x.Mutual
+	}
+	return nil
+}
+
+func (x *Everything) GetOuter() *Outer {
+	if x != nil {
+		return x.Outer
+	}
+	return nil
+}
+
+func (x *Everything) GetRecursive() []*Everything {
+	if x != nil {
+		return x.Recursive
+	}
+	return nil
+}
+
+func (x *Everything) GetTerminal() isEverything_Terminal {
+	if x != nil {
+		return x.Terminal
+	}
+	return nil
+}
+
+func (x *Everything) GetDone() bool {
+	if x != nil {
+		if x, ok := x.Terminal.(*Everything_Done); ok {
+			return x.Done
+		}
+	}
+	return false
+}
+
+func (x *Everything) GetError() string {
+	if x != nil {
+		if x, ok := x.Terminal.(*Everything_Error); ok {
+			return x.Error
+		}
+	}
+	return ""
+}
+
+type isEverything_Terminal interface {
+	isEverything_Terminal()
+}
+
+type Everything_Done struct {
+	Done bool `protobuf:"varint,11,opt,name=done,proto3,oneof"`
+}
+
+type Everything_Error struct {
+	Error string `protobuf:"bytes,12,opt,name=error,proto3,oneof"`
+}
+
+func (*Everything_Done) isEverything_Terminal() {}
+
+func (*Everything_Error) isEverything_Terminal() {}
+
+type GetEverythingRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetEverythingRequest) Reset() {
+	*x = GetEverythingRequest{}
+	mi := &file_golden_proto_msgTypes[16]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetEverythingRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetEverythingRequest) ProtoMessage() {}
+
+func (x *GetEverythingRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_golden_proto_msgTypes[16]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetEverythingRequest.ProtoReflect.Descriptor instead.
+func (*GetEverythingRequest) Descriptor() ([]byte, []int) {
+	return file_golden_proto_rawDescGZIP(), []int{16}
+}
+
+func (x *GetEverythingRequest) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+type GetEverythingResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Everything    *Everything            `protobuf:"bytes,1,opt,name=everything,proto3" json:"everything,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetEverythingResponse) Reset() {
+	*x = GetEverythingResponse{}
+	mi := &file_golden_proto_msgTypes[17]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetEverythingResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetEverythingResponse) ProtoMessage() {}
+
+func (x *GetEverythingResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_golden_proto_msgTypes[17]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetEverythingResponse.ProtoReflect.Descriptor instead.
+func (*GetEverythingResponse) Descriptor() ([]byte, []int) {
+	return file_golden_proto_rawDescGZIP(), []int{17}
+}
+
+func (x *GetEverythingResponse) GetEverything() *Everything {
+	if x != nil {
+		return x.Everything
+	}
+	return nil
+}
+
+// GetScalarsRequest: exercises optional + repeated on input side.
+type GetScalarsRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Limit         *int64                 `protobuf:"varint,2,opt,name=limit,proto3,oneof" json:"limit,omitempty"`
+	Tags          []string               `protobuf:"bytes,3,rep,name=tags,proto3" json:"tags,omitempty"`
+	Genre         Genre                  `protobuf:"varint,4,opt,name=genre,proto3,enum=golden.v1.Genre" json:"genre,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetScalarsRequest) Reset() {
+	*x = GetScalarsRequest{}
+	mi := &file_golden_proto_msgTypes[18]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetScalarsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetScalarsRequest) ProtoMessage() {}
+
+func (x *GetScalarsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_golden_proto_msgTypes[18]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetScalarsRequest.ProtoReflect.Descriptor instead.
+func (*GetScalarsRequest) Descriptor() ([]byte, []int) {
+	return file_golden_proto_rawDescGZIP(), []int{18}
+}
+
+func (x *GetScalarsRequest) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *GetScalarsRequest) GetLimit() int64 {
+	if x != nil && x.Limit != nil {
+		return *x.Limit
+	}
+	return 0
+}
+
+func (x *GetScalarsRequest) GetTags() []string {
+	if x != nil {
+		return x.Tags
+	}
+	return nil
+}
+
+func (x *GetScalarsRequest) GetGenre() Genre {
+	if x != nil {
+		return x.Genre
+	}
+	return Genre_GENRE_UNSPECIFIED
+}
+
+type GetScalarsResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Scalars       *ScalarTypes           `protobuf:"bytes,1,opt,name=scalars,proto3" json:"scalars,omitempty"`
+	Optionals     *OptionalScalars       `protobuf:"bytes,2,opt,name=optionals,proto3" json:"optionals,omitempty"`
+	Repeateds     *RepeatedScalars       `protobuf:"bytes,3,opt,name=repeateds,proto3" json:"repeateds,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetScalarsResponse) Reset() {
+	*x = GetScalarsResponse{}
+	mi := &file_golden_proto_msgTypes[19]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetScalarsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetScalarsResponse) ProtoMessage() {}
+
+func (x *GetScalarsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_golden_proto_msgTypes[19]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetScalarsResponse.ProtoReflect.Descriptor instead.
+func (*GetScalarsResponse) Descriptor() ([]byte, []int) {
+	return file_golden_proto_rawDescGZIP(), []int{19}
+}
+
+func (x *GetScalarsResponse) GetScalars() *ScalarTypes {
+	if x != nil {
+		return x.Scalars
+	}
+	return nil
+}
+
+func (x *GetScalarsResponse) GetOptionals() *OptionalScalars {
+	if x != nil {
+		return x.Optionals
+	}
+	return nil
+}
+
+func (x *GetScalarsResponse) GetRepeateds() *RepeatedScalars {
+	if x != nil {
+		return x.Repeateds
+	}
+	return nil
+}
+
+// EchoRequest: exercises nested input + enum + optional.
+type EchoRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Book          *Book                  `protobuf:"bytes,1,opt,name=book,proto3" json:"book,omitempty"`
+	Genre         Genre                  `protobuf:"varint,2,opt,name=genre,proto3,enum=golden.v1.Genre" json:"genre,omitempty"`
+	Note          *string                `protobuf:"bytes,3,opt,name=note,proto3,oneof" json:"note,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *EchoRequest) Reset() {
+	*x = EchoRequest{}
+	mi := &file_golden_proto_msgTypes[20]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *EchoRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*EchoRequest) ProtoMessage() {}
+
+func (x *EchoRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_golden_proto_msgTypes[20]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use EchoRequest.ProtoReflect.Descriptor instead.
+func (*EchoRequest) Descriptor() ([]byte, []int) {
+	return file_golden_proto_rawDescGZIP(), []int{20}
+}
+
+func (x *EchoRequest) GetBook() *Book {
+	if x != nil {
+		return x.Book
+	}
+	return nil
+}
+
+func (x *EchoRequest) GetGenre() Genre {
+	if x != nil {
+		return x.Genre
+	}
+	return Genre_GENRE_UNSPECIFIED
+}
+
+func (x *EchoRequest) GetNote() string {
+	if x != nil && x.Note != nil {
+		return *x.Note
+	}
+	return ""
+}
+
+type EchoResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Book          *Book                  `protobuf:"bytes,1,opt,name=book,proto3" json:"book,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *EchoResponse) Reset() {
+	*x = EchoResponse{}
+	mi := &file_golden_proto_msgTypes[21]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *EchoResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*EchoResponse) ProtoMessage() {}
+
+func (x *EchoResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_golden_proto_msgTypes[21]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use EchoResponse.ProtoReflect.Descriptor instead.
+func (*EchoResponse) Descriptor() ([]byte, []int) {
+	return file_golden_proto_rawDescGZIP(), []int{21}
+}
+
+func (x *EchoResponse) GetBook() *Book {
+	if x != nil {
+		return x.Book
+	}
+	return nil
+}
+
+// AddBookRequest / AddBookResponse.
+type AddBookRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Book          *Book                  `protobuf:"bytes,1,opt,name=book,proto3" json:"book,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AddBookRequest) Reset() {
+	*x = AddBookRequest{}
+	mi := &file_golden_proto_msgTypes[22]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AddBookRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AddBookRequest) ProtoMessage() {}
+
+func (x *AddBookRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_golden_proto_msgTypes[22]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AddBookRequest.ProtoReflect.Descriptor instead.
+func (*AddBookRequest) Descriptor() ([]byte, []int) {
+	return file_golden_proto_rawDescGZIP(), []int{22}
+}
+
+func (x *AddBookRequest) GetBook() *Book {
+	if x != nil {
+		return x.Book
+	}
+	return nil
+}
+
+type AddBookResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Book          *Book                  `protobuf:"bytes,1,opt,name=book,proto3" json:"book,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AddBookResponse) Reset() {
+	*x = AddBookResponse{}
+	mi := &file_golden_proto_msgTypes[23]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AddBookResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AddBookResponse) ProtoMessage() {}
+
+func (x *AddBookResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_golden_proto_msgTypes[23]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AddBookResponse.ProtoReflect.Descriptor instead.
+func (*AddBookResponse) Descriptor() ([]byte, []int) {
+	return file_golden_proto_rawDescGZIP(), []int{23}
+}
+
+func (x *AddBookResponse) GetBook() *Book {
+	if x != nil {
+		return x.Book
+	}
+	return nil
+}
+
+// WatchRequest / WatchEvent.
+type WatchRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Genre         Genre                  `protobuf:"varint,1,opt,name=genre,proto3,enum=golden.v1.Genre" json:"genre,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *WatchRequest) Reset() {
+	*x = WatchRequest{}
+	mi := &file_golden_proto_msgTypes[24]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *WatchRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*WatchRequest) ProtoMessage() {}
+
+func (x *WatchRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_golden_proto_msgTypes[24]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use WatchRequest.ProtoReflect.Descriptor instead.
+func (*WatchRequest) Descriptor() ([]byte, []int) {
+	return file_golden_proto_rawDescGZIP(), []int{24}
+}
+
+func (x *WatchRequest) GetGenre() Genre {
+	if x != nil {
+		return x.Genre
+	}
+	return Genre_GENRE_UNSPECIFIED
+}
+
+type WatchEvent struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Book          *Book                  `protobuf:"bytes,1,opt,name=book,proto3" json:"book,omitempty"`
+	At            *timestamppb.Timestamp `protobuf:"bytes,2,opt,name=at,proto3" json:"at,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *WatchEvent) Reset() {
+	*x = WatchEvent{}
+	mi := &file_golden_proto_msgTypes[25]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *WatchEvent) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*WatchEvent) ProtoMessage() {}
+
+func (x *WatchEvent) ProtoReflect() protoreflect.Message {
+	mi := &file_golden_proto_msgTypes[25]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use WatchEvent.ProtoReflect.Descriptor instead.
+func (*WatchEvent) Descriptor() ([]byte, []int) {
+	return file_golden_proto_rawDescGZIP(), []int{25}
+}
+
+func (x *WatchEvent) GetBook() *Book {
+	if x != nil {
+		return x.Book
+	}
+	return nil
+}
+
+func (x *WatchEvent) GetAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.At
+	}
+	return nil
+}
+
+type Outer_Inner struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Label         string                 `protobuf:"bytes,1,opt,name=label,proto3" json:"label,omitempty"`
+	Deep          *Outer_Inner_DeepInner `protobuf:"bytes,2,opt,name=deep,proto3" json:"deep,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *Outer_Inner) Reset() {
+	*x = Outer_Inner{}
+	mi := &file_golden_proto_msgTypes[26]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Outer_Inner) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Outer_Inner) ProtoMessage() {}
+
+func (x *Outer_Inner) ProtoReflect() protoreflect.Message {
+	mi := &file_golden_proto_msgTypes[26]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Outer_Inner.ProtoReflect.Descriptor instead.
+func (*Outer_Inner) Descriptor() ([]byte, []int) {
+	return file_golden_proto_rawDescGZIP(), []int{3, 0}
+}
+
+func (x *Outer_Inner) GetLabel() string {
+	if x != nil {
+		return x.Label
+	}
+	return ""
+}
+
+func (x *Outer_Inner) GetDeep() *Outer_Inner_DeepInner {
+	if x != nil {
+		return x.Deep
+	}
+	return nil
+}
+
+type Outer_Inner_DeepInner struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Value         string                 `protobuf:"bytes,1,opt,name=value,proto3" json:"value,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *Outer_Inner_DeepInner) Reset() {
+	*x = Outer_Inner_DeepInner{}
+	mi := &file_golden_proto_msgTypes[27]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Outer_Inner_DeepInner) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Outer_Inner_DeepInner) ProtoMessage() {}
+
+func (x *Outer_Inner_DeepInner) ProtoReflect() protoreflect.Message {
+	mi := &file_golden_proto_msgTypes[27]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Outer_Inner_DeepInner.ProtoReflect.Descriptor instead.
+func (*Outer_Inner_DeepInner) Descriptor() ([]byte, []int) {
+	return file_golden_proto_rawDescGZIP(), []int{3, 0, 0}
+}
+
+func (x *Outer_Inner_DeepInner) GetValue() string {
+	if x != nil {
+		return x.Value
+	}
+	return ""
+}
+
 var File_golden_proto protoreflect.FileDescriptor
 
 const file_golden_proto_rawDesc = "" +
 	"\n" +
-	"\fgolden.proto\x12\tgolden.v1\x1a\x1fgoogle/protobuf/timestamp.proto\"\x1c\n" +
-	"\x06Author\x12\x12\n" +
-	"\x04name\x18\x01 \x01(\tR\x04name\"\xd4\x02\n" +
+	"\fgolden.proto\x12\tgolden.v1\x1a\x19google/protobuf/any.proto\x1a\x1egoogle/protobuf/duration.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a google/protobuf/field_mask.proto\x1a\x1cgoogle/protobuf/struct.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x1egoogle/protobuf/wrappers.proto\"\x9a\x04\n" +
+	"\vScalarTypes\x12!\n" +
+	"\ffield_double\x18\x01 \x01(\x01R\vfieldDouble\x12\x1f\n" +
+	"\vfield_float\x18\x02 \x01(\x02R\n" +
+	"fieldFloat\x12\x1f\n" +
+	"\vfield_int32\x18\x03 \x01(\x05R\n" +
+	"fieldInt32\x12\x1f\n" +
+	"\vfield_int64\x18\x04 \x01(\x03R\n" +
+	"fieldInt64\x12!\n" +
+	"\ffield_uint32\x18\x05 \x01(\rR\vfieldUint32\x12!\n" +
+	"\ffield_uint64\x18\x06 \x01(\x04R\vfieldUint64\x12!\n" +
+	"\ffield_sint32\x18\a \x01(\x11R\vfieldSint32\x12!\n" +
+	"\ffield_sint64\x18\b \x01(\x12R\vfieldSint64\x12#\n" +
+	"\rfield_fixed32\x18\t \x01(\aR\ffieldFixed32\x12#\n" +
+	"\rfield_fixed64\x18\n" +
+	" \x01(\x06R\ffieldFixed64\x12%\n" +
+	"\x0efield_sfixed32\x18\v \x01(\x0fR\rfieldSfixed32\x12%\n" +
+	"\x0efield_sfixed64\x18\f \x01(\x10R\rfieldSfixed64\x12\x1d\n" +
+	"\n" +
+	"field_bool\x18\r \x01(\bR\tfieldBool\x12!\n" +
+	"\ffield_string\x18\x0e \x01(\tR\vfieldString\x12\x1f\n" +
+	"\vfield_bytes\x18\x0f \x01(\fR\n" +
+	"fieldBytes\"\x80\x04\n" +
+	"\x0fOptionalScalars\x12&\n" +
+	"\ffield_double\x18\x01 \x01(\x01H\x00R\vfieldDouble\x88\x01\x01\x12$\n" +
+	"\vfield_float\x18\x02 \x01(\x02H\x01R\n" +
+	"fieldFloat\x88\x01\x01\x12$\n" +
+	"\vfield_int32\x18\x03 \x01(\x05H\x02R\n" +
+	"fieldInt32\x88\x01\x01\x12$\n" +
+	"\vfield_int64\x18\x04 \x01(\x03H\x03R\n" +
+	"fieldInt64\x88\x01\x01\x12&\n" +
+	"\ffield_uint32\x18\x05 \x01(\rH\x04R\vfieldUint32\x88\x01\x01\x12&\n" +
+	"\ffield_uint64\x18\x06 \x01(\x04H\x05R\vfieldUint64\x88\x01\x01\x12\"\n" +
+	"\n" +
+	"field_bool\x18\a \x01(\bH\x06R\tfieldBool\x88\x01\x01\x12&\n" +
+	"\ffield_string\x18\b \x01(\tH\aR\vfieldString\x88\x01\x01\x12$\n" +
+	"\vfield_bytes\x18\t \x01(\fH\bR\n" +
+	"fieldBytes\x88\x01\x01B\x0f\n" +
+	"\r_field_doubleB\x0e\n" +
+	"\f_field_floatB\x0e\n" +
+	"\f_field_int32B\x0e\n" +
+	"\f_field_int64B\x0f\n" +
+	"\r_field_uint32B\x0f\n" +
+	"\r_field_uint64B\r\n" +
+	"\v_field_boolB\x0f\n" +
+	"\r_field_stringB\x0e\n" +
+	"\f_field_bytes\"\x9d\x02\n" +
+	"\x0fRepeatedScalars\x12!\n" +
+	"\ffield_double\x18\x01 \x03(\x01R\vfieldDouble\x12\x1f\n" +
+	"\vfield_float\x18\x02 \x03(\x02R\n" +
+	"fieldFloat\x12\x1f\n" +
+	"\vfield_int32\x18\x03 \x03(\x05R\n" +
+	"fieldInt32\x12\x1f\n" +
+	"\vfield_int64\x18\x04 \x03(\x03R\n" +
+	"fieldInt64\x12!\n" +
+	"\ffield_uint64\x18\x05 \x03(\x04R\vfieldUint64\x12\x1d\n" +
+	"\n" +
+	"field_bool\x18\x06 \x03(\bR\tfieldBool\x12!\n" +
+	"\ffield_string\x18\a \x03(\tR\vfieldString\x12\x1f\n" +
+	"\vfield_bytes\x18\b \x03(\fR\n" +
+	"fieldBytes\"\xbf\x01\n" +
+	"\x05Outer\x12,\n" +
+	"\x05inner\x18\x01 \x01(\v2\x16.golden.v1.Outer.InnerR\x05inner\x12\x10\n" +
+	"\x03tag\x18\x02 \x01(\tR\x03tag\x1av\n" +
+	"\x05Inner\x12\x14\n" +
+	"\x05label\x18\x01 \x01(\tR\x05label\x124\n" +
+	"\x04deep\x18\x02 \x01(\v2 .golden.v1.Outer.Inner.DeepInnerR\x04deep\x1a!\n" +
+	"\tDeepInner\x12\x14\n" +
+	"\x05value\x18\x01 \x01(\tR\x05value\"\xd0\b\n" +
+	"\n" +
+	"WKTMessage\x128\n" +
+	"\ttimestamp\x18\x01 \x01(\v2\x1a.google.protobuf.TimestampR\ttimestamp\x125\n" +
+	"\bduration\x18\x02 \x01(\v2\x19.google.protobuf.DurationR\bduration\x12&\n" +
+	"\x03any\x18\x03 \x01(\v2\x14.google.protobuf.AnyR\x03any\x12,\n" +
+	"\x05empty\x18\x04 \x01(\v2\x16.google.protobuf.EmptyR\x05empty\x129\n" +
+	"\n" +
+	"field_mask\x18\x05 \x01(\v2\x1a.google.protobuf.FieldMaskR\tfieldMask\x12/\n" +
+	"\x06struct\x18\x06 \x01(\v2\x17.google.protobuf.StructR\x06struct\x12,\n" +
+	"\x05value\x18\a \x01(\v2\x16.google.protobuf.ValueR\x05value\x129\n" +
+	"\n" +
+	"list_value\x18\b \x01(\v2\x1a.google.protobuf.ListValueR\tlistValue\x12C\n" +
+	"\x0edouble_wrapper\x18\t \x01(\v2\x1c.google.protobuf.DoubleValueR\rdoubleWrapper\x12@\n" +
+	"\rfloat_wrapper\x18\n" +
+	" \x01(\v2\x1b.google.protobuf.FloatValueR\ffloatWrapper\x12@\n" +
+	"\rint32_wrapper\x18\v \x01(\v2\x1b.google.protobuf.Int32ValueR\fint32Wrapper\x12@\n" +
+	"\rint64_wrapper\x18\f \x01(\v2\x1b.google.protobuf.Int64ValueR\fint64Wrapper\x12C\n" +
+	"\x0euint32_wrapper\x18\r \x01(\v2\x1c.google.protobuf.UInt32ValueR\ruint32Wrapper\x12C\n" +
+	"\x0euint64_wrapper\x18\x0e \x01(\v2\x1c.google.protobuf.UInt64ValueR\ruint64Wrapper\x12=\n" +
+	"\fbool_wrapper\x18\x0f \x01(\v2\x1a.google.protobuf.BoolValueR\vboolWrapper\x12C\n" +
+	"\x0estring_wrapper\x18\x10 \x01(\v2\x1c.google.protobuf.StringValueR\rstringWrapper\x12@\n" +
+	"\rbytes_wrapper\x18\x11 \x01(\v2\x1b.google.protobuf.BytesValueR\fbytesWrapper\x12K\n" +
+	"\x13repeated_timestamps\x18\x12 \x03(\v2\x1a.google.protobuf.TimestampR\x12repeatedTimestamps\"\xa4\x06\n" +
+	"\n" +
+	"MapMessage\x12C\n" +
+	"\n" +
+	"string_map\x18\x01 \x03(\v2$.golden.v1.MapMessage.StringMapEntryR\tstringMap\x12@\n" +
+	"\tint64_map\x18\x02 \x03(\v2#.golden.v1.MapMessage.Int64MapEntryR\bint64Map\x12=\n" +
+	"\bbool_map\x18\x03 \x03(\v2\".golden.v1.MapMessage.BoolMapEntryR\aboolMap\x12@\n" +
+	"\tint32_key\x18\x04 \x03(\v2#.golden.v1.MapMessage.Int32KeyEntryR\bint32Key\x12=\n" +
+	"\benum_map\x18\x05 \x03(\v2\".golden.v1.MapMessage.EnumMapEntryR\aenumMap\x12:\n" +
+	"\amsg_map\x18\x06 \x03(\v2!.golden.v1.MapMessage.MsgMapEntryR\x06msgMap\x1a<\n" +
+	"\x0eStringMapEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\x1a;\n" +
+	"\rInt64MapEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\x03R\x05value:\x028\x01\x1a:\n" +
+	"\fBoolMapEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\bR\x05value:\x028\x01\x1a;\n" +
+	"\rInt32KeyEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\x05R\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\x1aL\n" +
+	"\fEnumMapEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12&\n" +
+	"\x05value\x18\x02 \x01(\x0e2\x10.golden.v1.GenreR\x05value:\x028\x01\x1aQ\n" +
+	"\vMsgMapEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12,\n" +
+	"\x05value\x18\x02 \x01(\v2\x16.golden.v1.ScalarTypesR\x05value:\x028\x01\"\xd4\x02\n" +
 	"\x04Book\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x14\n" +
 	"\x05title\x18\x02 \x01(\tR\x05title\x12&\n" +
@@ -666,38 +2377,107 @@ const file_golden_proto_rawDesc = "" +
 	"\x06author\x18\b \x01(\v2\x11.golden.v1.AuthorR\x06author\x1a7\n" +
 	"\tTagsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\" \n" +
-	"\x0eGetBookRequest\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\tR\x02id\"6\n" +
-	"\x0fGetBookResponse\x12#\n" +
-	"\x04book\x18\x01 \x01(\v2\x0f.golden.v1.BookR\x04book\"5\n" +
-	"\x0eAddBookRequest\x12#\n" +
-	"\x04book\x18\x01 \x01(\v2\x0f.golden.v1.BookR\x04book\"6\n" +
-	"\x0fAddBookResponse\x12#\n" +
-	"\x04book\x18\x01 \x01(\v2\x0f.golden.v1.BookR\x04book\";\n" +
-	"\x11WatchBooksRequest\x12&\n" +
-	"\x05genre\x18\x01 \x01(\x0e2\x10.golden.v1.GenreR\x05genre\"H\n" +
-	"\rSearchRequest\x12\x14\n" +
-	"\x04text\x18\x01 \x01(\tH\x00R\x04text\x12\x18\n" +
-	"\x06author\x18\x02 \x01(\tH\x00R\x06authorB\a\n" +
-	"\x05query\"\"\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\x1c\n" +
+	"\x06Author\x12\x12\n" +
+	"\x04name\x18\x01 \x01(\tR\x04name\"\"\n" +
 	"\bNotFound\x12\x16\n" +
 	"\x06reason\x18\x01 \x01(\tR\x06reason\"u\n" +
 	"\x0eSearchResponse\x12%\n" +
 	"\x04book\x18\x01 \x01(\v2\x0f.golden.v1.BookH\x00R\x04book\x122\n" +
 	"\tnot_found\x18\x02 \x01(\v2\x13.golden.v1.NotFoundH\x00R\bnotFoundB\b\n" +
-	"\x06result*;\n" +
+	"\x06result\"H\n" +
+	"\rSearchRequest\x12\x14\n" +
+	"\x04text\x18\x01 \x01(\tH\x00R\x04text\x12\x18\n" +
+	"\x06author\x18\x02 \x01(\tH\x00R\x06authorB\a\n" +
+	"\x05query\"\xfe\x01\n" +
+	"\n" +
+	"MultiOneof\x12%\n" +
+	"\rchoice_string\x18\x01 \x01(\tH\x00R\fchoiceString\x12#\n" +
+	"\fchoice_int64\x18\x02 \x01(\x03H\x00R\vchoiceInt64\x122\n" +
+	"\vchoice_book\x18\x03 \x01(\v2\x0f.golden.v1.BookH\x00R\n" +
+	"choiceBook\x12\x1d\n" +
+	"\tstatus_ok\x18\x04 \x01(\bH\x01R\bstatusOk\x12#\n" +
+	"\fstatus_error\x18\x05 \x01(\tH\x01R\vstatusError\x12\x18\n" +
+	"\aoutside\x18\x06 \x01(\tR\aoutsideB\b\n" +
+	"\x06choiceB\b\n" +
+	"\x06status\"x\n" +
+	"\bTreeNode\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12+\n" +
+	"\x06parent\x18\x02 \x01(\v2\x13.golden.v1.TreeNodeR\x06parent\x12/\n" +
+	"\bchildren\x18\x03 \x03(\v2\x13.golden.v1.TreeNodeR\bchildren\"+\n" +
+	"\aMutualA\x12 \n" +
+	"\x01b\x18\x01 \x01(\v2\x12.golden.v1.MutualBR\x01b\"+\n" +
+	"\aMutualB\x12 \n" +
+	"\x01a\x18\x01 \x01(\v2\x12.golden.v1.MutualAR\x01a\"\x9f\x04\n" +
+	"\n" +
+	"Everything\x120\n" +
+	"\ascalars\x18\x01 \x01(\v2\x16.golden.v1.ScalarTypesR\ascalars\x128\n" +
+	"\toptionals\x18\x02 \x01(\v2\x1a.golden.v1.OptionalScalarsR\toptionals\x128\n" +
+	"\trepeateds\x18\x03 \x01(\v2\x1a.golden.v1.RepeatedScalarsR\trepeateds\x12'\n" +
+	"\x03wkt\x18\x04 \x01(\v2\x15.golden.v1.WKTMessageR\x03wkt\x12)\n" +
+	"\x04maps\x18\x05 \x01(\v2\x15.golden.v1.MapMessageR\x04maps\x12+\n" +
+	"\x05multi\x18\x06 \x01(\v2\x15.golden.v1.MultiOneofR\x05multi\x12'\n" +
+	"\x04tree\x18\a \x01(\v2\x13.golden.v1.TreeNodeR\x04tree\x12*\n" +
+	"\x06mutual\x18\b \x01(\v2\x12.golden.v1.MutualAR\x06mutual\x12&\n" +
+	"\x05outer\x18\t \x01(\v2\x10.golden.v1.OuterR\x05outer\x123\n" +
+	"\trecursive\x18\n" +
+	" \x03(\v2\x15.golden.v1.EverythingR\trecursive\x12\x14\n" +
+	"\x04done\x18\v \x01(\bH\x00R\x04done\x12\x16\n" +
+	"\x05error\x18\f \x01(\tH\x00R\x05errorB\n" +
+	"\n" +
+	"\bterminal\"&\n" +
+	"\x14GetEverythingRequest\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\"N\n" +
+	"\x15GetEverythingResponse\x125\n" +
+	"\n" +
+	"everything\x18\x01 \x01(\v2\x15.golden.v1.EverythingR\n" +
+	"everything\"\x84\x01\n" +
+	"\x11GetScalarsRequest\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x19\n" +
+	"\x05limit\x18\x02 \x01(\x03H\x00R\x05limit\x88\x01\x01\x12\x12\n" +
+	"\x04tags\x18\x03 \x03(\tR\x04tags\x12&\n" +
+	"\x05genre\x18\x04 \x01(\x0e2\x10.golden.v1.GenreR\x05genreB\b\n" +
+	"\x06_limit\"\xba\x01\n" +
+	"\x12GetScalarsResponse\x120\n" +
+	"\ascalars\x18\x01 \x01(\v2\x16.golden.v1.ScalarTypesR\ascalars\x128\n" +
+	"\toptionals\x18\x02 \x01(\v2\x1a.golden.v1.OptionalScalarsR\toptionals\x128\n" +
+	"\trepeateds\x18\x03 \x01(\v2\x1a.golden.v1.RepeatedScalarsR\trepeateds\"|\n" +
+	"\vEchoRequest\x12#\n" +
+	"\x04book\x18\x01 \x01(\v2\x0f.golden.v1.BookR\x04book\x12&\n" +
+	"\x05genre\x18\x02 \x01(\x0e2\x10.golden.v1.GenreR\x05genre\x12\x17\n" +
+	"\x04note\x18\x03 \x01(\tH\x00R\x04note\x88\x01\x01B\a\n" +
+	"\x05_note\"3\n" +
+	"\fEchoResponse\x12#\n" +
+	"\x04book\x18\x01 \x01(\v2\x0f.golden.v1.BookR\x04book\"5\n" +
+	"\x0eAddBookRequest\x12#\n" +
+	"\x04book\x18\x01 \x01(\v2\x0f.golden.v1.BookR\x04book\"6\n" +
+	"\x0fAddBookResponse\x12#\n" +
+	"\x04book\x18\x01 \x01(\v2\x0f.golden.v1.BookR\x04book\"6\n" +
+	"\fWatchRequest\x12&\n" +
+	"\x05genre\x18\x01 \x01(\x0e2\x10.golden.v1.GenreR\x05genre\"]\n" +
+	"\n" +
+	"WatchEvent\x12#\n" +
+	"\x04book\x18\x01 \x01(\v2\x0f.golden.v1.BookR\x04book\x12*\n" +
+	"\x02at\x18\x02 \x01(\v2\x1a.google.protobuf.TimestampR\x02at*;\n" +
 	"\x05Genre\x12\x15\n" +
 	"\x11GENRE_UNSPECIFIED\x10\x00\x12\v\n" +
 	"\aFICTION\x10\x01\x12\x0e\n" +
 	"\n" +
-	"NONFICTION\x10\x022\x9a\x02\n" +
-	"\aLibrary\x12E\n" +
-	"\aGetBook\x12\x19.golden.v1.GetBookRequest\x1a\x1a.golden.v1.GetBookResponse\"\x03\x90\x02\x01\x12@\n" +
-	"\aAddBook\x12\x19.golden.v1.AddBookRequest\x1a\x1a.golden.v1.AddBookResponse\x12=\n" +
+	"NONFICTION\x10\x02*`\n" +
+	"\x06Status\x12\x16\n" +
+	"\x12STATUS_UNSPECIFIED\x10\x00\x12\x11\n" +
+	"\rSTATUS_ACTIVE\x10\x01\x12\x12\n" +
+	"\x0eSTATUS_RUNNING\x10\x01\x12\x13\n" +
+	"\x0fSTATUS_INACTIVE\x10\x02\x1a\x02\x10\x012\xbb\x03\n" +
+	"\aLibrary\x12W\n" +
+	"\rGetEverything\x12\x1f.golden.v1.GetEverythingRequest\x1a .golden.v1.GetEverythingResponse\"\x03\x90\x02\x01\x12N\n" +
 	"\n" +
-	"WatchBooks\x12\x1c.golden.v1.WatchBooksRequest\x1a\x0f.golden.v1.Book0\x01\x12G\n" +
-	"\vSearchBooks\x12\x18.golden.v1.SearchRequest\x1a\x19.golden.v1.SearchResponse\"\x03\x90\x02\x01B;Z9github.com/gopherex/protoc-gen-go-graphql/example/gen;genb\x06proto3"
+	"GetScalars\x12\x1c.golden.v1.GetScalarsRequest\x1a\x1d.golden.v1.GetScalarsResponse\"\x03\x90\x02\x01\x12G\n" +
+	"\vSearchBooks\x12\x18.golden.v1.SearchRequest\x1a\x19.golden.v1.SearchResponse\"\x03\x90\x02\x01\x12<\n" +
+	"\tEchoInput\x12\x16.golden.v1.EchoRequest\x1a\x17.golden.v1.EchoResponse\x12@\n" +
+	"\aAddBook\x12\x19.golden.v1.AddBookRequest\x1a\x1a.golden.v1.AddBookResponse\x12>\n" +
+	"\n" +
+	"WatchItems\x12\x17.golden.v1.WatchRequest\x1a\x15.golden.v1.WatchEvent0\x01B;Z9github.com/gopherex/protoc-gen-go-graphql/example/gen;genb\x06proto3"
 
 var (
 	file_golden_proto_rawDescOnce sync.Once
@@ -711,47 +2491,144 @@ func file_golden_proto_rawDescGZIP() []byte {
 	return file_golden_proto_rawDescData
 }
 
-var file_golden_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_golden_proto_msgTypes = make([]protoimpl.MessageInfo, 11)
+var file_golden_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
+var file_golden_proto_msgTypes = make([]protoimpl.MessageInfo, 35)
 var file_golden_proto_goTypes = []any{
-	(Genre)(0),                    // 0: golden.v1.Genre
-	(*Author)(nil),                // 1: golden.v1.Author
-	(*Book)(nil),                  // 2: golden.v1.Book
-	(*GetBookRequest)(nil),        // 3: golden.v1.GetBookRequest
-	(*GetBookResponse)(nil),       // 4: golden.v1.GetBookResponse
-	(*AddBookRequest)(nil),        // 5: golden.v1.AddBookRequest
-	(*AddBookResponse)(nil),       // 6: golden.v1.AddBookResponse
-	(*WatchBooksRequest)(nil),     // 7: golden.v1.WatchBooksRequest
-	(*SearchRequest)(nil),         // 8: golden.v1.SearchRequest
-	(*NotFound)(nil),              // 9: golden.v1.NotFound
-	(*SearchResponse)(nil),        // 10: golden.v1.SearchResponse
-	nil,                           // 11: golden.v1.Book.TagsEntry
-	(*timestamppb.Timestamp)(nil), // 12: google.protobuf.Timestamp
+	(Genre)(0),                     // 0: golden.v1.Genre
+	(Status)(0),                    // 1: golden.v1.Status
+	(*ScalarTypes)(nil),            // 2: golden.v1.ScalarTypes
+	(*OptionalScalars)(nil),        // 3: golden.v1.OptionalScalars
+	(*RepeatedScalars)(nil),        // 4: golden.v1.RepeatedScalars
+	(*Outer)(nil),                  // 5: golden.v1.Outer
+	(*WKTMessage)(nil),             // 6: golden.v1.WKTMessage
+	(*MapMessage)(nil),             // 7: golden.v1.MapMessage
+	(*Book)(nil),                   // 8: golden.v1.Book
+	(*Author)(nil),                 // 9: golden.v1.Author
+	(*NotFound)(nil),               // 10: golden.v1.NotFound
+	(*SearchResponse)(nil),         // 11: golden.v1.SearchResponse
+	(*SearchRequest)(nil),          // 12: golden.v1.SearchRequest
+	(*MultiOneof)(nil),             // 13: golden.v1.MultiOneof
+	(*TreeNode)(nil),               // 14: golden.v1.TreeNode
+	(*MutualA)(nil),                // 15: golden.v1.MutualA
+	(*MutualB)(nil),                // 16: golden.v1.MutualB
+	(*Everything)(nil),             // 17: golden.v1.Everything
+	(*GetEverythingRequest)(nil),   // 18: golden.v1.GetEverythingRequest
+	(*GetEverythingResponse)(nil),  // 19: golden.v1.GetEverythingResponse
+	(*GetScalarsRequest)(nil),      // 20: golden.v1.GetScalarsRequest
+	(*GetScalarsResponse)(nil),     // 21: golden.v1.GetScalarsResponse
+	(*EchoRequest)(nil),            // 22: golden.v1.EchoRequest
+	(*EchoResponse)(nil),           // 23: golden.v1.EchoResponse
+	(*AddBookRequest)(nil),         // 24: golden.v1.AddBookRequest
+	(*AddBookResponse)(nil),        // 25: golden.v1.AddBookResponse
+	(*WatchRequest)(nil),           // 26: golden.v1.WatchRequest
+	(*WatchEvent)(nil),             // 27: golden.v1.WatchEvent
+	(*Outer_Inner)(nil),            // 28: golden.v1.Outer.Inner
+	(*Outer_Inner_DeepInner)(nil),  // 29: golden.v1.Outer.Inner.DeepInner
+	nil,                            // 30: golden.v1.MapMessage.StringMapEntry
+	nil,                            // 31: golden.v1.MapMessage.Int64MapEntry
+	nil,                            // 32: golden.v1.MapMessage.BoolMapEntry
+	nil,                            // 33: golden.v1.MapMessage.Int32KeyEntry
+	nil,                            // 34: golden.v1.MapMessage.EnumMapEntry
+	nil,                            // 35: golden.v1.MapMessage.MsgMapEntry
+	nil,                            // 36: golden.v1.Book.TagsEntry
+	(*timestamppb.Timestamp)(nil),  // 37: google.protobuf.Timestamp
+	(*durationpb.Duration)(nil),    // 38: google.protobuf.Duration
+	(*anypb.Any)(nil),              // 39: google.protobuf.Any
+	(*emptypb.Empty)(nil),          // 40: google.protobuf.Empty
+	(*fieldmaskpb.FieldMask)(nil),  // 41: google.protobuf.FieldMask
+	(*structpb.Struct)(nil),        // 42: google.protobuf.Struct
+	(*structpb.Value)(nil),         // 43: google.protobuf.Value
+	(*structpb.ListValue)(nil),     // 44: google.protobuf.ListValue
+	(*wrapperspb.DoubleValue)(nil), // 45: google.protobuf.DoubleValue
+	(*wrapperspb.FloatValue)(nil),  // 46: google.protobuf.FloatValue
+	(*wrapperspb.Int32Value)(nil),  // 47: google.protobuf.Int32Value
+	(*wrapperspb.Int64Value)(nil),  // 48: google.protobuf.Int64Value
+	(*wrapperspb.UInt32Value)(nil), // 49: google.protobuf.UInt32Value
+	(*wrapperspb.UInt64Value)(nil), // 50: google.protobuf.UInt64Value
+	(*wrapperspb.BoolValue)(nil),   // 51: google.protobuf.BoolValue
+	(*wrapperspb.StringValue)(nil), // 52: google.protobuf.StringValue
+	(*wrapperspb.BytesValue)(nil),  // 53: google.protobuf.BytesValue
 }
 var file_golden_proto_depIdxs = []int32{
-	0,  // 0: golden.v1.Book.genre:type_name -> golden.v1.Genre
-	12, // 1: golden.v1.Book.published_at:type_name -> google.protobuf.Timestamp
-	11, // 2: golden.v1.Book.tags:type_name -> golden.v1.Book.TagsEntry
-	1,  // 3: golden.v1.Book.author:type_name -> golden.v1.Author
-	2,  // 4: golden.v1.GetBookResponse.book:type_name -> golden.v1.Book
-	2,  // 5: golden.v1.AddBookRequest.book:type_name -> golden.v1.Book
-	2,  // 6: golden.v1.AddBookResponse.book:type_name -> golden.v1.Book
-	0,  // 7: golden.v1.WatchBooksRequest.genre:type_name -> golden.v1.Genre
-	2,  // 8: golden.v1.SearchResponse.book:type_name -> golden.v1.Book
-	9,  // 9: golden.v1.SearchResponse.not_found:type_name -> golden.v1.NotFound
-	3,  // 10: golden.v1.Library.GetBook:input_type -> golden.v1.GetBookRequest
-	5,  // 11: golden.v1.Library.AddBook:input_type -> golden.v1.AddBookRequest
-	7,  // 12: golden.v1.Library.WatchBooks:input_type -> golden.v1.WatchBooksRequest
-	8,  // 13: golden.v1.Library.SearchBooks:input_type -> golden.v1.SearchRequest
-	4,  // 14: golden.v1.Library.GetBook:output_type -> golden.v1.GetBookResponse
-	6,  // 15: golden.v1.Library.AddBook:output_type -> golden.v1.AddBookResponse
-	2,  // 16: golden.v1.Library.WatchBooks:output_type -> golden.v1.Book
-	10, // 17: golden.v1.Library.SearchBooks:output_type -> golden.v1.SearchResponse
-	14, // [14:18] is the sub-list for method output_type
-	10, // [10:14] is the sub-list for method input_type
-	10, // [10:10] is the sub-list for extension type_name
-	10, // [10:10] is the sub-list for extension extendee
-	0,  // [0:10] is the sub-list for field type_name
+	28, // 0: golden.v1.Outer.inner:type_name -> golden.v1.Outer.Inner
+	37, // 1: golden.v1.WKTMessage.timestamp:type_name -> google.protobuf.Timestamp
+	38, // 2: golden.v1.WKTMessage.duration:type_name -> google.protobuf.Duration
+	39, // 3: golden.v1.WKTMessage.any:type_name -> google.protobuf.Any
+	40, // 4: golden.v1.WKTMessage.empty:type_name -> google.protobuf.Empty
+	41, // 5: golden.v1.WKTMessage.field_mask:type_name -> google.protobuf.FieldMask
+	42, // 6: golden.v1.WKTMessage.struct:type_name -> google.protobuf.Struct
+	43, // 7: golden.v1.WKTMessage.value:type_name -> google.protobuf.Value
+	44, // 8: golden.v1.WKTMessage.list_value:type_name -> google.protobuf.ListValue
+	45, // 9: golden.v1.WKTMessage.double_wrapper:type_name -> google.protobuf.DoubleValue
+	46, // 10: golden.v1.WKTMessage.float_wrapper:type_name -> google.protobuf.FloatValue
+	47, // 11: golden.v1.WKTMessage.int32_wrapper:type_name -> google.protobuf.Int32Value
+	48, // 12: golden.v1.WKTMessage.int64_wrapper:type_name -> google.protobuf.Int64Value
+	49, // 13: golden.v1.WKTMessage.uint32_wrapper:type_name -> google.protobuf.UInt32Value
+	50, // 14: golden.v1.WKTMessage.uint64_wrapper:type_name -> google.protobuf.UInt64Value
+	51, // 15: golden.v1.WKTMessage.bool_wrapper:type_name -> google.protobuf.BoolValue
+	52, // 16: golden.v1.WKTMessage.string_wrapper:type_name -> google.protobuf.StringValue
+	53, // 17: golden.v1.WKTMessage.bytes_wrapper:type_name -> google.protobuf.BytesValue
+	37, // 18: golden.v1.WKTMessage.repeated_timestamps:type_name -> google.protobuf.Timestamp
+	30, // 19: golden.v1.MapMessage.string_map:type_name -> golden.v1.MapMessage.StringMapEntry
+	31, // 20: golden.v1.MapMessage.int64_map:type_name -> golden.v1.MapMessage.Int64MapEntry
+	32, // 21: golden.v1.MapMessage.bool_map:type_name -> golden.v1.MapMessage.BoolMapEntry
+	33, // 22: golden.v1.MapMessage.int32_key:type_name -> golden.v1.MapMessage.Int32KeyEntry
+	34, // 23: golden.v1.MapMessage.enum_map:type_name -> golden.v1.MapMessage.EnumMapEntry
+	35, // 24: golden.v1.MapMessage.msg_map:type_name -> golden.v1.MapMessage.MsgMapEntry
+	0,  // 25: golden.v1.Book.genre:type_name -> golden.v1.Genre
+	37, // 26: golden.v1.Book.published_at:type_name -> google.protobuf.Timestamp
+	36, // 27: golden.v1.Book.tags:type_name -> golden.v1.Book.TagsEntry
+	9,  // 28: golden.v1.Book.author:type_name -> golden.v1.Author
+	8,  // 29: golden.v1.SearchResponse.book:type_name -> golden.v1.Book
+	10, // 30: golden.v1.SearchResponse.not_found:type_name -> golden.v1.NotFound
+	8,  // 31: golden.v1.MultiOneof.choice_book:type_name -> golden.v1.Book
+	14, // 32: golden.v1.TreeNode.parent:type_name -> golden.v1.TreeNode
+	14, // 33: golden.v1.TreeNode.children:type_name -> golden.v1.TreeNode
+	16, // 34: golden.v1.MutualA.b:type_name -> golden.v1.MutualB
+	15, // 35: golden.v1.MutualB.a:type_name -> golden.v1.MutualA
+	2,  // 36: golden.v1.Everything.scalars:type_name -> golden.v1.ScalarTypes
+	3,  // 37: golden.v1.Everything.optionals:type_name -> golden.v1.OptionalScalars
+	4,  // 38: golden.v1.Everything.repeateds:type_name -> golden.v1.RepeatedScalars
+	6,  // 39: golden.v1.Everything.wkt:type_name -> golden.v1.WKTMessage
+	7,  // 40: golden.v1.Everything.maps:type_name -> golden.v1.MapMessage
+	13, // 41: golden.v1.Everything.multi:type_name -> golden.v1.MultiOneof
+	14, // 42: golden.v1.Everything.tree:type_name -> golden.v1.TreeNode
+	15, // 43: golden.v1.Everything.mutual:type_name -> golden.v1.MutualA
+	5,  // 44: golden.v1.Everything.outer:type_name -> golden.v1.Outer
+	17, // 45: golden.v1.Everything.recursive:type_name -> golden.v1.Everything
+	17, // 46: golden.v1.GetEverythingResponse.everything:type_name -> golden.v1.Everything
+	0,  // 47: golden.v1.GetScalarsRequest.genre:type_name -> golden.v1.Genre
+	2,  // 48: golden.v1.GetScalarsResponse.scalars:type_name -> golden.v1.ScalarTypes
+	3,  // 49: golden.v1.GetScalarsResponse.optionals:type_name -> golden.v1.OptionalScalars
+	4,  // 50: golden.v1.GetScalarsResponse.repeateds:type_name -> golden.v1.RepeatedScalars
+	8,  // 51: golden.v1.EchoRequest.book:type_name -> golden.v1.Book
+	0,  // 52: golden.v1.EchoRequest.genre:type_name -> golden.v1.Genre
+	8,  // 53: golden.v1.EchoResponse.book:type_name -> golden.v1.Book
+	8,  // 54: golden.v1.AddBookRequest.book:type_name -> golden.v1.Book
+	8,  // 55: golden.v1.AddBookResponse.book:type_name -> golden.v1.Book
+	0,  // 56: golden.v1.WatchRequest.genre:type_name -> golden.v1.Genre
+	8,  // 57: golden.v1.WatchEvent.book:type_name -> golden.v1.Book
+	37, // 58: golden.v1.WatchEvent.at:type_name -> google.protobuf.Timestamp
+	29, // 59: golden.v1.Outer.Inner.deep:type_name -> golden.v1.Outer.Inner.DeepInner
+	0,  // 60: golden.v1.MapMessage.EnumMapEntry.value:type_name -> golden.v1.Genre
+	2,  // 61: golden.v1.MapMessage.MsgMapEntry.value:type_name -> golden.v1.ScalarTypes
+	18, // 62: golden.v1.Library.GetEverything:input_type -> golden.v1.GetEverythingRequest
+	20, // 63: golden.v1.Library.GetScalars:input_type -> golden.v1.GetScalarsRequest
+	12, // 64: golden.v1.Library.SearchBooks:input_type -> golden.v1.SearchRequest
+	22, // 65: golden.v1.Library.EchoInput:input_type -> golden.v1.EchoRequest
+	24, // 66: golden.v1.Library.AddBook:input_type -> golden.v1.AddBookRequest
+	26, // 67: golden.v1.Library.WatchItems:input_type -> golden.v1.WatchRequest
+	19, // 68: golden.v1.Library.GetEverything:output_type -> golden.v1.GetEverythingResponse
+	21, // 69: golden.v1.Library.GetScalars:output_type -> golden.v1.GetScalarsResponse
+	11, // 70: golden.v1.Library.SearchBooks:output_type -> golden.v1.SearchResponse
+	23, // 71: golden.v1.Library.EchoInput:output_type -> golden.v1.EchoResponse
+	25, // 72: golden.v1.Library.AddBook:output_type -> golden.v1.AddBookResponse
+	27, // 73: golden.v1.Library.WatchItems:output_type -> golden.v1.WatchEvent
+	68, // [68:74] is the sub-list for method output_type
+	62, // [62:68] is the sub-list for method input_type
+	62, // [62:62] is the sub-list for extension type_name
+	62, // [62:62] is the sub-list for extension extendee
+	0,  // [0:62] is the sub-list for field type_name
 }
 
 func init() { file_golden_proto_init() }
@@ -759,21 +2636,35 @@ func file_golden_proto_init() {
 	if File_golden_proto != nil {
 		return
 	}
-	file_golden_proto_msgTypes[7].OneofWrappers = []any{
-		(*SearchRequest_Text)(nil),
-		(*SearchRequest_Author)(nil),
-	}
+	file_golden_proto_msgTypes[1].OneofWrappers = []any{}
 	file_golden_proto_msgTypes[9].OneofWrappers = []any{
 		(*SearchResponse_Book)(nil),
 		(*SearchResponse_NotFound)(nil),
 	}
+	file_golden_proto_msgTypes[10].OneofWrappers = []any{
+		(*SearchRequest_Text)(nil),
+		(*SearchRequest_Author)(nil),
+	}
+	file_golden_proto_msgTypes[11].OneofWrappers = []any{
+		(*MultiOneof_ChoiceString)(nil),
+		(*MultiOneof_ChoiceInt64)(nil),
+		(*MultiOneof_ChoiceBook)(nil),
+		(*MultiOneof_StatusOk)(nil),
+		(*MultiOneof_StatusError)(nil),
+	}
+	file_golden_proto_msgTypes[15].OneofWrappers = []any{
+		(*Everything_Done)(nil),
+		(*Everything_Error)(nil),
+	}
+	file_golden_proto_msgTypes[18].OneofWrappers = []any{}
+	file_golden_proto_msgTypes[20].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_golden_proto_rawDesc), len(file_golden_proto_rawDesc)),
-			NumEnums:      1,
-			NumMessages:   11,
+			NumEnums:      2,
+			NumMessages:   35,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
