@@ -103,20 +103,24 @@ func TestTimestampNil(t *testing.T) {
 }
 
 func TestDurationRoundTrip(t *testing.T) {
-	d := durationpb.New(1500 * time.Millisecond)
-	var sb strings.Builder
-	MarshalDuration(d).MarshalGQL(&sb)
-	got := sb.String()
-	if got != `"1.5s"` {
-		t.Fatalf("MarshalDuration = %s, want \"1.5s\"", got)
-	}
-
-	back, err := UnmarshalDuration(strings.Trim(got, `"`))
-	if err != nil {
-		t.Fatalf("UnmarshalDuration error: %v", err)
-	}
-	if back.AsDuration() != d.AsDuration() {
-		t.Fatalf("roundtrip mismatch: got %v, want %v", back.AsDuration(), d.AsDuration())
+	for _, d := range []*durationpb.Duration{
+		durationpb.New(1500 * time.Millisecond),
+		durationpb.New(90 * time.Second), // > 60s: regression for the old "1m30s" bug
+	} {
+		var sb strings.Builder
+		MarshalDuration(d).MarshalGQL(&sb)
+		got := sb.String()
+		// protojson form is "<seconds>s"; must never contain Go's "m"/"h" units.
+		if strings.ContainsAny(strings.Trim(got, `"`), "mh") {
+			t.Fatalf("MarshalDuration(%v) = %s, want canonical seconds form", d.AsDuration(), got)
+		}
+		back, err := UnmarshalDuration(strings.Trim(got, `"`))
+		if err != nil {
+			t.Fatalf("UnmarshalDuration error: %v", err)
+		}
+		if back.AsDuration() != d.AsDuration() {
+			t.Fatalf("roundtrip mismatch: got %v, want %v", back.AsDuration(), d.AsDuration())
+		}
 	}
 }
 

@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/99designs/gqlgen/graphql"
+	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/types/known/durationpb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
@@ -97,7 +98,14 @@ func MarshalDuration(v *durationpb.Duration) graphql.Marshaler {
 			_, _ = io.WriteString(w, "null")
 			return
 		}
-		_, _ = io.WriteString(w, strconv.Quote(v.AsDuration().String()))
+		// protojson renders Duration in the canonical proto3-JSON "<seconds>s"
+		// form (e.g. "61s", "1.500s") that protobuf-es toJson/fromJson agree on.
+		// time.Duration.String() would emit "1m1s" for >= 60s, which is wrong.
+		b, err := protojson.Marshal(v)
+		if err != nil {
+			panic(err)
+		}
+		_, _ = w.Write(b)
 	})
 }
 
@@ -106,11 +114,11 @@ func UnmarshalDuration(v any) (*durationpb.Duration, error) {
 	if !ok {
 		return nil, fmt.Errorf("Duration must be a string, got %T", v)
 	}
-	d, err := time.ParseDuration(s)
-	if err != nil {
+	d := &durationpb.Duration{}
+	if err := protojson.Unmarshal([]byte(strconv.Quote(s)), d); err != nil {
 		return nil, err
 	}
-	return durationpb.New(d), nil
+	return d, nil
 }
 
 // JSON: maps, Struct, Value, Any, ListValue. Stored as Go map/any per protojson.
