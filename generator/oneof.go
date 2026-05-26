@@ -83,9 +83,9 @@ func collectOneofs(f *protogen.File, msgInfo map[string]*messageInfo) []oneofInf
 			}
 
 			protoName := string(oo.Desc.Name())
-			ooGoName := oo.GoName // exported, e.g. "Result"
+			ooGoName := oo.GoName            // exported, e.g. "Result"
 			gqlField := fieldName(protoName) // camelCase, e.g. "result"
-			unionName := name + ooGoName // e.g. "SearchResponseResult"
+			unionName := name + ooGoName     // e.g. "SearchResponseResult"
 
 			var variants []oneofVariant
 			for _, field := range oo.Fields {
@@ -168,7 +168,7 @@ func collectOneofs(f *protogen.File, msgInfo map[string]*messageInfo) []oneofInf
 // buildOneofAdapter emits the pbgql/<msg_lower>_oneof.go source for a single
 // message that contains one or more oneofs. It produces:
 //   - For each output oneof: the union Go interface + per-variant wrapper structs
-//     + a WrapXxx() conversion helper.
+//   - a WrapXxx() conversion helper.
 //   - For each input oneof: the @oneOf input struct + the request intermediate
 //     struct + a ToPbXxx() conversion helper.
 func buildOneofAdapter(msg *protogen.Message, ois []oneofInfo, pbImport string) string {

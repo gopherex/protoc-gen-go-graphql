@@ -71,7 +71,7 @@ func buildGqlgenYml(f *protogen.File, pbImport, pbgqlImport string) string {
 	// Messages with output oneofs: their oneof field uses a field resolver; the message itself still binds to pb.
 	// Messages with input oneofs: the request message binds to an intermediate pbgql struct (not pb directly).
 	inputOneofMsgs := map[string]oneofInfo{} // reqMsgGoName → oi
-	outputOneofMsgs := map[string]bool{}      // msgGoName → true
+	outputOneofMsgs := map[string]bool{}     // msgGoName → true
 	for _, oi := range ois {
 		if oi.IsInput {
 			inputOneofMsgs[oi.MsgGoName] = oi
@@ -147,4 +147,3 @@ func buildGqlgenYml(f *protogen.File, pbImport, pbgqlImport string) string {
 
 	return sb.String()
 }
-

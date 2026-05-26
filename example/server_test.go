@@ -21,12 +21,12 @@ import (
 // fakeLibrary is a test double for pb.LibraryServer.
 type fakeLibrary struct {
 	pb.UnimplementedLibraryServer
-	everythingResp  *pb.GetEverythingResponse
-	scalarsResp     *pb.GetScalarsResponse
-	searchResult    *pb.SearchResponse
-	searchReq       *pb.SearchRequest
-	echoBook        *pb.Book
-	watchEvents     []*pb.WatchEvent
+	everythingResp *pb.GetEverythingResponse
+	scalarsResp    *pb.GetScalarsResponse
+	searchResult   *pb.SearchResponse
+	searchReq      *pb.SearchRequest
+	echoBook       *pb.Book
+	watchEvents    []*pb.WatchEvent
 }
 
 func (f *fakeLibrary) GetEverything(_ context.Context, _ *pb.GetEverythingRequest) (*pb.GetEverythingResponse, error) {
@@ -166,7 +166,7 @@ func TestWireRoundTrip_Timestamp(t *testing.T) {
 	pj, _ := protojson.Marshal(ts)
 	// protojson wraps the timestamp as a quoted RFC3339 string.
 	// The GQL scalar value and protojson should both be the same RFC3339.
-	wantAt := string(pj)              // e.g. `"2023-11-14T22:13:20.100Z"`
+	wantAt := string(pj)               // e.g. `"2023-11-14T22:13:20.100Z"`
 	wantAt = wantAt[1 : len(wantAt)-1] // strip quotes
 	if resp.WatchItems.At != wantAt {
 		t.Fatalf("at: gql=%q, want %q", resp.WatchItems.At, wantAt)
@@ -178,7 +178,7 @@ func TestWireRoundTrip_RepeatedScalar(t *testing.T) {
 	fake := &fakeLibrary{
 		scalarsResp: &pb.GetScalarsResponse{
 			Repeateds: &pb.RepeatedScalars{
-				FieldInt64: []int64{1, 9007199254740993},
+				FieldInt64:  []int64{1, 9007199254740993},
 				FieldString: []string{"a", "b"},
 			},
 		},
@@ -415,7 +415,9 @@ func TestWireRoundTrip_Oneof_Input_Text(t *testing.T) {
 
 	var resp struct {
 		SearchBooks struct {
-			Result *struct{ Typename string `json:"__typename"` }
+			Result *struct {
+				Typename string `json:"__typename"`
+			}
 		}
 	}
 	c.MustPost(`{ searchBooks(input:{query:{text:"golang"}}) { result { __typename } } }`, &resp)
@@ -435,7 +437,9 @@ func TestWireRoundTrip_Oneof_Input_Author(t *testing.T) {
 
 	var resp struct {
 		SearchBooks struct {
-			Result *struct{ Typename string `json:"__typename"` }
+			Result *struct {
+				Typename string `json:"__typename"`
+			}
 		}
 	}
 	c.MustPost(`{ searchBooks(input:{query:{author:"Tolkien"}}) { result { __typename } } }`, &resp)

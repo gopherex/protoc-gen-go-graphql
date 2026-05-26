@@ -609,10 +609,10 @@ func inputFields(msg *protogen.Message, msgInfo map[string]*messageInfo, oneofsB
 
 // emitInputTypes emits `input` blocks in the order prescribed by the spike:
 // For each service method (in file order):
-//   1. Emit the top-level request input (single-line if one field, multi-line otherwise).
-//   2. Then emit @oneOf input types for any input oneofs in this request.
-//   3. Then emit nested input types that were referenced from that request's fields
-//      (depth-first, in field order).
+//  1. Emit the top-level request input (single-line if one field, multi-line otherwise).
+//  2. Then emit @oneOf input types for any input oneofs in this request.
+//  3. Then emit nested input types that were referenced from that request's fields
+//     (depth-first, in field order).
 //
 // This matches the spike's ordering: GetBookRequest, AddBookRequest, BookInput,
 // AuthorInput, WatchBooksRequest.
