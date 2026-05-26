@@ -1,4 +1,5 @@
 directive @goField(forceResolver: Boolean, name: String) on FIELD_DEFINITION | INPUT_FIELD_DEFINITION
+directive @oneOf on INPUT_OBJECT
 
 scalar Int64
 scalar Bytes
@@ -6,6 +7,19 @@ scalar Timestamp
 scalar JSON
 
 enum Genre { GENRE_UNSPECIFIED FICTION NONFICTION }
+
+type SearchResponseResultBook {
+  id: String!
+  title: String!
+  genre: Genre!
+  copies: Int64!
+  cover: Bytes!
+  publishedAt: Timestamp
+  tags: JSON @goField(forceResolver: true)
+  author: Author
+}
+type SearchResponseResultNotFound { reason: String! }
+union SearchResponseResult = SearchResponseResultBook | SearchResponseResultNotFound
 
 type Author { name: String! }
 
@@ -33,11 +47,21 @@ input BookInput {
 }
 input AuthorInput { name: String! }
 input WatchBooksRequest { genre: Genre! }
+input SearchRequest { query: SearchRequestQuery }
+input SearchRequestQuery @oneOf {
+  text: String
+  author: String
+}
 
 type GetBookResponse { book: Book }
 type AddBookResponse { book: Book }
+type NotFound { reason: String! }
+type SearchResponse { result: SearchResponseResult @goField(forceResolver: true) }
 
-type Query { getBook(input: GetBookRequest!): GetBookResponse! }
+type Query {
+  getBook(input: GetBookRequest!): GetBookResponse!
+  searchBooks(input: SearchRequest!): SearchResponse!
+}
 type Mutation { addBook(input: AddBookRequest!): AddBookResponse! }
 type Subscription { watchBooks(input: WatchBooksRequest!): Book! }
 

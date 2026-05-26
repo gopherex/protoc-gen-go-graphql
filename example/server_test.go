@@ -19,8 +19,10 @@ import (
 // fakeLibrary is a test double for pb.LibraryServer.
 type fakeLibrary struct {
 	pb.UnimplementedLibraryServer
-	book   *pb.Book
-	stream []*pb.Book
+	book         *pb.Book
+	stream       []*pb.Book
+	searchResult *pb.SearchResponse // response for SearchBooks
+	searchReq    *pb.SearchRequest  // captures the last SearchBooks request
 }
 
 func (f *fakeLibrary) GetBook(_ context.Context, _ *pb.GetBookRequest) (*pb.GetBookResponse, error) {
@@ -38,6 +40,14 @@ func (f *fakeLibrary) WatchBooks(_ *pb.WatchBooksRequest, srv pb.Library_WatchBo
 		}
 	}
 	return nil
+}
+
+func (f *fakeLibrary) SearchBooks(_ context.Context, req *pb.SearchRequest) (*pb.SearchResponse, error) {
+	f.searchReq = req
+	if f.searchResult != nil {
+		return f.searchResult, nil
+	}
+	return &pb.SearchResponse{}, nil
 }
 
 func newTestServer(lib pb.LibraryServer) *handler.Server {
@@ -89,6 +99,122 @@ func TestWireRoundTrip(t *testing.T) {
 	}
 	if resp.GetBook.Book.PublishedAt != m["publishedAt"] {
 		t.Fatalf("publishedAt: gql=%q protojson=%v", resp.GetBook.Book.PublishedAt, m["publishedAt"])
+	}
+}
+
+// TestSearchBooks_OutputUnion_Book proves the output union resolves to the Book member
+// when SearchResponse.result is a Book variant.
+func TestSearchBooks_OutputUnion_Book(t *testing.T) {
+	book := &pb.Book{Id: "b1", Title: "Dune"}
+	fake := &fakeLibrary{
+		searchResult: &pb.SearchResponse{
+			Result: &pb.SearchResponse_Book{Book: book},
+		},
+	}
+	c := client.New(newTestServer(fake))
+
+	var resp struct {
+		SearchBooks struct {
+			Result struct {
+				Typename string `json:"__typename"`
+				Id       string `json:"id"`
+				Title    string `json:"title"`
+			}
+		}
+	}
+	c.MustPost(`{
+		searchBooks(input:{query:{text:"Dune"}}) {
+			result { __typename ... on SearchResponseResultBook { id title } }
+		}
+	}`, &resp)
+
+	if resp.SearchBooks.Result.Typename != "SearchResponseResultBook" {
+		t.Errorf("__typename = %q, want SearchResponseResultBook", resp.SearchBooks.Result.Typename)
+	}
+	if resp.SearchBooks.Result.Id != "b1" {
+		t.Errorf("id = %q, want b1", resp.SearchBooks.Result.Id)
+	}
+	if resp.SearchBooks.Result.Title != "Dune" {
+		t.Errorf("title = %q, want Dune", resp.SearchBooks.Result.Title)
+	}
+}
+
+// TestSearchBooks_OutputUnion_NotFound proves the output union resolves to the NotFound member.
+func TestSearchBooks_OutputUnion_NotFound(t *testing.T) {
+	fake := &fakeLibrary{
+		searchResult: &pb.SearchResponse{
+			Result: &pb.SearchResponse_NotFound{NotFound: &pb.NotFound{Reason: "no match"}},
+		},
+	}
+	c := client.New(newTestServer(fake))
+
+	var resp struct {
+		SearchBooks struct {
+			Result struct {
+				Typename string `json:"__typename"`
+				Reason   string `json:"reason"`
+			}
+		}
+	}
+	c.MustPost(`{
+		searchBooks(input:{query:{author:"Unknown"}}) {
+			result { __typename ... on SearchResponseResultNotFound { reason } }
+		}
+	}`, &resp)
+
+	if resp.SearchBooks.Result.Typename != "SearchResponseResultNotFound" {
+		t.Errorf("__typename = %q, want SearchResponseResultNotFound", resp.SearchBooks.Result.Typename)
+	}
+	if resp.SearchBooks.Result.Reason != "no match" {
+		t.Errorf("reason = %q, want 'no match'", resp.SearchBooks.Result.Reason)
+	}
+}
+
+// TestSearchBooks_InputOneof_Text proves that a @oneOf input with text set
+// reaches the fake handler correctly mapped to pb.SearchRequest.
+func TestSearchBooks_InputOneof_Text(t *testing.T) {
+	fake := &fakeLibrary{}
+	c := client.New(newTestServer(fake))
+
+	var resp struct {
+		SearchBooks struct {
+			Result *struct{ Typename string `json:"__typename"` }
+		}
+	}
+	c.MustPost(`{ searchBooks(input:{query:{text:"golang"}}) { result { __typename } } }`, &resp)
+
+	if fake.searchReq == nil {
+		t.Fatal("searchReq not captured")
+	}
+	if txt := fake.searchReq.GetText(); txt != "golang" {
+		t.Errorf("text oneof: got %q, want golang", txt)
+	}
+	if fake.searchReq.GetAuthor() != "" {
+		t.Errorf("author should be empty, got %q", fake.searchReq.GetAuthor())
+	}
+}
+
+// TestSearchBooks_InputOneof_Author proves that a @oneOf input with author set
+// reaches the fake handler correctly mapped to pb.SearchRequest.
+func TestSearchBooks_InputOneof_Author(t *testing.T) {
+	fake := &fakeLibrary{}
+	c := client.New(newTestServer(fake))
+
+	var resp struct {
+		SearchBooks struct {
+			Result *struct{ Typename string `json:"__typename"` }
+		}
+	}
+	c.MustPost(`{ searchBooks(input:{query:{author:"Tolkien"}}) { result { __typename } } }`, &resp)
+
+	if fake.searchReq == nil {
+		t.Fatal("searchReq not captured")
+	}
+	if author := fake.searchReq.GetAuthor(); author != "Tolkien" {
+		t.Errorf("author oneof: got %q, want Tolkien", author)
+	}
+	if fake.searchReq.GetText() != "" {
+		t.Errorf("text should be empty, got %q", fake.searchReq.GetText())
 	}
 }
 

@@ -435,6 +435,219 @@ func (x *WatchBooksRequest) GetGenre() Genre {
 	return Genre_GENRE_UNSPECIFIED
 }
 
+// SearchRequest demonstrates input oneof: the caller provides exactly one of
+// text (full-text search) or author (author name search).
+type SearchRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Types that are valid to be assigned to Query:
+	//
+	//	*SearchRequest_Text
+	//	*SearchRequest_Author
+	Query         isSearchRequest_Query `protobuf_oneof:"query"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SearchRequest) Reset() {
+	*x = SearchRequest{}
+	mi := &file_golden_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SearchRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SearchRequest) ProtoMessage() {}
+
+func (x *SearchRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_golden_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SearchRequest.ProtoReflect.Descriptor instead.
+func (*SearchRequest) Descriptor() ([]byte, []int) {
+	return file_golden_proto_rawDescGZIP(), []int{7}
+}
+
+func (x *SearchRequest) GetQuery() isSearchRequest_Query {
+	if x != nil {
+		return x.Query
+	}
+	return nil
+}
+
+func (x *SearchRequest) GetText() string {
+	if x != nil {
+		if x, ok := x.Query.(*SearchRequest_Text); ok {
+			return x.Text
+		}
+	}
+	return ""
+}
+
+func (x *SearchRequest) GetAuthor() string {
+	if x != nil {
+		if x, ok := x.Query.(*SearchRequest_Author); ok {
+			return x.Author
+		}
+	}
+	return ""
+}
+
+type isSearchRequest_Query interface {
+	isSearchRequest_Query()
+}
+
+type SearchRequest_Text struct {
+	Text string `protobuf:"bytes,1,opt,name=text,proto3,oneof"`
+}
+
+type SearchRequest_Author struct {
+	Author string `protobuf:"bytes,2,opt,name=author,proto3,oneof"`
+}
+
+func (*SearchRequest_Text) isSearchRequest_Query() {}
+
+func (*SearchRequest_Author) isSearchRequest_Query() {}
+
+// NotFound is returned when no book matches the search.
+type NotFound struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Reason        string                 `protobuf:"bytes,1,opt,name=reason,proto3" json:"reason,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *NotFound) Reset() {
+	*x = NotFound{}
+	mi := &file_golden_proto_msgTypes[8]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *NotFound) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*NotFound) ProtoMessage() {}
+
+func (x *NotFound) ProtoReflect() protoreflect.Message {
+	mi := &file_golden_proto_msgTypes[8]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use NotFound.ProtoReflect.Descriptor instead.
+func (*NotFound) Descriptor() ([]byte, []int) {
+	return file_golden_proto_rawDescGZIP(), []int{8}
+}
+
+func (x *NotFound) GetReason() string {
+	if x != nil {
+		return x.Reason
+	}
+	return ""
+}
+
+// SearchResponse demonstrates output oneof → GraphQL union.
+// The result is either a Book match or a NotFound explanation.
+type SearchResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Types that are valid to be assigned to Result:
+	//
+	//	*SearchResponse_Book
+	//	*SearchResponse_NotFound
+	Result        isSearchResponse_Result `protobuf_oneof:"result"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SearchResponse) Reset() {
+	*x = SearchResponse{}
+	mi := &file_golden_proto_msgTypes[9]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SearchResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SearchResponse) ProtoMessage() {}
+
+func (x *SearchResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_golden_proto_msgTypes[9]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SearchResponse.ProtoReflect.Descriptor instead.
+func (*SearchResponse) Descriptor() ([]byte, []int) {
+	return file_golden_proto_rawDescGZIP(), []int{9}
+}
+
+func (x *SearchResponse) GetResult() isSearchResponse_Result {
+	if x != nil {
+		return x.Result
+	}
+	return nil
+}
+
+func (x *SearchResponse) GetBook() *Book {
+	if x != nil {
+		if x, ok := x.Result.(*SearchResponse_Book); ok {
+			return x.Book
+		}
+	}
+	return nil
+}
+
+func (x *SearchResponse) GetNotFound() *NotFound {
+	if x != nil {
+		if x, ok := x.Result.(*SearchResponse_NotFound); ok {
+			return x.NotFound
+		}
+	}
+	return nil
+}
+
+type isSearchResponse_Result interface {
+	isSearchResponse_Result()
+}
+
+type SearchResponse_Book struct {
+	Book *Book `protobuf:"bytes,1,opt,name=book,proto3,oneof"`
+}
+
+type SearchResponse_NotFound struct {
+	NotFound *NotFound `protobuf:"bytes,2,opt,name=not_found,json=notFound,proto3,oneof"`
+}
+
+func (*SearchResponse_Book) isSearchResponse_Result() {}
+
+func (*SearchResponse_NotFound) isSearchResponse_Result() {}
+
 var File_golden_proto protoreflect.FileDescriptor
 
 const file_golden_proto_rawDesc = "" +
@@ -463,17 +676,28 @@ const file_golden_proto_rawDesc = "" +
 	"\x0fAddBookResponse\x12#\n" +
 	"\x04book\x18\x01 \x01(\v2\x0f.golden.v1.BookR\x04book\";\n" +
 	"\x11WatchBooksRequest\x12&\n" +
-	"\x05genre\x18\x01 \x01(\x0e2\x10.golden.v1.GenreR\x05genre*;\n" +
+	"\x05genre\x18\x01 \x01(\x0e2\x10.golden.v1.GenreR\x05genre\"H\n" +
+	"\rSearchRequest\x12\x14\n" +
+	"\x04text\x18\x01 \x01(\tH\x00R\x04text\x12\x18\n" +
+	"\x06author\x18\x02 \x01(\tH\x00R\x06authorB\a\n" +
+	"\x05query\"\"\n" +
+	"\bNotFound\x12\x16\n" +
+	"\x06reason\x18\x01 \x01(\tR\x06reason\"u\n" +
+	"\x0eSearchResponse\x12%\n" +
+	"\x04book\x18\x01 \x01(\v2\x0f.golden.v1.BookH\x00R\x04book\x122\n" +
+	"\tnot_found\x18\x02 \x01(\v2\x13.golden.v1.NotFoundH\x00R\bnotFoundB\b\n" +
+	"\x06result*;\n" +
 	"\x05Genre\x12\x15\n" +
 	"\x11GENRE_UNSPECIFIED\x10\x00\x12\v\n" +
 	"\aFICTION\x10\x01\x12\x0e\n" +
 	"\n" +
-	"NONFICTION\x10\x022\xd1\x01\n" +
+	"NONFICTION\x10\x022\x9a\x02\n" +
 	"\aLibrary\x12E\n" +
 	"\aGetBook\x12\x19.golden.v1.GetBookRequest\x1a\x1a.golden.v1.GetBookResponse\"\x03\x90\x02\x01\x12@\n" +
 	"\aAddBook\x12\x19.golden.v1.AddBookRequest\x1a\x1a.golden.v1.AddBookResponse\x12=\n" +
 	"\n" +
-	"WatchBooks\x12\x1c.golden.v1.WatchBooksRequest\x1a\x0f.golden.v1.Book0\x01B;Z9github.com/gopherex/protoc-gen-go-graphql/example/gen;genb\x06proto3"
+	"WatchBooks\x12\x1c.golden.v1.WatchBooksRequest\x1a\x0f.golden.v1.Book0\x01\x12G\n" +
+	"\vSearchBooks\x12\x18.golden.v1.SearchRequest\x1a\x19.golden.v1.SearchResponse\"\x03\x90\x02\x01B;Z9github.com/gopherex/protoc-gen-go-graphql/example/gen;genb\x06proto3"
 
 var (
 	file_golden_proto_rawDescOnce sync.Once
@@ -488,7 +712,7 @@ func file_golden_proto_rawDescGZIP() []byte {
 }
 
 var file_golden_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_golden_proto_msgTypes = make([]protoimpl.MessageInfo, 8)
+var file_golden_proto_msgTypes = make([]protoimpl.MessageInfo, 11)
 var file_golden_proto_goTypes = []any{
 	(Genre)(0),                    // 0: golden.v1.Genre
 	(*Author)(nil),                // 1: golden.v1.Author
@@ -498,29 +722,36 @@ var file_golden_proto_goTypes = []any{
 	(*AddBookRequest)(nil),        // 5: golden.v1.AddBookRequest
 	(*AddBookResponse)(nil),       // 6: golden.v1.AddBookResponse
 	(*WatchBooksRequest)(nil),     // 7: golden.v1.WatchBooksRequest
-	nil,                           // 8: golden.v1.Book.TagsEntry
-	(*timestamppb.Timestamp)(nil), // 9: google.protobuf.Timestamp
+	(*SearchRequest)(nil),         // 8: golden.v1.SearchRequest
+	(*NotFound)(nil),              // 9: golden.v1.NotFound
+	(*SearchResponse)(nil),        // 10: golden.v1.SearchResponse
+	nil,                           // 11: golden.v1.Book.TagsEntry
+	(*timestamppb.Timestamp)(nil), // 12: google.protobuf.Timestamp
 }
 var file_golden_proto_depIdxs = []int32{
 	0,  // 0: golden.v1.Book.genre:type_name -> golden.v1.Genre
-	9,  // 1: golden.v1.Book.published_at:type_name -> google.protobuf.Timestamp
-	8,  // 2: golden.v1.Book.tags:type_name -> golden.v1.Book.TagsEntry
+	12, // 1: golden.v1.Book.published_at:type_name -> google.protobuf.Timestamp
+	11, // 2: golden.v1.Book.tags:type_name -> golden.v1.Book.TagsEntry
 	1,  // 3: golden.v1.Book.author:type_name -> golden.v1.Author
 	2,  // 4: golden.v1.GetBookResponse.book:type_name -> golden.v1.Book
 	2,  // 5: golden.v1.AddBookRequest.book:type_name -> golden.v1.Book
 	2,  // 6: golden.v1.AddBookResponse.book:type_name -> golden.v1.Book
 	0,  // 7: golden.v1.WatchBooksRequest.genre:type_name -> golden.v1.Genre
-	3,  // 8: golden.v1.Library.GetBook:input_type -> golden.v1.GetBookRequest
-	5,  // 9: golden.v1.Library.AddBook:input_type -> golden.v1.AddBookRequest
-	7,  // 10: golden.v1.Library.WatchBooks:input_type -> golden.v1.WatchBooksRequest
-	4,  // 11: golden.v1.Library.GetBook:output_type -> golden.v1.GetBookResponse
-	6,  // 12: golden.v1.Library.AddBook:output_type -> golden.v1.AddBookResponse
-	2,  // 13: golden.v1.Library.WatchBooks:output_type -> golden.v1.Book
-	11, // [11:14] is the sub-list for method output_type
-	8,  // [8:11] is the sub-list for method input_type
-	8,  // [8:8] is the sub-list for extension type_name
-	8,  // [8:8] is the sub-list for extension extendee
-	0,  // [0:8] is the sub-list for field type_name
+	2,  // 8: golden.v1.SearchResponse.book:type_name -> golden.v1.Book
+	9,  // 9: golden.v1.SearchResponse.not_found:type_name -> golden.v1.NotFound
+	3,  // 10: golden.v1.Library.GetBook:input_type -> golden.v1.GetBookRequest
+	5,  // 11: golden.v1.Library.AddBook:input_type -> golden.v1.AddBookRequest
+	7,  // 12: golden.v1.Library.WatchBooks:input_type -> golden.v1.WatchBooksRequest
+	8,  // 13: golden.v1.Library.SearchBooks:input_type -> golden.v1.SearchRequest
+	4,  // 14: golden.v1.Library.GetBook:output_type -> golden.v1.GetBookResponse
+	6,  // 15: golden.v1.Library.AddBook:output_type -> golden.v1.AddBookResponse
+	2,  // 16: golden.v1.Library.WatchBooks:output_type -> golden.v1.Book
+	10, // 17: golden.v1.Library.SearchBooks:output_type -> golden.v1.SearchResponse
+	14, // [14:18] is the sub-list for method output_type
+	10, // [10:14] is the sub-list for method input_type
+	10, // [10:10] is the sub-list for extension type_name
+	10, // [10:10] is the sub-list for extension extendee
+	0,  // [0:10] is the sub-list for field type_name
 }
 
 func init() { file_golden_proto_init() }
@@ -528,13 +759,21 @@ func file_golden_proto_init() {
 	if File_golden_proto != nil {
 		return
 	}
+	file_golden_proto_msgTypes[7].OneofWrappers = []any{
+		(*SearchRequest_Text)(nil),
+		(*SearchRequest_Author)(nil),
+	}
+	file_golden_proto_msgTypes[9].OneofWrappers = []any{
+		(*SearchResponse_Book)(nil),
+		(*SearchResponse_NotFound)(nil),
+	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_golden_proto_rawDesc), len(file_golden_proto_rawDesc)),
 			NumEnums:      1,
-			NumMessages:   8,
+			NumMessages:   11,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

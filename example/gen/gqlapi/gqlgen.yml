@@ -24,6 +24,13 @@ models:
   AddBookRequest:    { model: github.com/gopherex/protoc-gen-go-graphql/example/gen.AddBookRequest }
   AddBookResponse:    { model: github.com/gopherex/protoc-gen-go-graphql/example/gen.AddBookResponse }
   WatchBooksRequest:    { model: github.com/gopherex/protoc-gen-go-graphql/example/gen.WatchBooksRequest }
+  SearchRequest:    { model: github.com/gopherex/protoc-gen-go-graphql/example/gen/gqlapi/pbgql.SearchRequestInput }
+  NotFound:    { model: github.com/gopherex/protoc-gen-go-graphql/example/gen.NotFound }
+  SearchResponse:    { model: github.com/gopherex/protoc-gen-go-graphql/example/gen.SearchResponse }
+  SearchRequestQuery:    { model: github.com/gopherex/protoc-gen-go-graphql/example/gen/gqlapi/pbgql.SearchRequestQuery }
+  SearchResponseResult:    { model: github.com/gopherex/protoc-gen-go-graphql/example/gen/gqlapi/pbgql.SearchResponseResult }
+  SearchResponseResultBook:    { model: github.com/gopherex/protoc-gen-go-graphql/example/gen/gqlapi/pbgql.SearchResponseResultBook }
+  SearchResponseResultNotFound:    { model: github.com/gopherex/protoc-gen-go-graphql/example/gen/gqlapi/pbgql.SearchResponseResultNotFound }
 
 # No `resolver:` block on purpose: gqlgen then emits only the exec engine and the
 # resolver INTERFACES (no stub files). The generator owns the resolver

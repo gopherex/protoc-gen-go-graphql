@@ -5,6 +5,7 @@ import (
 	"context"
 
 	pb "github.com/gopherex/protoc-gen-go-graphql/example/gen"
+	"github.com/gopherex/protoc-gen-go-graphql/example/gen/gqlapi/pbgql"
 	"github.com/gopherex/protoc-gen-go-graphql/runtime"
 	"github.com/gopherex/protoc-gen-go-graphql/example/gen/gqlapi/exec"
 )
@@ -17,11 +18,15 @@ type Resolver struct {
 }
 
 func (r *Resolver) Book() exec.BookResolver { return bookResolver{r} }
+func (r *Resolver) SearchResponse() exec.SearchResponseResolver { return searchResponseResolver{r} }
+func (r *Resolver) SearchResponseResultBook() exec.SearchResponseResultBookResolver { return searchResponseResultBookResolver{r} }
 func (r *Resolver) Query() exec.QueryResolver { return queryResolver{r} }
 func (r *Resolver) Mutation() exec.MutationResolver { return mutationResolver{r} }
 func (r *Resolver) Subscription() exec.SubscriptionResolver { return subscriptionResolver{r} }
 
 type bookResolver struct{ *Resolver }
+type searchResponseResolver struct{ *Resolver }
+type searchResponseResultBookResolver struct{ *Resolver }
 type queryResolver struct{ *Resolver }
 type mutationResolver struct{ *Resolver }
 type subscriptionResolver struct{ *Resolver }
@@ -30,6 +35,18 @@ type subscriptionResolver struct{ *Resolver }
 // resolver, because the JSON scalar's Go type `any` cannot bind a concrete map).
 func (r bookResolver) Tags(ctx context.Context, obj *pb.Book) (any, error) {
 	return obj.GetTags(), nil
+}
+
+// Tags exposes the proto map field as a JSON scalar (field
+// resolver, because the JSON scalar's Go type `any` cannot bind a concrete map).
+func (r searchResponseResultBookResolver) Tags(ctx context.Context, obj *pbgql.SearchResponseResultBook) (any, error) {
+	return obj.GetTags(), nil
+}
+
+// Result resolves the oneof field "result" as a SearchResponseResult union.
+// It wraps the pb oneof variant into the appropriate pbgql wrapper type.
+func (r searchResponseResolver) Result(ctx context.Context, obj *pb.SearchResponse) (pbgql.SearchResponseResult, error) {
+	return pbgql.WrapSearchResponseResult(obj), nil
 }
 
 func (r queryResolver) GetBook(ctx context.Context, input pb.GetBookRequest) (*pb.GetBookResponse, error) {
@@ -52,4 +69,12 @@ func (r subscriptionResolver) WatchBooks(ctx context.Context, input pb.WatchBook
 	return runtime.PumpServerStream[pb.Book](ctx, func(ss *runtime.StreamServer[pb.Book]) error {
 		return r.Library.WatchBooks(&input, ss)
 	}), nil
+}
+
+func (r queryResolver) SearchBooks(ctx context.Context, input pbgql.SearchRequestInput) (*pb.SearchResponse, error) {
+	resp, err := r.Library.SearchBooks(ctx, pbgql.ToPbSearchRequest(&input))
+	if err != nil {
+		return nil, runtime.GraphQLError(ctx, err)
+	}
+	return resp, nil
 }

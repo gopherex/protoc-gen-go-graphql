@@ -34,6 +34,8 @@ type ResolverRoot interface {
 	Book() BookResolver
 	Mutation() MutationResolver
 	Query() QueryResolver
+	SearchResponse() SearchResponseResolver
+	SearchResponseResultBook() SearchResponseResultBookResolver
 	Subscription() SubscriptionResolver
 }
 
@@ -68,8 +70,32 @@ type ComplexityRoot struct {
 		AddBook func(childComplexity int, input gen.AddBookRequest) int
 	}
 
+	NotFound struct {
+		Reason func(childComplexity int) int
+	}
+
 	Query struct {
-		GetBook func(childComplexity int, input gen.GetBookRequest) int
+		GetBook     func(childComplexity int, input gen.GetBookRequest) int
+		SearchBooks func(childComplexity int, input pbgql.SearchRequestInput) int
+	}
+
+	SearchResponse struct {
+		Result func(childComplexity int) int
+	}
+
+	SearchResponseResultBook struct {
+		Author      func(childComplexity int) int
+		Copies      func(childComplexity int) int
+		Cover       func(childComplexity int) int
+		Genre       func(childComplexity int) int
+		Id          func(childComplexity int) int
+		PublishedAt func(childComplexity int) int
+		Tags        func(childComplexity int) int
+		Title       func(childComplexity int) int
+	}
+
+	SearchResponseResultNotFound struct {
+		Reason func(childComplexity int) int
 	}
 
 	Subscription struct {
@@ -85,6 +111,13 @@ type MutationResolver interface {
 }
 type QueryResolver interface {
 	GetBook(ctx context.Context, input gen.GetBookRequest) (*gen.GetBookResponse, error)
+	SearchBooks(ctx context.Context, input pbgql.SearchRequestInput) (*gen.SearchResponse, error)
+}
+type SearchResponseResolver interface {
+	Result(ctx context.Context, obj *gen.SearchResponse) (pbgql.SearchResponseResult, error)
+}
+type SearchResponseResultBookResolver interface {
+	Tags(ctx context.Context, obj *pbgql.SearchResponseResultBook) (any, error)
 }
 type SubscriptionResolver interface {
 	WatchBooks(ctx context.Context, input gen.WatchBooksRequest) (<-chan *gen.Book, error)
@@ -186,6 +219,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.ComplexityRoot.Mutation.AddBook(childComplexity, args["input"].(gen.AddBookRequest)), true
 
+	case "NotFound.reason":
+		if e.ComplexityRoot.NotFound.Reason == nil {
+			break
+		}
+
+		return e.ComplexityRoot.NotFound.Reason(childComplexity), true
+
 	case "Query.getBook":
 		if e.ComplexityRoot.Query.GetBook == nil {
 			break
@@ -197,6 +237,81 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Query.GetBook(childComplexity, args["input"].(gen.GetBookRequest)), true
+
+	case "Query.searchBooks":
+		if e.ComplexityRoot.Query.SearchBooks == nil {
+			break
+		}
+
+		args, err := ec.field_Query_searchBooks_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Query.SearchBooks(childComplexity, args["input"].(pbgql.SearchRequestInput)), true
+
+	case "SearchResponse.result":
+		if e.ComplexityRoot.SearchResponse.Result == nil {
+			break
+		}
+
+		return e.ComplexityRoot.SearchResponse.Result(childComplexity), true
+
+	case "SearchResponseResultBook.author":
+		if e.ComplexityRoot.SearchResponseResultBook.Author == nil {
+			break
+		}
+
+		return e.ComplexityRoot.SearchResponseResultBook.Author(childComplexity), true
+	case "SearchResponseResultBook.copies":
+		if e.ComplexityRoot.SearchResponseResultBook.Copies == nil {
+			break
+		}
+
+		return e.ComplexityRoot.SearchResponseResultBook.Copies(childComplexity), true
+	case "SearchResponseResultBook.cover":
+		if e.ComplexityRoot.SearchResponseResultBook.Cover == nil {
+			break
+		}
+
+		return e.ComplexityRoot.SearchResponseResultBook.Cover(childComplexity), true
+	case "SearchResponseResultBook.genre":
+		if e.ComplexityRoot.SearchResponseResultBook.Genre == nil {
+			break
+		}
+
+		return e.ComplexityRoot.SearchResponseResultBook.Genre(childComplexity), true
+	case "SearchResponseResultBook.id":
+		if e.ComplexityRoot.SearchResponseResultBook.Id == nil {
+			break
+		}
+
+		return e.ComplexityRoot.SearchResponseResultBook.Id(childComplexity), true
+	case "SearchResponseResultBook.publishedAt":
+		if e.ComplexityRoot.SearchResponseResultBook.PublishedAt == nil {
+			break
+		}
+
+		return e.ComplexityRoot.SearchResponseResultBook.PublishedAt(childComplexity), true
+	case "SearchResponseResultBook.tags":
+		if e.ComplexityRoot.SearchResponseResultBook.Tags == nil {
+			break
+		}
+
+		return e.ComplexityRoot.SearchResponseResultBook.Tags(childComplexity), true
+	case "SearchResponseResultBook.title":
+		if e.ComplexityRoot.SearchResponseResultBook.Title == nil {
+			break
+		}
+
+		return e.ComplexityRoot.SearchResponseResultBook.Title(childComplexity), true
+
+	case "SearchResponseResultNotFound.reason":
+		if e.ComplexityRoot.SearchResponseResultNotFound.Reason == nil {
+			break
+		}
+
+		return e.ComplexityRoot.SearchResponseResultNotFound.Reason(childComplexity), true
 
 	case "Subscription.watchBooks":
 		if e.ComplexityRoot.Subscription.WatchBooks == nil {
@@ -222,6 +337,8 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputAuthorInput,
 		ec.unmarshalInputBookInput,
 		ec.unmarshalInputGetBookRequest,
+		ec.unmarshalInputSearchRequest,
+		ec.unmarshalInputSearchRequestQuery,
 		ec.unmarshalInputWatchBooksRequest,
 	)
 	first := true
@@ -316,6 +433,7 @@ func newExecutionContext(
 
 var sources = []*ast.Source{
 	{Name: "../schema.graphql", Input: `directive @goField(forceResolver: Boolean, name: String) on FIELD_DEFINITION | INPUT_FIELD_DEFINITION
+directive @oneOf on INPUT_OBJECT
 
 scalar Int64
 scalar Bytes
@@ -323,6 +441,19 @@ scalar Timestamp
 scalar JSON
 
 enum Genre { GENRE_UNSPECIFIED FICTION NONFICTION }
+
+type SearchResponseResultBook {
+  id: String!
+  title: String!
+  genre: Genre!
+  copies: Int64!
+  cover: Bytes!
+  publishedAt: Timestamp
+  tags: JSON @goField(forceResolver: true)
+  author: Author
+}
+type SearchResponseResultNotFound { reason: String! }
+union SearchResponseResult = SearchResponseResultBook | SearchResponseResultNotFound
 
 type Author { name: String! }
 
@@ -350,11 +481,21 @@ input BookInput {
 }
 input AuthorInput { name: String! }
 input WatchBooksRequest { genre: Genre! }
+input SearchRequest { query: SearchRequestQuery }
+input SearchRequestQuery @oneOf {
+  text: String
+  author: String
+}
 
 type GetBookResponse { book: Book }
 type AddBookResponse { book: Book }
+type NotFound { reason: String! }
+type SearchResponse { result: SearchResponseResult @goField(forceResolver: true) }
 
-type Query { getBook(input: GetBookRequest!): GetBookResponse! }
+type Query {
+  getBook(input: GetBookRequest!): GetBookResponse!
+  searchBooks(input: SearchRequest!): SearchResponse!
+}
 type Mutation { addBook(input: AddBookRequest!): AddBookResponse! }
 type Subscription { watchBooks(input: WatchBooksRequest!): Book! }
 
@@ -410,6 +551,14 @@ func (ec *executionContext) childFields_GetBookResponse(ctx context.Context, fie
 		return ec.fieldContext_GetBookResponse_book(ctx, field)
 	}
 	return nil, fmt.Errorf("no field named %q was found under type GetBookResponse", field.Name)
+}
+
+func (ec *executionContext) childFields_SearchResponse(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+	switch field.Name {
+	case "result":
+		return ec.fieldContext_SearchResponse_result(ctx, field)
+	}
+	return nil, fmt.Errorf("no field named %q was found under type SearchResponse", field.Name)
 }
 
 func (ec *executionContext) childFields___Directive(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
@@ -562,6 +711,20 @@ func (ec *executionContext) field_Query_getBook_args(ctx context.Context, rawArg
 	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input",
 		func(ctx context.Context, v any) (gen.GetBookRequest, error) {
 			return ec.unmarshalNGetBookRequest2githubᚗcomᚋgopherexᚋprotocᚑgenᚑgoᚑgraphqlᚋexampleᚋgenᚐGetBookRequest(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["input"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_searchBooks_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input",
+		func(ctx context.Context, v any) (pbgql.SearchRequestInput, error) {
+			return ec.unmarshalNSearchRequest2githubᚗcomᚋgopherexᚋprotocᚑgenᚑgoᚑgraphqlᚋexampleᚋgenᚋgqlapiᚋpbgqlᚐSearchRequestInput(ctx, v)
 		})
 	if err != nil {
 		return nil, err
@@ -972,6 +1135,29 @@ func (ec *executionContext) fieldContext_Mutation_addBook(ctx context.Context, f
 	return fc, nil
 }
 
+func (ec *executionContext) _NotFound_reason(ctx context.Context, field graphql.CollectedField, obj *gen.NotFound) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_NotFound_reason(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Reason, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_NotFound_reason(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("NotFound", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
 func (ec *executionContext) _Query_getBook(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -1010,6 +1196,50 @@ func (ec *executionContext) fieldContext_Query_getBook(ctx context.Context, fiel
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Query_getBook_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_searchBooks(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Query_searchBooks(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Query().SearchBooks(ctx, fc.Args["input"].(pbgql.SearchRequestInput))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *gen.SearchResponse) graphql.Marshaler {
+			return ec.marshalNSearchResponse2ᚖgithubᚗcomᚋgopherexᚋprotocᚑgenᚑgoᚑgraphqlᚋexampleᚋgenᚐSearchResponse(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Query_searchBooks(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_SearchResponse(ctx, field)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_searchBooks_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -1090,6 +1320,245 @@ func (ec *executionContext) fieldContext_Query___schema(_ context.Context, field
 		},
 	}
 	return fc, nil
+}
+
+func (ec *executionContext) _SearchResponse_result(ctx context.Context, field graphql.CollectedField, obj *gen.SearchResponse) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_SearchResponse_result(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return ec.Resolvers.SearchResponse().Result(ctx, obj)
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v pbgql.SearchResponseResult) graphql.Marshaler {
+			return ec.marshalOSearchResponseResult2githubᚗcomᚋgopherexᚋprotocᚑgenᚑgoᚑgraphqlᚋexampleᚋgenᚋgqlapiᚋpbgqlᚐSearchResponseResult(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_SearchResponse_result(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("SearchResponse", field, true, true, errors.New("field of type SearchResponseResult does not have child fields"))
+}
+
+func (ec *executionContext) _SearchResponseResultBook_id(ctx context.Context, field graphql.CollectedField, obj *pbgql.SearchResponseResultBook) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_SearchResponseResultBook_id(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Id, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_SearchResponseResultBook_id(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("SearchResponseResultBook", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _SearchResponseResultBook_title(ctx context.Context, field graphql.CollectedField, obj *pbgql.SearchResponseResultBook) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_SearchResponseResultBook_title(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Title, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_SearchResponseResultBook_title(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("SearchResponseResultBook", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _SearchResponseResultBook_genre(ctx context.Context, field graphql.CollectedField, obj *pbgql.SearchResponseResultBook) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_SearchResponseResultBook_genre(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Genre, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v gen.Genre) graphql.Marshaler {
+			return ec.marshalNGenre2githubᚗcomᚋgopherexᚋprotocᚑgenᚑgoᚑgraphqlᚋexampleᚋgenᚐGenre(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_SearchResponseResultBook_genre(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("SearchResponseResultBook", field, false, false, errors.New("field of type Genre does not have child fields"))
+}
+
+func (ec *executionContext) _SearchResponseResultBook_copies(ctx context.Context, field graphql.CollectedField, obj *pbgql.SearchResponseResultBook) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_SearchResponseResultBook_copies(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Copies, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v int64) graphql.Marshaler {
+			return ec.marshalNInt642int64(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_SearchResponseResultBook_copies(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("SearchResponseResultBook", field, false, false, errors.New("field of type Int64 does not have child fields"))
+}
+
+func (ec *executionContext) _SearchResponseResultBook_cover(ctx context.Context, field graphql.CollectedField, obj *pbgql.SearchResponseResultBook) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_SearchResponseResultBook_cover(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Cover, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v []byte) graphql.Marshaler {
+			return ec.marshalNBytes2ᚕbyte(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_SearchResponseResultBook_cover(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("SearchResponseResultBook", field, false, false, errors.New("field of type Bytes does not have child fields"))
+}
+
+func (ec *executionContext) _SearchResponseResultBook_publishedAt(ctx context.Context, field graphql.CollectedField, obj *pbgql.SearchResponseResultBook) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_SearchResponseResultBook_publishedAt(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.PublishedAt, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *timestamppb.Timestamp) graphql.Marshaler {
+			return ec.marshalOTimestamp2ᚖgoogleᚗgolangᚗorgᚋprotobufᚋtypesᚋknownᚋtimestamppbᚐTimestamp(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_SearchResponseResultBook_publishedAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("SearchResponseResultBook", field, false, false, errors.New("field of type Timestamp does not have child fields"))
+}
+
+func (ec *executionContext) _SearchResponseResultBook_tags(ctx context.Context, field graphql.CollectedField, obj *pbgql.SearchResponseResultBook) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_SearchResponseResultBook_tags(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return ec.Resolvers.SearchResponseResultBook().Tags(ctx, obj)
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v any) graphql.Marshaler {
+			return ec.marshalOJSON2interface(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_SearchResponseResultBook_tags(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("SearchResponseResultBook", field, true, true, errors.New("field of type JSON does not have child fields"))
+}
+
+func (ec *executionContext) _SearchResponseResultBook_author(ctx context.Context, field graphql.CollectedField, obj *pbgql.SearchResponseResultBook) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_SearchResponseResultBook_author(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Author, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *gen.Author) graphql.Marshaler {
+			return ec.marshalOAuthor2ᚖgithubᚗcomᚋgopherexᚋprotocᚑgenᚑgoᚑgraphqlᚋexampleᚋgenᚐAuthor(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_SearchResponseResultBook_author(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SearchResponseResultBook",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_Author(ctx, field)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _SearchResponseResultNotFound_reason(ctx context.Context, field graphql.CollectedField, obj *pbgql.SearchResponseResultNotFound) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_SearchResponseResultNotFound_reason(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Reason, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_SearchResponseResultNotFound_reason(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("SearchResponseResultNotFound", field, false, false, errors.New("field of type String does not have child fields"))
 }
 
 func (ec *executionContext) _Subscription_watchBooks(ctx context.Context, field graphql.CollectedField) (ret func(ctx context.Context) graphql.Marshaler) {
@@ -2357,6 +2826,73 @@ func (ec *executionContext) unmarshalInputGetBookRequest(ctx context.Context, ob
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputSearchRequest(ctx context.Context, obj any) (pbgql.SearchRequestInput, error) {
+	var it pbgql.SearchRequestInput
+	if obj == nil {
+		return it, nil
+	}
+
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"query"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "query":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("query"))
+			data, err := ec.unmarshalOSearchRequestQuery2ᚖgithubᚗcomᚋgopherexᚋprotocᚑgenᚑgoᚑgraphqlᚋexampleᚋgenᚋgqlapiᚋpbgqlᚐSearchRequestQuery(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Query = data
+		}
+	}
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputSearchRequestQuery(ctx context.Context, obj any) (pbgql.SearchRequestQuery, error) {
+	var it pbgql.SearchRequestQuery
+	if obj == nil {
+		return it, nil
+	}
+
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"text", "author"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "text":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("text"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Text = data
+		case "author":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("author"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Author = data
+		}
+	}
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputWatchBooksRequest(ctx context.Context, obj any) (gen.WatchBooksRequest, error) {
 	var it gen.WatchBooksRequest
 	if obj == nil {
@@ -2390,6 +2926,33 @@ func (ec *executionContext) unmarshalInputWatchBooksRequest(ctx context.Context,
 // endregion **************************** input.gotpl *****************************
 
 // region    ************************** interface.gotpl ***************************
+
+func (ec *executionContext) _SearchResponseResult(ctx context.Context, sel ast.SelectionSet, obj pbgql.SearchResponseResult) graphql.Marshaler {
+	switch obj := (obj).(type) {
+	case nil:
+		return graphql.Null
+	case pbgql.SearchResponseResultNotFound:
+		return ec._SearchResponseResultNotFound(ctx, sel, &obj)
+	case *pbgql.SearchResponseResultNotFound:
+		if obj == nil {
+			return graphql.Null
+		}
+		return ec._SearchResponseResultNotFound(ctx, sel, obj)
+	case pbgql.SearchResponseResultBook:
+		return ec._SearchResponseResultBook(ctx, sel, &obj)
+	case *pbgql.SearchResponseResultBook:
+		if obj == nil {
+			return graphql.Null
+		}
+		return ec._SearchResponseResultBook(ctx, sel, obj)
+	default:
+		if typedObj, ok := obj.(graphql.Marshaler); ok {
+			return typedObj
+		} else {
+			panic(fmt.Errorf("unexpected type %T; non-generated variants of SearchResponseResult must implement graphql.Marshaler", obj))
+		}
+	}
+}
 
 // endregion ************************** interface.gotpl ***************************
 
@@ -2651,6 +3214,45 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 	return out
 }
 
+var notFoundImplementors = []string{"NotFound"}
+
+func (ec *executionContext) _NotFound(ctx context.Context, sel ast.SelectionSet, obj *gen.NotFound) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, notFoundImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("NotFound")
+		case "reason":
+			out.Values[i] = ec._NotFound_reason(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(min(len(deferred), math.MaxInt32)))
+
+	for label, dfs := range deferred {
+		ec.ProcessDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
 var queryImplementors = []string{"Query"}
 
 func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) graphql.Marshaler {
@@ -2692,6 +3294,28 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "searchBooks":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_searchBooks(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
 		case "__type":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Query___type(ctx, field)
@@ -2700,6 +3324,208 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Query___schema(ctx, field)
 			})
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(min(len(deferred), math.MaxInt32)))
+
+	for label, dfs := range deferred {
+		ec.ProcessDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var searchResponseImplementors = []string{"SearchResponse"}
+
+func (ec *executionContext) _SearchResponse(ctx context.Context, sel ast.SelectionSet, obj *gen.SearchResponse) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, searchResponseImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("SearchResponse")
+		case "result":
+			field := field
+
+			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._SearchResponse_result(ctx, field, obj)
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(min(len(deferred), math.MaxInt32)))
+
+	for label, dfs := range deferred {
+		ec.ProcessDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var searchResponseResultBookImplementors = []string{"SearchResponseResultBook", "SearchResponseResult"}
+
+func (ec *executionContext) _SearchResponseResultBook(ctx context.Context, sel ast.SelectionSet, obj *pbgql.SearchResponseResultBook) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, searchResponseResultBookImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("SearchResponseResultBook")
+		case "id":
+			out.Values[i] = ec._SearchResponseResultBook_id(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
+		case "title":
+			out.Values[i] = ec._SearchResponseResultBook_title(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
+		case "genre":
+			out.Values[i] = ec._SearchResponseResultBook_genre(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
+		case "copies":
+			out.Values[i] = ec._SearchResponseResultBook_copies(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
+		case "cover":
+			out.Values[i] = ec._SearchResponseResultBook_cover(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
+		case "publishedAt":
+			out.Values[i] = ec._SearchResponseResultBook_publishedAt(ctx, field, obj)
+		case "tags":
+			field := field
+
+			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._SearchResponseResultBook_tags(ctx, field, obj)
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+		case "author":
+			out.Values[i] = ec._SearchResponseResultBook_author(ctx, field, obj)
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(min(len(deferred), math.MaxInt32)))
+
+	for label, dfs := range deferred {
+		ec.ProcessDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var searchResponseResultNotFoundImplementors = []string{"SearchResponseResultNotFound", "SearchResponseResult"}
+
+func (ec *executionContext) _SearchResponseResultNotFound(ctx context.Context, sel ast.SelectionSet, obj *pbgql.SearchResponseResultNotFound) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, searchResponseResultNotFoundImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("SearchResponseResultNotFound")
+		case "reason":
+			out.Values[i] = ec._SearchResponseResultNotFound_reason(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -3200,6 +4026,25 @@ func (ec *executionContext) marshalNInt642int64(ctx context.Context, sel ast.Sel
 	return res
 }
 
+func (ec *executionContext) unmarshalNSearchRequest2githubᚗcomᚋgopherexᚋprotocᚑgenᚑgoᚑgraphqlᚋexampleᚋgenᚋgqlapiᚋpbgqlᚐSearchRequestInput(ctx context.Context, v any) (pbgql.SearchRequestInput, error) {
+	res, err := ec.unmarshalInputSearchRequest(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNSearchResponse2githubᚗcomᚋgopherexᚋprotocᚑgenᚑgoᚑgraphqlᚋexampleᚋgenᚐSearchResponse(ctx context.Context, sel ast.SelectionSet, v gen.SearchResponse) graphql.Marshaler {
+	return ec._SearchResponse(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNSearchResponse2ᚖgithubᚗcomᚋgopherexᚋprotocᚑgenᚑgoᚑgraphqlᚋexampleᚋgenᚐSearchResponse(ctx context.Context, sel ast.SelectionSet, v *gen.SearchResponse) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._SearchResponse(ctx, sel, v)
+}
+
 func (ec *executionContext) unmarshalNString2string(ctx context.Context, v any) (string, error) {
 	res, err := graphql.UnmarshalString(v)
 	return res, graphql.ErrorOnPath(ctx, err)
@@ -3438,6 +4283,21 @@ func (ec *executionContext) marshalOJSON2interface(ctx context.Context, sel ast.
 	_ = ctx
 	res := runtime.MarshalJSON(v)
 	return res
+}
+
+func (ec *executionContext) unmarshalOSearchRequestQuery2ᚖgithubᚗcomᚋgopherexᚋprotocᚑgenᚑgoᚑgraphqlᚋexampleᚋgenᚋgqlapiᚋpbgqlᚐSearchRequestQuery(ctx context.Context, v any) (*pbgql.SearchRequestQuery, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := ec.unmarshalInputSearchRequestQuery(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOSearchResponseResult2githubᚗcomᚋgopherexᚋprotocᚑgenᚑgoᚑgraphqlᚋexampleᚋgenᚋgqlapiᚋpbgqlᚐSearchResponseResult(ctx context.Context, sel ast.SelectionSet, v pbgql.SearchResponseResult) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._SearchResponseResult(ctx, sel, v)
 }
 
 func (ec *executionContext) unmarshalOString2ᚖstring(ctx context.Context, v any) (*string, error) {

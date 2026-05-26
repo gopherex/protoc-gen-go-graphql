@@ -19,9 +19,10 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	Library_GetBook_FullMethodName    = "/golden.v1.Library/GetBook"
-	Library_AddBook_FullMethodName    = "/golden.v1.Library/AddBook"
-	Library_WatchBooks_FullMethodName = "/golden.v1.Library/WatchBooks"
+	Library_GetBook_FullMethodName     = "/golden.v1.Library/GetBook"
+	Library_AddBook_FullMethodName     = "/golden.v1.Library/AddBook"
+	Library_WatchBooks_FullMethodName  = "/golden.v1.Library/WatchBooks"
+	Library_SearchBooks_FullMethodName = "/golden.v1.Library/SearchBooks"
 )
 
 // LibraryClient is the client API for Library service.
@@ -31,6 +32,7 @@ type LibraryClient interface {
 	GetBook(ctx context.Context, in *GetBookRequest, opts ...grpc.CallOption) (*GetBookResponse, error)
 	AddBook(ctx context.Context, in *AddBookRequest, opts ...grpc.CallOption) (*AddBookResponse, error)
 	WatchBooks(ctx context.Context, in *WatchBooksRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[Book], error)
+	SearchBooks(ctx context.Context, in *SearchRequest, opts ...grpc.CallOption) (*SearchResponse, error)
 }
 
 type libraryClient struct {
@@ -80,6 +82,16 @@ func (c *libraryClient) WatchBooks(ctx context.Context, in *WatchBooksRequest, o
 // This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
 type Library_WatchBooksClient = grpc.ServerStreamingClient[Book]
 
+func (c *libraryClient) SearchBooks(ctx context.Context, in *SearchRequest, opts ...grpc.CallOption) (*SearchResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(SearchResponse)
+	err := c.cc.Invoke(ctx, Library_SearchBooks_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // LibraryServer is the server API for Library service.
 // All implementations must embed UnimplementedLibraryServer
 // for forward compatibility.
@@ -87,6 +99,7 @@ type LibraryServer interface {
 	GetBook(context.Context, *GetBookRequest) (*GetBookResponse, error)
 	AddBook(context.Context, *AddBookRequest) (*AddBookResponse, error)
 	WatchBooks(*WatchBooksRequest, grpc.ServerStreamingServer[Book]) error
+	SearchBooks(context.Context, *SearchRequest) (*SearchResponse, error)
 	mustEmbedUnimplementedLibraryServer()
 }
 
@@ -105,6 +118,9 @@ func (UnimplementedLibraryServer) AddBook(context.Context, *AddBookRequest) (*Ad
 }
 func (UnimplementedLibraryServer) WatchBooks(*WatchBooksRequest, grpc.ServerStreamingServer[Book]) error {
 	return status.Error(codes.Unimplemented, "method WatchBooks not implemented")
+}
+func (UnimplementedLibraryServer) SearchBooks(context.Context, *SearchRequest) (*SearchResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method SearchBooks not implemented")
 }
 func (UnimplementedLibraryServer) mustEmbedUnimplementedLibraryServer() {}
 func (UnimplementedLibraryServer) testEmbeddedByValue()                 {}
@@ -174,6 +190,24 @@ func _Library_WatchBooks_Handler(srv interface{}, stream grpc.ServerStream) erro
 // This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
 type Library_WatchBooksServer = grpc.ServerStreamingServer[Book]
 
+func _Library_SearchBooks_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SearchRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(LibraryServer).SearchBooks(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Library_SearchBooks_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(LibraryServer).SearchBooks(ctx, req.(*SearchRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // Library_ServiceDesc is the grpc.ServiceDesc for Library service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -188,6 +222,10 @@ var Library_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "AddBook",
 			Handler:    _Library_AddBook_Handler,
+		},
+		{
+			MethodName: "SearchBooks",
+			Handler:    _Library_SearchBooks_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{

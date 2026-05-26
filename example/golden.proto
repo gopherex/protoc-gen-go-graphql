@@ -12,6 +12,9 @@ service Library {
   }
   rpc AddBook(AddBookRequest) returns (AddBookResponse); // default -> Mutation
   rpc WatchBooks(WatchBooksRequest) returns (stream Book); // -> Subscription
+  rpc SearchBooks(SearchRequest) returns (SearchResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS; // -> Query
+  }
 }
 
 enum Genre {
@@ -40,3 +43,24 @@ message GetBookResponse { Book book = 1; }
 message AddBookRequest { Book book = 1; }
 message AddBookResponse { Book book = 1; }
 message WatchBooksRequest { Genre genre = 1; }
+
+// SearchRequest demonstrates input oneof: the caller provides exactly one of
+// text (full-text search) or author (author name search).
+message SearchRequest {
+  oneof query {
+    string text   = 1;
+    string author = 2;
+  }
+}
+
+// NotFound is returned when no book matches the search.
+message NotFound { string reason = 1; }
+
+// SearchResponse demonstrates output oneof → GraphQL union.
+// The result is either a Book match or a NotFound explanation.
+message SearchResponse {
+  oneof result {
+    Book     book      = 1;
+    NotFound not_found = 2;
+  }
+}
