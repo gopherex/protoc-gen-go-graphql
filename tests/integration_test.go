@@ -18,10 +18,10 @@ import (
 
 	"github.com/99designs/gqlgen/graphql/handler"
 	"github.com/99designs/gqlgen/graphql/handler/transport"
-	"github.com/gorilla/websocket"
 	pb "github.com/gopherex/protoc-gen-go-graphql/example/gen"
 	"github.com/gopherex/protoc-gen-go-graphql/example/gen/gqlapi"
 	"github.com/gopherex/protoc-gen-go-graphql/example/gen/gqlapi/exec"
+	"github.com/gorilla/websocket"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
