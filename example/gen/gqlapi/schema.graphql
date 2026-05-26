@@ -40,3 +40,4 @@ type AddBookResponse { book: Book }
 type Query { getBook(input: GetBookRequest!): GetBookResponse! }
 type Mutation { addBook(input: AddBookRequest!): AddBookResponse! }
 type Subscription { watchBooks(input: WatchBooksRequest!): Book! }
+

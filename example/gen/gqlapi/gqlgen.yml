@@ -1,0 +1,31 @@
+schema:
+  - schema.graphql
+
+exec:
+  package: exec
+  filename: exec/exec.go
+
+# Bind directly to the protoc-gen-go types; do NOT generate a second model set.
+autobind:
+  - github.com/gopherex/protoc-gen-go-graphql/example/gen
+
+models:
+  Int64:     { model: github.com/gopherex/protoc-gen-go-graphql/runtime.Int64 }
+  Bytes:     { model: github.com/gopherex/protoc-gen-go-graphql/runtime.Bytes }
+  Timestamp:     { model: github.com/gopherex/protoc-gen-go-graphql/runtime.Timestamp }
+  JSON:     { model: github.com/gopherex/protoc-gen-go-graphql/runtime.JSON }
+  Genre:        { model: github.com/gopherex/protoc-gen-go-graphql/example/gen/gqlapi/pbgql.Genre }
+  Author:    { model: github.com/gopherex/protoc-gen-go-graphql/example/gen.Author }
+  AuthorInput:    { model: github.com/gopherex/protoc-gen-go-graphql/example/gen.Author }
+  Book:    { model: github.com/gopherex/protoc-gen-go-graphql/example/gen.Book }
+  BookInput:    { model: github.com/gopherex/protoc-gen-go-graphql/example/gen.Book }
+  GetBookRequest:    { model: github.com/gopherex/protoc-gen-go-graphql/example/gen.GetBookRequest }
+  GetBookResponse:    { model: github.com/gopherex/protoc-gen-go-graphql/example/gen.GetBookResponse }
+  AddBookRequest:    { model: github.com/gopherex/protoc-gen-go-graphql/example/gen.AddBookRequest }
+  AddBookResponse:    { model: github.com/gopherex/protoc-gen-go-graphql/example/gen.AddBookResponse }
+  WatchBooksRequest:    { model: github.com/gopherex/protoc-gen-go-graphql/example/gen.WatchBooksRequest }
+
+# No `resolver:` block on purpose: gqlgen then emits only the exec engine and the
+# resolver INTERFACES (no stub files). The generator owns the resolver
+# implementation that satisfies those interfaces and delegates to gRPC.
+
