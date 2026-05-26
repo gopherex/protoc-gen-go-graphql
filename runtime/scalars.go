@@ -33,18 +33,23 @@ func UnmarshalInt64(v any) (int64, error) {
 	}
 }
 
-func MarshalUInt64(v uint64) graphql.Marshaler {
+func MarshalUint64(v uint64) graphql.Marshaler {
 	return graphql.WriterFunc(func(w io.Writer) {
 		_, _ = io.WriteString(w, strconv.Quote(strconv.FormatUint(v, 10)))
 	})
 }
 
-func UnmarshalUInt64(v any) (uint64, error) {
-	s, ok := v.(string)
-	if !ok {
-		return 0, fmt.Errorf("UInt64 must be a string, got %T", v)
+func UnmarshalUint64(v any) (uint64, error) {
+	switch x := v.(type) {
+	case string:
+		return strconv.ParseUint(x, 10, 64)
+	case json.Number:
+		return strconv.ParseUint(x.String(), 10, 64)
+	case uint64:
+		return x, nil
+	default:
+		return 0, fmt.Errorf("Uint64 must be a string, got %T", v)
 	}
-	return strconv.ParseUint(s, 10, 64)
 }
 
 // Bytes: protojson encodes as standard base64 string.
@@ -111,8 +116,15 @@ func UnmarshalDuration(v any) (*durationpb.Duration, error) {
 // JSON: maps, Struct, Value, Any, ListValue. Stored as Go map/any per protojson.
 func MarshalJSON(v any) graphql.Marshaler {
 	return graphql.WriterFunc(func(w io.Writer) {
-		_ = json.NewEncoder(w).Encode(v)
+		b, err := json.Marshal(v)
+		if err != nil {
+			panic(err)
+		}
+		_, _ = w.Write(b)
 	})
 }
 
+// UnmarshalJSON passes the decoded JSON value through unchanged. The caller
+// receives whatever the JSON decoder produced (map[string]any, []any, string,
+// bool, or json.Number).
 func UnmarshalJSON(v any) (any, error) { return v, nil }
