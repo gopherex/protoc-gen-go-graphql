@@ -3,12 +3,7 @@ module github.com/gopherex/protoc-gen-go-graphql
 go 1.25.0
 
 require (
-	github.com/99designs/gqlgen v0.17.90
-	google.golang.org/grpc/cmd/protoc-gen-go-grpc v1.6.2
-	google.golang.org/protobuf v1.36.11
-)
-
-require (
+	github.com/99designs/gqlgen v0.17.90 // indirect
 	github.com/agnivade/levenshtein v1.2.1 // indirect
 	github.com/goccy/go-yaml v1.19.2 // indirect
 	github.com/google/uuid v1.6.0 // indirect
@@ -20,4 +15,12 @@ require (
 	golang.org/x/text v0.35.0 // indirect
 	golang.org/x/tools v0.42.0 // indirect
 	google.golang.org/grpc v1.81.1 // indirect
+	google.golang.org/grpc/cmd/protoc-gen-go-grpc v1.6.2 // indirect
+	google.golang.org/protobuf v1.36.11 // indirect
+)
+
+tool (
+	github.com/99designs/gqlgen
+	google.golang.org/grpc/cmd/protoc-gen-go-grpc
+	google.golang.org/protobuf/cmd/protoc-gen-go
 )
