@@ -49,12 +49,35 @@ func buildGqlgenYml(f *protogen.File, pbImport, pbgqlImport string) string {
 		fmt.Fprintf(&sb, "  %s:        { model: %s.%s }\n", e.GoIdent.GoName, pbgqlImport, e.GoIdent.GoName)
 	}
 
+	// Collect oneof info for binding decisions.
+	msgInfo := analyzeMessages(f)
+	ois := collectOneofs(f, msgInfo)
+
+	// Index oneofs by message name.
+	// Messages with output oneofs: their oneof field uses a field resolver; the message itself still binds to pb.
+	// Messages with input oneofs: the request message binds to an intermediate pbgql struct (not pb directly).
+	inputOneofMsgs := map[string]oneofInfo{} // reqMsgGoName → oi
+	outputOneofMsgs := map[string]bool{}      // msgGoName → true
+	for _, oi := range ois {
+		if oi.IsInput {
+			inputOneofMsgs[oi.MsgGoName] = oi
+		}
+		if oi.IsOutput {
+			outputOneofMsgs[oi.MsgGoName] = true
+		}
+	}
+
 	// Message bindings.
 	// We need:
-	//   <MsgName>: { model: pbImport.<MsgName> }  — for output types
+	//   <MsgName>: { model: pbImport.<MsgName> }  — for output types (no input oneof)
 	//   <MsgName>Input: { model: pbImport.<MsgName> } — for nested input types
-	//   <RequestName>: { model: pbImport.<RequestName> } — for top-level request inputs
-	msgInfo := analyzeMessages(f)
+	//   <RequestName>: { model: pbgqlImport.<RequestName>Input } — for requests with input oneof
+	//   <RequestName>: { model: pbImport.<RequestName> } — for requests without input oneof
+	// Additionally for union types:
+	//   <UnionName>: { model: pbgqlImport.<UnionName> }  — union interface
+	//   <WrapperName>: { model: pbgqlImport.<WrapperName> } — union member wrapper
+	// And for @oneOf input types:
+	//   <OneofInputName>: { model: pbgqlImport.<OneofInputName> }
 
 	// Collect all file-level messages (not map entries).
 	for _, msg := range f.Messages {
@@ -66,21 +89,42 @@ func buildGqlgenYml(f *protogen.File, pbImport, pbgqlImport string) string {
 		if mi == nil {
 			continue
 		}
+
 		// Emit output binding if used as output.
 		if mi.role.has(roleOutput) {
 			fmt.Fprintf(&sb, "  %s:    { model: %s.%s }\n", name, pbImport, name)
 		}
+
 		// Emit input binding: top-level requests keep their name; nested get Input suffix.
 		if mi.role.has(roleInput) {
 			if mi.isRequest {
-				// Request messages: already emitted above if also output, or emit fresh.
-				if !mi.role.has(roleOutput) {
+				if oi, hasInputOneof := inputOneofMsgs[name]; hasInputOneof {
+					// Request with input oneof: bind to intermediate pbgql struct.
+					fmt.Fprintf(&sb, "  %s:    { model: %s.%s }\n", name, pbgqlImport, oi.MsgInputGoName)
+				} else if !mi.role.has(roleOutput) {
+					// Normal request without oneof: bind to pb directly.
 					fmt.Fprintf(&sb, "  %s:    { model: %s.%s }\n", name, pbImport, name)
 				}
 			} else {
 				// Nested input: emit with Input suffix binding to same Go type.
 				fmt.Fprintf(&sb, "  %s:    { model: %s.%s }\n", name+"Input", pbImport, name)
 			}
+		}
+	}
+
+	// Oneof-specific bindings.
+	for _, oi := range ois {
+		if oi.IsOutput {
+			// Union interface.
+			fmt.Fprintf(&sb, "  %s:    { model: %s.%s }\n", oi.UnionGQLName, pbgqlImport, oi.InterfaceGoName)
+			// Union member wrappers.
+			for _, v := range oi.Variants {
+				fmt.Fprintf(&sb, "  %s:    { model: %s.%s }\n", v.WrapperGoName, pbgqlImport, v.WrapperGoName)
+			}
+		}
+		if oi.IsInput {
+			// @oneOf input struct.
+			fmt.Fprintf(&sb, "  %s:    { model: %s.%s }\n", oi.InputGQLName, pbgqlImport, oi.InputGoName)
 		}
 	}
 

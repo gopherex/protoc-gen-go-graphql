@@ -130,20 +130,39 @@ func analyzeMessages(f *protogen.File) map[string]*messageInfo {
 
 // buildSchema walks f's descriptors and returns a GraphQL SDL string.
 // The output matches spike/schema.graphql for the golden proto:
-//  1. @goField directive
+//  1. @goField and @oneOf directive declarations
 //  2. Scalar declarations (used only)
 //  3. Enum types
-//  4. Domain output types (roleOutput & roleInput) — e.g. Author, Book
-//  5. Input types (request messages and nested input types)
-//  6. Pure output types (roleOutput & !roleInput) — e.g. GetBookResponse
-//  7. Operation roots (Query / Mutation / Subscription)
+//  4. Union types (output oneofs)
+//  5. Domain output types (roleOutput & roleInput) — e.g. Author, Book
+//  6. Input types (request messages and nested input types)
+//  7. Pure output types (roleOutput & !roleInput) — e.g. GetBookResponse
+//  8. Operation roots (Query / Mutation / Subscription)
 func buildSchema(f *protogen.File) string {
 	var sb strings.Builder
 
 	msgInfo := analyzeMessages(f)
+	ois := collectOneofs(f, msgInfo)
 
-	// 1. @goField directive declaration (must be explicit per spike-findings §5).
+	// Index oneofs by message name for fast lookup.
+	oneofsByMsg := map[string][]oneofInfo{}
+	for _, oi := range ois {
+		oneofsByMsg[oi.MsgGoName] = append(oneofsByMsg[oi.MsgGoName], oi)
+	}
+
+	// 1. Directive declarations (must be explicit per spike-findings §5).
 	sb.WriteString("directive @goField(forceResolver: Boolean, name: String) on FIELD_DEFINITION | INPUT_FIELD_DEFINITION\n")
+	// @oneOf is needed when any message has an input oneof.
+	hasInputOneof := false
+	for _, oi := range ois {
+		if oi.IsInput {
+			hasInputOneof = true
+			break
+		}
+	}
+	if hasInputOneof {
+		sb.WriteString("directive @oneOf on INPUT_OBJECT\n")
+	}
 	sb.WriteString("\n")
 
 	// 2. Scalar declarations (only those actually used).
@@ -162,7 +181,28 @@ func buildSchema(f *protogen.File) string {
 		emitEnum(&sb, e) // emitEnum already adds trailing blank line
 	}
 
-	// 4. Domain output types: roleOutput AND roleInput (used in both contexts).
+	// 4. Union types (output oneofs): emitted before the types that use them.
+	hasUnions := false
+	for _, oi := range ois {
+		if oi.IsOutput {
+			hasUnions = true
+			// Emit member types for the union (wrapper types that will bind to pbgql wrappers).
+			for _, v := range oi.Variants {
+				emitUnionMemberType(&sb, v, oi)
+			}
+			// Emit the union declaration.
+			memberNames := make([]string, len(oi.Variants))
+			for i, v := range oi.Variants {
+				memberNames[i] = v.WrapperGoName
+			}
+			fmt.Fprintf(&sb, "union %s = %s\n", oi.UnionGQLName, strings.Join(memberNames, " | "))
+		}
+	}
+	if hasUnions {
+		sb.WriteString("\n")
+	}
+
+	// 5. Domain output types: roleOutput AND roleInput (used in both contexts).
 	// E.g., Author and Book — used as output AND as templates for BookInput/AuthorInput.
 	// Each may be single-line (Author) or multi-line (Book); add blank line after each.
 	for _, msg := range f.Messages {
@@ -174,16 +214,16 @@ func buildSchema(f *protogen.File) string {
 			continue
 		}
 		if mi.role.has(roleOutput) && mi.role.has(roleInput) && !mi.isRequest {
-			emitOutputType(&sb, msg)
+			emitOutputType(&sb, msg, oneofsByMsg)
 			sb.WriteString("\n") // blank line after each domain type
 		}
 	}
 
-	// 5. Input types: in service/method order (request messages) with nested types.
-	emitInputTypes(&sb, f, msgInfo)
+	// 6. Input types: in service/method order (request messages) with nested types.
+	emitInputTypes(&sb, f, msgInfo, oneofsByMsg)
 	sb.WriteString("\n") // blank line after input section
 
-	// 6. Pure output types: roleOutput only (response wrappers like GetBookResponse).
+	// 7. Pure output types: roleOutput only (response wrappers like GetBookResponse).
 	// Multiple single-line types appear consecutively without inter-item blank lines.
 	for _, msg := range f.Messages {
 		if msg.Desc.IsMapEntry() {
@@ -194,12 +234,12 @@ func buildSchema(f *protogen.File) string {
 			continue
 		}
 		if mi.role.has(roleOutput) && !mi.role.has(roleInput) {
-			emitOutputType(&sb, msg)
+			emitOutputType(&sb, msg, oneofsByMsg)
 		}
 	}
 	sb.WriteString("\n") // blank line after response types section
 
-	// 7. Operation roots.
+	// 8. Operation roots.
 	emitOperationRoots(&sb, f)
 
 	return sb.String()
@@ -308,16 +348,50 @@ func fieldGQLBaseType(field *protogen.Field) string {
 }
 
 // outputFields returns all renderable output fields for a message (nil for map-entry msgs).
-func outputFields(msg *protogen.Message) []string {
+// oneofsByMsg maps message GoName to its oneof infos so oneof fields can be replaced
+// by their union field with @goField(forceResolver: true).
+func outputFields(msg *protogen.Message, oneofsByMsg map[string][]oneofInfo) []string {
+	// Build a set of field names that belong to any non-synthetic oneof in this message.
+	oneofFieldNames := map[string]bool{}
+	// And build a map from oneof proto name → oneofInfo for union field emission.
+	oneofByProtoName := map[string]oneofInfo{}
+	for _, oi := range oneofsByMsg[msg.GoIdent.GoName] {
+		if oi.IsOutput {
+			for _, v := range oi.Variants {
+				oneofFieldNames[v.ProtoFieldName] = true
+			}
+			oneofByProtoName[oi.ProtoName] = oi
+		}
+	}
+
 	var lines []string
+	emittedOneofs := map[string]bool{}
+
 	for _, field := range msg.Fields {
+		protoName := string(field.Desc.Name())
+
+		// Check if this field is part of an output oneof.
+		if oneofFieldNames[protoName] {
+			// Find which oneof this field belongs to.
+			if field.Oneof != nil && !field.Oneof.Desc.IsSynthetic() {
+				ooProtoName := string(field.Oneof.Desc.Name())
+				if oi, ok := oneofByProtoName[ooProtoName]; ok && !emittedOneofs[ooProtoName] {
+					emittedOneofs[ooProtoName] = true
+					// Emit a single union field for the whole oneof (with force-resolver).
+					lines = append(lines, fmt.Sprintf("%s: %s @goField(forceResolver: true)",
+						oi.GQLFieldName, oi.UnionGQLName))
+				}
+			}
+			continue
+		}
+
 		var line string
 		if field.Desc.IsMap() {
 			gqlType := "JSON"
-			goFieldName := fieldName(string(field.Desc.Name()))
+			goFieldName := fieldName(protoName)
 			line = fmt.Sprintf("%s: %s @goField(forceResolver: true)", goFieldName, gqlType)
 		} else {
-			goFieldName := fieldName(string(field.Desc.Name()))
+			goFieldName := fieldName(protoName)
 			gqlType := fieldGQLType(field)
 			line = fmt.Sprintf("%s: %s", goFieldName, gqlType)
 		}
@@ -337,11 +411,11 @@ func emitEnum(sb *strings.Builder, e *protogen.Enum) {
 
 // emitOutputType emits a `type` declaration (NO trailing blank line — callers add section separators).
 // Single-field types use inline format; multi-field use multi-line.
-func emitOutputType(sb *strings.Builder, msg *protogen.Message) {
+func emitOutputType(sb *strings.Builder, msg *protogen.Message, oneofsByMsg map[string][]oneofInfo) {
 	if msg.Desc.IsMapEntry() {
 		return
 	}
-	fields := outputFields(msg)
+	fields := outputFields(msg, oneofsByMsg)
 	if len(fields) == 1 {
 		// Inline format.
 		fmt.Fprintf(sb, "type %s { %s }\n", msg.GoIdent.GoName, fields[0])
@@ -355,6 +429,38 @@ func emitOutputType(sb *strings.Builder, msg *protogen.Message) {
 		}
 		sb.WriteString("}\n")
 	}
+}
+
+// emitUnionMemberType emits a `type` declaration for a single union member wrapper.
+// For message variants, the wrapper has the same fields as the underlying pb message
+// (the Go struct embeds *pb.Msg, so gqlgen resolves all fields via embedding).
+// For scalar variants, the wrapper has a single `value` field.
+func emitUnionMemberType(sb *strings.Builder, v oneofVariant, oi oneofInfo) {
+	if !v.IsMessage {
+		// Scalar variant: a simple type with a single value field.
+		fmt.Fprintf(sb, "type %s { value: %s! }\n", v.WrapperGoName, v.GQLTypeName)
+		return
+	}
+	// Message variant: emit the same fields as the underlying message.
+	// The wrapper Go struct embeds *pb.Msg, so all fields resolve via embedding.
+	// We pass an empty oneofsByMsg here because the underlying message's fields
+	// don't themselves have union substitution needed at this emission point.
+	fields := outputFields(v.Msg, map[string][]oneofInfo{})
+	if len(fields) == 0 {
+		fmt.Fprintf(sb, "type %s { _: Boolean }\n", v.WrapperGoName)
+		return
+	}
+	if len(fields) == 1 {
+		fmt.Fprintf(sb, "type %s { %s }\n", v.WrapperGoName, fields[0])
+		return
+	}
+	fmt.Fprintf(sb, "type %s {\n", v.WrapperGoName)
+	for _, f := range fields {
+		sb.WriteString("  ")
+		sb.WriteString(f)
+		sb.WriteString("\n")
+	}
+	sb.WriteString("}\n")
 }
 
 // inputGQLType returns the GraphQL type string for an input field.
@@ -412,17 +518,48 @@ func inputGQLBaseType(field *protogen.Field, msgInfo map[string]*messageInfo) st
 }
 
 // inputFields returns the renderable input fields for a message (omitting maps).
-func inputFields(msg *protogen.Message, msgInfo map[string]*messageInfo) []string {
+// oneofsByMsg maps message GoName to its oneof infos so oneof fields are replaced
+// by the @oneOf input type reference.
+func inputFields(msg *protogen.Message, msgInfo map[string]*messageInfo, oneofsByMsg map[string][]oneofInfo) []string {
+	// Build a set of field names that belong to any non-synthetic oneof in this message.
+	oneofFieldNames := map[string]bool{}
+	oneofByProtoName := map[string]oneofInfo{}
+	for _, oi := range oneofsByMsg[msg.GoIdent.GoName] {
+		if oi.IsInput {
+			for _, v := range oi.Variants {
+				oneofFieldNames[v.ProtoFieldName] = true
+			}
+			oneofByProtoName[oi.ProtoName] = oi
+		}
+	}
+
 	var lines []string
+	emittedOneofs := map[string]bool{}
+
 	for _, field := range msg.Fields {
 		if field.Desc.IsMap() {
 			continue
 		}
+		protoName := string(field.Desc.Name())
+
+		// Check if this field belongs to an input oneof.
+		if oneofFieldNames[protoName] {
+			if field.Oneof != nil && !field.Oneof.Desc.IsSynthetic() {
+				ooProtoName := string(field.Oneof.Desc.Name())
+				if oi, ok := oneofByProtoName[ooProtoName]; ok && !emittedOneofs[ooProtoName] {
+					emittedOneofs[ooProtoName] = true
+					// Emit the @oneOf input reference (nullable — the whole oneof is optional).
+					lines = append(lines, fmt.Sprintf("%s: %s", oi.GQLFieldName, oi.InputGQLName))
+				}
+			}
+			continue
+		}
+
 		t := inputGQLType(field, msgInfo)
 		if t == "" {
 			continue
 		}
-		goFieldName := fieldName(string(field.Desc.Name()))
+		goFieldName := fieldName(protoName)
 		lines = append(lines, fmt.Sprintf("%s: %s", goFieldName, t))
 	}
 	return lines
@@ -431,7 +568,8 @@ func inputFields(msg *protogen.Message, msgInfo map[string]*messageInfo) []strin
 // emitInputTypes emits `input` blocks in the order prescribed by the spike:
 // For each service method (in file order):
 //   1. Emit the top-level request input (single-line if one field, multi-line otherwise).
-//   2. Then emit nested input types that were referenced from that request's fields
+//   2. Then emit @oneOf input types for any input oneofs in this request.
+//   3. Then emit nested input types that were referenced from that request's fields
 //      (depth-first, in field order).
 //
 // This matches the spike's ordering: GetBookRequest, AddBookRequest, BookInput,
@@ -439,7 +577,7 @@ func inputFields(msg *protogen.Message, msgInfo map[string]*messageInfo) []strin
 //
 // Note: the spike emits AddBookRequest BEFORE BookInput even though BookInput is
 // referenced by AddBookRequest. This is valid GraphQL (forward references are OK).
-func emitInputTypes(sb *strings.Builder, f *protogen.File, msgInfo map[string]*messageInfo) {
+func emitInputTypes(sb *strings.Builder, f *protogen.File, msgInfo map[string]*messageInfo, oneofsByMsg map[string][]oneofInfo) {
 	emitted := map[string]bool{}
 
 	for _, svc := range f.Services {
@@ -447,17 +585,28 @@ func emitInputTypes(sb *strings.Builder, f *protogen.File, msgInfo map[string]*m
 			reqName := m.Input.GoIdent.GoName
 			if !emitted[reqName] {
 				emitted[reqName] = true
-				emitInputBlock(sb, m.Input, reqName, msgInfo)
+				emitInputBlock(sb, m.Input, reqName, msgInfo, oneofsByMsg)
+			}
+			// Emit @oneOf input blocks for input oneofs in this request.
+			for _, oi := range oneofsByMsg[reqName] {
+				if !oi.IsInput {
+					continue
+				}
+				oneofKey := oi.InputGQLName
+				if !emitted[oneofKey] {
+					emitted[oneofKey] = true
+					emitOneofInputBlock(sb, oi)
+				}
 			}
 			// Emit nested input types reachable from this request (DFS).
-			emitNestedInputs(sb, m.Input, msgInfo, emitted)
+			emitNestedInputs(sb, m.Input, msgInfo, oneofsByMsg, emitted)
 		}
 	}
 }
 
 // emitNestedInputs emits nested input blocks reachable from msg (DFS).
 // Nested types are emitted AFTER their parent request (not before).
-func emitNestedInputs(sb *strings.Builder, msg *protogen.Message, msgInfo map[string]*messageInfo, emitted map[string]bool) {
+func emitNestedInputs(sb *strings.Builder, msg *protogen.Message, msgInfo map[string]*messageInfo, oneofsByMsg map[string][]oneofInfo, emitted map[string]bool) {
 	for _, field := range msg.Fields {
 		if field.Desc.IsMap() || field.Desc.Kind() != protoreflect.MessageKind {
 			continue
@@ -475,16 +624,16 @@ func emitNestedInputs(sb *strings.Builder, msg *protogen.Message, msgInfo map[st
 			continue
 		}
 		emitted[childName] = true
-		emitInputBlock(sb, field.Message, childName+"Input", msgInfo)
+		emitInputBlock(sb, field.Message, childName+"Input", msgInfo, oneofsByMsg)
 		// Recurse into nested types.
-		emitNestedInputs(sb, field.Message, msgInfo, emitted)
+		emitNestedInputs(sb, field.Message, msgInfo, oneofsByMsg, emitted)
 	}
 }
 
 // emitInputBlock emits a single `input` block.
 // Single-field inputs use inline format; multi-field use multi-line.
-func emitInputBlock(sb *strings.Builder, msg *protogen.Message, typeName string, msgInfo map[string]*messageInfo) {
-	fields := inputFields(msg, msgInfo)
+func emitInputBlock(sb *strings.Builder, msg *protogen.Message, typeName string, msgInfo map[string]*messageInfo, oneofsByMsg map[string][]oneofInfo) {
+	fields := inputFields(msg, msgInfo, oneofsByMsg)
 	if len(fields) == 0 {
 		fmt.Fprintf(sb, "input %s { }\n", typeName)
 		return
@@ -502,6 +651,21 @@ func emitInputBlock(sb *strings.Builder, msg *protogen.Message, typeName string,
 		}
 		sb.WriteString("}\n")
 	}
+}
+
+// emitOneofInputBlock emits an `input @oneOf` block for a proto oneof field.
+// The @oneOf input has one nullable field per oneof variant.
+func emitOneofInputBlock(sb *strings.Builder, oi oneofInfo) {
+	if len(oi.Variants) == 1 {
+		v := oi.Variants[0]
+		fmt.Fprintf(sb, "input %s @oneOf { %s: %s }\n", oi.InputGQLName, fieldName(v.ProtoFieldName), v.GQLTypeName)
+		return
+	}
+	fmt.Fprintf(sb, "input %s @oneOf {\n", oi.InputGQLName)
+	for _, v := range oi.Variants {
+		fmt.Fprintf(sb, "  %s: %s\n", fieldName(v.ProtoFieldName), v.GQLTypeName)
+	}
+	sb.WriteString("}\n")
 }
 
 // operationType determines whether a method maps to Query, Mutation, or Subscription.
