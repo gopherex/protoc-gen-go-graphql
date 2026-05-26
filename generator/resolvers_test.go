@@ -9,12 +9,13 @@ func TestBuildResolvers_Golden(t *testing.T) {
 	goldenFile := loadGoldenProtoFile(t)
 
 	// These match the values generator.go derives from golden.proto's go_package.
+	pkgName := "gqlapi"
 	pbImport := "github.com/gopherex/protoc-gen-go-graphql/example/gen"
 	pbgqlImport := "github.com/gopherex/protoc-gen-go-graphql/example/gen/gqlapi/pbgql"
 	execImport := "github.com/gopherex/protoc-gen-go-graphql/example/gen/gqlapi/exec"
 	runtimeImport := "github.com/gopherex/protoc-gen-go-graphql/runtime"
 
-	got := normalizeSchema(buildResolvers(goldenFile, pbImport, pbgqlImport, execImport, runtimeImport))
+	got := normalizeSchema(buildResolvers(goldenFile, pkgName, pbImport, pbgqlImport, execImport, runtimeImport))
 	if testdataUpdateMode() {
 		writeTestdata(t, "golden.resolver.go.txt", got)
 		return

@@ -2,14 +2,14 @@
 package gqlapi
 
 import (
-	"encoding/json"
 	"context"
+	"encoding/json"
 
 	pb "github.com/gopherex/protoc-gen-go-graphql/example/gen"
-	"github.com/gopherex/protoc-gen-go-graphql/example/gen/gqlapi/pbgql"
-	"google.golang.org/protobuf/encoding/protojson"
-	"github.com/gopherex/protoc-gen-go-graphql/runtime"
 	"github.com/gopherex/protoc-gen-go-graphql/example/gen/gqlapi/exec"
+	"github.com/gopherex/protoc-gen-go-graphql/example/gen/gqlapi/pbgql"
+	"github.com/gopherex/protoc-gen-go-graphql/runtime"
+	"google.golang.org/protobuf/encoding/protojson"
 )
 
 // Resolver delegates GraphQL operations to the gRPC server implementation.

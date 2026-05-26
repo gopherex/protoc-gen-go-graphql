@@ -17,6 +17,7 @@ func New(p *protogen.Plugin, s *Settings) *Generator {
 }
 
 func (g *Generator) Generate() error {
+	g.Settings.applyDefaults()
 	for _, f := range g.Plugin.Files {
 		if !f.Generate {
 			continue
@@ -52,17 +53,14 @@ func (g *Generator) generateFile(f *protogen.File) error {
 		pbImport = pbImport[:idx]
 	}
 
+	// OutDir is the configurable sub-package name (default: "gqlapi").
+	outDir := g.Settings.OutDir
+
 	// gqlapi lives as a sub-package next to the pb package dir.
-	gqlapiImport := pbImport + "/gqlapi"
+	gqlapiImport := pbImport + "/" + outDir
 	pbgqlImport := gqlapiImport + "/pbgql"
 	execImport := gqlapiImport + "/exec"
 	runtimeImport := "github.com/gopherex/protoc-gen-go-graphql/runtime"
-
-	// Derive the module path (everything before the first path component that
-	// corresponds to this module — we extract it from the pb import path).
-	// For "github.com/gopherex/protoc-gen-go-graphql/example/gen" the module is
-	// "github.com/gopherex/protoc-gen-go-graphql".
-	modulePath := deriveModulePath(pbImport)
 
 	// Base output directory for gqlapi files: source_relative means the proto
 	// file's directory is used. The plugin writes files relative to the output root.
@@ -72,7 +70,7 @@ func (g *Generator) generateFile(f *protogen.File) error {
 	if protoDir == "." {
 		protoDir = ""
 	}
-	gqlapiDir := joinPath(protoDir, "gqlapi")
+	gqlapiDir := joinPath(protoDir, outDir)
 
 	// 1. schema.graphql (non-Go, write raw).
 	schemaContent := buildSchema(f)
@@ -85,7 +83,7 @@ func (g *Generator) generateFile(f *protogen.File) error {
 	ymlFile.P(ymlContent)
 
 	// 3. generate.go (Go source — //go:generate directive).
-	genContent := buildGoGenerate(modulePath)
+	genContent := buildGoGenerate(g.Settings.RunnerPkg, outDir)
 	genFile := g.Plugin.NewGeneratedFile(gqlapiDir+"/generate.go", protogen.GoImportPath(gqlapiImport))
 	genFile.P(genContent)
 
@@ -138,41 +136,11 @@ func (g *Generator) generateFile(f *protogen.File) error {
 	}
 
 	// 5. resolver.go.
-	resolverContent := buildResolvers(f, pbImport, pbgqlImport, execImport, runtimeImport)
+	resolverContent := buildResolvers(f, outDir, pbImport, pbgqlImport, execImport, runtimeImport)
 	resolverFile := g.Plugin.NewGeneratedFile(gqlapiDir+"/resolver.go", protogen.GoImportPath(gqlapiImport))
 	resolverFile.P(resolverContent)
 
 	return nil
-}
-
-// deriveModulePath extracts the module root path from a pb import path by reading
-// the go.mod file from the Plugin's file set. We use a simple heuristic: scan
-// forward through path components and stop at the first "conventional" non-module
-// component ("example", "gen", "internal", "cmd", "pkg", "api").
-// For "github.com/gopherex/protoc-gen-go-graphql/example/gen" → "github.com/gopherex/protoc-gen-go-graphql".
-func deriveModulePath(pbImport string) string {
-	// Remove any build-tag suffix.
-	if idx := strings.Index(pbImport, ";"); idx >= 0 {
-		pbImport = pbImport[:idx]
-	}
-	parts := strings.Split(pbImport, "/")
-	// The module path is everything before the first non-domain "conventional" component.
-	// We consider any of these as non-module-path components:
-	conventional := map[string]bool{
-		"example": true, "gen": true, "internal": true, "cmd": true,
-		"pkg": true, "api": true, "gqlapi": true, "pbgql": true,
-	}
-	// First 3 components are typically host/org/repo (e.g. github.com/gopherex/protoc-gen-go-graphql).
-	for i := 3; i < len(parts); i++ {
-		if conventional[parts[i]] {
-			return strings.Join(parts[:i], "/")
-		}
-	}
-	// Fallback: strip last two components.
-	if len(parts) >= 2 {
-		return strings.Join(parts[:len(parts)-2], "/")
-	}
-	return pbImport
 }
 
 // joinPath joins path components, handling empty leading components.
