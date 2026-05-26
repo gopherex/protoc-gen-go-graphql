@@ -15,7 +15,6 @@ import (
 	"io/fs"
 	"os"
 	"os/exec"
-	"path"
 	"path/filepath"
 	"strings"
 
@@ -32,7 +31,6 @@ import (
 // when Settings.SinglePass == true.
 //
 // Parameters mirror what generateFile has already computed:
-//   - f:            the proto file being generated
 //   - gqlapiDir:    output path prefix for gqlapi files (relative to protoc output root)
 //   - pbImport:     Go import path of the pb package
 //   - pbgqlImport:  Go import path of the pbgql sub-package
@@ -43,7 +41,6 @@ import (
 //
 // It emits exec/exec.go and models_gen.go (relative to gqlapiDir) via the plugin.
 func (g *Generator) runSinglePass(
-	f *protogen.File,
 	gqlapiDir string,
 	pbImport string,
 	pbgqlImport string,
@@ -347,9 +344,4 @@ func copyDir(srcDir, dstDir string) error {
 		}
 		return copyFile(srcPath, dstPath)
 	})
-}
-
-// pbgqlFilename returns the output filename for a pbgql file (just the basename).
-func pbgqlFilename(name string) string {
-	return path.Base(name)
 }

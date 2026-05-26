@@ -161,7 +161,6 @@ func (g *Generator) generateFile(f *protogen.File) error {
 	// 6. Single-pass: run gqlgen inside the plugin and emit exec + models_gen.
 	if g.Settings.SinglePass {
 		if err := g.runSinglePass(
-			f,
 			gqlapiDir,
 			pbImport,
 			pbgqlImport,
