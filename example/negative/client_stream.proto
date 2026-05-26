@@ -1,0 +1,7 @@
+// client_stream.proto
+syntax = "proto3";
+package negative.v1;
+option go_package = "github.com/gopherex/protoc-gen-go-graphql/example/negative/gen;gen";
+service Upload { rpc Send(stream Chunk) returns (Ack); }
+message Chunk { bytes data = 1; }
+message Ack { bool ok = 1; }
