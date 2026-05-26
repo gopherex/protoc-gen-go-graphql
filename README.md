@@ -70,6 +70,18 @@ elsewhere:
 make gen-test WKT_INC=/usr/local/include
 ```
 
+### Plugin flags
+
+Pass plugin flags via `--go-graphql_opt=<flag>=<value>`:
+
+| Flag | Default | Description |
+|---|---|---|
+| `paths` | _(empty)_ | Set to `source_relative` for source-relative output paths. |
+| `out_dir` | `gqlapi` | Subpackage directory name and Go package name for generated GraphQL code. |
+| `runner` | `github.com/gopherex/protoc-gen-go-graphql/cmd/gqlgenrun` | Import path of the `go:generate` runner (override for forks or vendoring). |
+
+See `docs/mapping.md` for details.
+
 ### Phase B — gqlgen
 
 After the protoc run, run `go generate` to let gqlgen load the now-on-disk pb

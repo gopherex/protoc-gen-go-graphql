@@ -15,7 +15,7 @@ layout.
 | message (request) | `input` type | same `*pb.Msg` Go type reused; request and response bind to the same struct |
 | enum | `enum` (member names = proto value names) | e.g. `FICTION`, `GENRE_UNSPECIFIED`; marshal/unmarshal adapters in `pbgql` |
 | unary rpc, `NO_SIDE_EFFECTS` | `Query` field | default from builtin `idempotency_level` |
-| unary rpc, `IDEMPOTENT` or `IDEMPOTENCY_UNKNOWN` | `Mutation` field | default; overridable via `graphqlopt.MethodOptions.operation` |
+| unary rpc, `IDEMPOTENT` or `IDEMPOTENCY_UNKNOWN` | `Mutation` field | derived from builtin `idempotency_level` |
 | server-streaming rpc | `Subscription` field | resolver returns `<-chan *pb.T`; runtime pumps the gRPC stream |
 | **bidi-streaming rpc** | **hard generation error** | not supported; see §Supported/Unsupported |
 | **client-streaming rpc** | **hard generation error** | not supported; see §Supported/Unsupported |
@@ -31,9 +31,8 @@ layout.
 | gRPC `status` error | GraphQL error | `extensions.code` = SCREAMING_SNAKE_CASE code name (e.g. `NOT_FOUND`); message = status message; `extensions.details` = stringified details if present |
 
 Operation type (`Query` vs `Mutation`) is derived from the builtin
-`google.protobuf.MethodOptions.idempotency_level`; the
-`graphqlopt.MethodOptions.operation` option only overrides that default. No
-custom option re-implements the default rule.
+`google.protobuf.MethodOptions.idempotency_level`. No custom proto option is
+needed — the default rule fully covers all practical cases.
 
 ### Custom scalars are protojson-aligned
 
@@ -86,6 +85,26 @@ reads the now-on-disk pb package, autobinds types, and emits:
 `cmd/gqlgenrun` must live in its own subdirectory (not inside `gqlapi/`). gqlgen's
 package loader reads every file in the resolver directory; a `package main` there
 conflicts with the resolver package name even with `//go:build ignore`.
+
+---
+
+## Plugin flags
+
+Pass flags to the plugin via `--go-graphql_opt=<flag>=<value>` in the protoc
+invocation (multiple flags use multiple `--go-graphql_opt=` arguments).
+
+| Flag | Default | Description |
+|---|---|---|
+| `paths` | _(empty)_ | Path mode; set to `source_relative` for source-relative output paths |
+| `out_dir` | `gqlapi` | Subpackage directory name and Go package name for generated GraphQL code. Override to rename the `gqlapi/` subdirectory and package. |
+| `runner` | `github.com/gopherex/protoc-gen-go-graphql/cmd/gqlgenrun` | Import path of the `go:generate` runner binary. Override for forks or vendored copies. |
+
+Example — rename the output package to `graphql`:
+
+```sh
+--go-graphql_opt=paths=source_relative \
+--go-graphql_opt=out_dir=graphql
+```
 
 ---
 
