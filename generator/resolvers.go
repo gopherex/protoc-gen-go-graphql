@@ -176,40 +176,4 @@ func buildResolvers(f *protogen.File, pbImport, execImport, runtimeImport string
 	return sb.String()
 }
 
-// resolverSubTypes returns a list of (typeName, resolverStructName) for types
-// that need field resolver sub-interfaces (i.e., output message types with map fields).
-func resolverSubTypes(f *protogen.File) [][2]string {
-	var result [][2]string
-	for _, msg := range f.Messages {
-		if msg.Desc.IsMapEntry() {
-			continue
-		}
-		for _, field := range msg.Fields {
-			if field.Desc.IsMap() {
-				typeName := msg.GoIdent.GoName
-				result = append(result, [2]string{
-					typeName,
-					strings.ToLower(typeName[:1]) + typeName[1:] + "Resolver",
-				})
-				break
-			}
-		}
-	}
-	return result
-}
-
-// isStreamingOutput returns true if this is a server-streaming method whose
-// output is the direct stream message type (not a wrapper).
-func isStreamingOutput(m *protogen.Method) bool {
-	return m.Desc.IsStreamingServer()
-}
-
-// streamMsgType returns the streaming message GoName for a server-streaming method.
-// For golden: WatchBooks returns (stream Book), so Output.GoIdent.GoName = "Book".
-func streamMsgType(m *protogen.Method) string {
-	if !isStreamingOutput(m) {
-		return ""
-	}
-	return m.Output.GoIdent.GoName
-}
 

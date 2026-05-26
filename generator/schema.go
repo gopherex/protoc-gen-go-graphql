@@ -349,7 +349,9 @@ func emitOutputType(sb *strings.Builder, msg *protogen.Message) {
 		// Multi-line format.
 		fmt.Fprintf(sb, "type %s {\n", msg.GoIdent.GoName)
 		for _, f := range fields {
-			sb.WriteString("  " + f + "\n")
+			sb.WriteString("  ")
+			sb.WriteString(f)
+			sb.WriteString("\n")
 		}
 		sb.WriteString("}\n")
 	}
@@ -407,19 +409,6 @@ func inputGQLBaseType(field *protogen.Field, msgInfo map[string]*messageInfo) st
 	default:
 		return scalarForKind(field.Desc.Kind())
 	}
-}
-
-// collectInputMessages returns the set of message GoNames that are reachable
-// from RPC request messages as NESTED message types (not top-level requests).
-func collectInputMessages(f *protogen.File) map[string]bool {
-	msgInfo := analyzeMessages(f)
-	result := map[string]bool{}
-	for name, mi := range msgInfo {
-		if mi.role.has(roleInput) && !mi.isRequest {
-			result[name] = true
-		}
-	}
-	return result
 }
 
 // inputFields returns the renderable input fields for a message (omitting maps).
@@ -507,7 +496,9 @@ func emitInputBlock(sb *strings.Builder, msg *protogen.Message, typeName string,
 		// Multi-line format.
 		fmt.Fprintf(sb, "input %s {\n", typeName)
 		for _, f := range fields {
-			sb.WriteString("  " + f + "\n")
+			sb.WriteString("  ")
+			sb.WriteString(f)
+			sb.WriteString("\n")
 		}
 		sb.WriteString("}\n")
 	}
@@ -574,7 +565,9 @@ func emitOpRoot(sb *strings.Builder, name string, fields []string) {
 	} else {
 		fmt.Fprintf(sb, "type %s {\n", name)
 		for _, f := range fields {
-			sb.WriteString("  " + f + "\n")
+			sb.WriteString("  ")
+			sb.WriteString(f)
+			sb.WriteString("\n")
 		}
 		sb.WriteString("}\n")
 	}

@@ -93,37 +93,3 @@ func buildGqlgenYml(f *protogen.File, pbImport, pbgqlImport string) string {
 	return sb.String()
 }
 
-// isRequestMessage returns true if the message is used as an RPC input.
-func isRequestMessage(f *protogen.File, msg *protogen.Message) bool {
-	for _, svc := range f.Services {
-		for _, m := range svc.Methods {
-			if m.Input.GoIdent == msg.GoIdent {
-				return true
-			}
-		}
-	}
-	return false
-}
-
-// collectAllMessages collects all non-map-entry messages from f recursively.
-func collectAllMessages(f *protogen.File) []*protogen.Message {
-	var all []*protogen.Message
-	var walk func(msgs []*protogen.Message)
-	walk = func(msgs []*protogen.Message) {
-		for _, m := range msgs {
-			if m.Desc.IsMapEntry() {
-				continue
-			}
-			all = append(all, m)
-			walk(m.Messages)
-		}
-	}
-	walk(f.Messages)
-	return all
-}
-
-// isNestedMessage returns true if msg is nested (defined inside another message).
-func isNestedMessage(msg *protogen.Message) bool {
-	_, ok := msg.Desc.Parent().(interface{ IsMapEntry() bool })
-	return ok
-}
