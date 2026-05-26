@@ -10,6 +10,7 @@ import (
 	"github.com/99designs/gqlgen/graphql"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/types/known/durationpb"
+	"google.golang.org/protobuf/types/known/fieldmaskpb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
@@ -127,7 +128,34 @@ func UnmarshalDuration(v any) (*durationpb.Duration, error) {
 	return d, nil
 }
 
-// JSON: maps, Struct, Value, Any, ListValue. Stored as Go map/any per protojson.
+// FieldMask: protojson renders as a comma-separated string of paths.
+func MarshalFieldMask(v *fieldmaskpb.FieldMask) graphql.Marshaler {
+	return graphql.WriterFunc(func(w io.Writer) {
+		if v == nil {
+			_, _ = io.WriteString(w, "null")
+			return
+		}
+		b, err := protojson.Marshal(v)
+		if err != nil {
+			panic(err)
+		}
+		_, _ = w.Write(b)
+	})
+}
+
+func UnmarshalFieldMask(v any) (*fieldmaskpb.FieldMask, error) {
+	s, ok := v.(string)
+	if !ok {
+		return nil, fmt.Errorf("FieldMask must be a string, got %T", v)
+	}
+	fm := &fieldmaskpb.FieldMask{}
+	if err := protojson.Unmarshal([]byte(strconv.Quote(s)), fm); err != nil {
+		return nil, err
+	}
+	return fm, nil
+}
+
+// JSON: maps, Struct, Value, Any, ListValue, Empty. Stored as Go map/any per protojson.
 func MarshalJSON(v any) graphql.Marshaler {
 	return graphql.WriterFunc(func(w io.Writer) {
 		b, err := json.Marshal(v)
