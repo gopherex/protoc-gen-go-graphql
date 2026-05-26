@@ -4,18 +4,41 @@ package golden.v1;
 
 option go_package = "github.com/gopherex/protoc-gen-go-graphql/example/gen;gen";
 
+import "google/protobuf/any.proto";
+import "google/protobuf/duration.proto";
+import "google/protobuf/empty.proto";
+import "google/protobuf/field_mask.proto";
+import "google/protobuf/struct.proto";
 import "google/protobuf/timestamp.proto";
+import "google/protobuf/wrappers.proto";
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Service
+// ──────────────────────────────────────────────────────────────────────────────
 
 service Library {
-  rpc GetBook(GetBookRequest) returns (GetBookResponse) {
-    option idempotency_level = NO_SIDE_EFFECTS; // -> Query
+  // Queries (NO_SIDE_EFFECTS → Query root).
+  rpc GetEverything(GetEverythingRequest) returns (GetEverythingResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
   }
-  rpc AddBook(AddBookRequest) returns (AddBookResponse); // default -> Mutation
-  rpc WatchBooks(WatchBooksRequest) returns (stream Book); // -> Subscription
+  rpc GetScalars(GetScalarsRequest) returns (GetScalarsResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
   rpc SearchBooks(SearchRequest) returns (SearchResponse) {
-    option idempotency_level = NO_SIDE_EFFECTS; // -> Query
+    option idempotency_level = NO_SIDE_EFFECTS;
   }
+
+  // Mutations (default → Mutation root).
+  rpc EchoInput(EchoRequest) returns (EchoResponse);
+  rpc AddBook(AddBookRequest) returns (AddBookResponse);
+
+  // Subscription (server-streaming → Subscription root).
+  rpc WatchItems(WatchRequest) returns (stream WatchEvent);
 }
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Enums
+// ──────────────────────────────────────────────────────────────────────────────
 
 enum Genre {
   GENRE_UNSPECIFIED = 0;
@@ -23,29 +46,150 @@ enum Genre {
   NONFICTION = 2;
 }
 
-message Author {
-  string name = 1;
+// Enum with allow_alias: two names for the same numeric value.
+enum Status {
+  option allow_alias = true;
+  STATUS_UNSPECIFIED = 0;
+  STATUS_ACTIVE = 1;
+  STATUS_RUNNING = 1; // alias of ACTIVE
+  STATUS_INACTIVE = 2;
 }
 
+// ──────────────────────────────────────────────────────────────────────────────
+// Scalar-heavy messages (used as output types)
+// ──────────────────────────────────────────────────────────────────────────────
+
+// All singular proto3 scalar types.
+message ScalarTypes {
+  double   field_double   = 1;
+  float    field_float    = 2;
+  int32    field_int32    = 3;
+  int64    field_int64    = 4;
+  uint32   field_uint32   = 5;
+  uint64   field_uint64   = 6;
+  sint32   field_sint32   = 7;
+  sint64   field_sint64   = 8;
+  fixed32  field_fixed32  = 9;
+  fixed64  field_fixed64  = 10;
+  sfixed32 field_sfixed32 = 11;
+  sfixed64 field_sfixed64 = 12;
+  bool     field_bool     = 13;
+  string   field_string   = 14;
+  bytes    field_bytes    = 15;
+}
+
+// Optional (proto3 explicit presence) scalars.
+message OptionalScalars {
+  optional double   field_double   = 1;
+  optional float    field_float    = 2;
+  optional int32    field_int32    = 3;
+  optional int64    field_int64    = 4;
+  optional uint32   field_uint32   = 5;
+  optional uint64   field_uint64   = 6;
+  optional bool     field_bool     = 7;
+  optional string   field_string   = 8;
+  optional bytes    field_bytes    = 9;
+}
+
+// Repeated scalars.
+message RepeatedScalars {
+  repeated double   field_double   = 1;
+  repeated float    field_float    = 2;
+  repeated int32    field_int32    = 3;
+  repeated int64    field_int64    = 4;
+  repeated uint64   field_uint64   = 5;
+  repeated bool     field_bool     = 6;
+  repeated string   field_string   = 7;
+  repeated bytes    field_bytes    = 8;
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Nested messages (used as output types)
+// ──────────────────────────────────────────────────────────────────────────────
+
+// Deep nesting: Outer.Inner.DeepInner.
+message Outer {
+  message Inner {
+    message DeepInner {
+      string value = 1;
+    }
+    string label = 1;
+    DeepInner deep = 2;
+  }
+  Inner inner = 1;
+  string tag = 2;
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Well-known types (output only)
+// ──────────────────────────────────────────────────────────────────────────────
+
+message WKTMessage {
+  google.protobuf.Timestamp  timestamp  = 1;
+  google.protobuf.Duration   duration   = 2;
+  google.protobuf.Any        any        = 3;
+  google.protobuf.Empty      empty      = 4;
+  google.protobuf.FieldMask  field_mask = 5;
+  google.protobuf.Struct     struct     = 6;
+  google.protobuf.Value      value      = 7;
+  google.protobuf.ListValue  list_value = 8;
+
+  // Wrapper types (nullable scalars).
+  google.protobuf.DoubleValue double_wrapper = 9;
+  google.protobuf.FloatValue  float_wrapper  = 10;
+  google.protobuf.Int32Value  int32_wrapper  = 11;
+  google.protobuf.Int64Value  int64_wrapper  = 12;
+  google.protobuf.UInt32Value uint32_wrapper = 13;
+  google.protobuf.UInt64Value uint64_wrapper = 14;
+  google.protobuf.BoolValue   bool_wrapper   = 15;
+  google.protobuf.StringValue string_wrapper = 16;
+  google.protobuf.BytesValue  bytes_wrapper  = 17;
+
+  repeated google.protobuf.Timestamp repeated_timestamps = 18;
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Map fields (output only — maps become JSON scalars)
+// ──────────────────────────────────────────────────────────────────────────────
+
+message MapMessage {
+  map<string, string>  string_map  = 1;
+  map<string, int64>   int64_map   = 2;
+  map<string, bool>    bool_map    = 3;
+  map<int32, string>   int32_key   = 4;
+  map<string, Genre>   enum_map    = 5;
+  map<string, ScalarTypes> msg_map = 6;
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Oneof (output union + input @oneOf)
+// ──────────────────────────────────────────────────────────────────────────────
+
+// Book: used as both output type and input (via BookInput).
 message Book {
-  string id = 1;
+  string id    = 1;
   string title = 2;
-  Genre genre = 3;
-  int64 copies = 4;                          // -> String scalar
-  bytes cover = 5;                           // -> base64 String
-  google.protobuf.Timestamp published_at = 6;// -> Timestamp scalar
-  map<string, string> tags = 7;              // -> JSON scalar
-  Author author = 8;                         // nested message
+  Genre  genre = 3;
+  int64  copies = 4;
+  bytes  cover = 5;
+  google.protobuf.Timestamp published_at = 6;
+  map<string, string> tags = 7;
+  Author author = 8;
 }
 
-message GetBookRequest { string id = 1; }
-message GetBookResponse { Book book = 1; }
-message AddBookRequest { Book book = 1; }
-message AddBookResponse { Book book = 1; }
-message WatchBooksRequest { Genre genre = 1; }
+message Author { string name = 1; }
 
-// SearchRequest demonstrates input oneof: the caller provides exactly one of
-// text (full-text search) or author (author name search).
+message NotFound { string reason = 1; }
+
+// SearchResponse: output oneof → GraphQL union.
+message SearchResponse {
+  oneof result {
+    Book     book      = 1;
+    NotFound not_found = 2;
+  }
+}
+
+// SearchRequest: input oneof → @oneOf input type.
 message SearchRequest {
   oneof query {
     string text   = 1;
@@ -53,14 +197,95 @@ message SearchRequest {
   }
 }
 
-// NotFound is returned when no book matches the search.
-message NotFound { string reason = 1; }
-
-// SearchResponse demonstrates output oneof → GraphQL union.
-// The result is either a Book match or a NotFound explanation.
-message SearchResponse {
-  oneof result {
-    Book     book      = 1;
-    NotFound not_found = 2;
+// Container with MULTIPLE oneofs and a regular field.
+message MultiOneof {
+  // First oneof: scalar + message member.
+  oneof choice {
+    string  choice_string  = 1;
+    int64   choice_int64   = 2;
+    Book    choice_book    = 3;
   }
+  // Second oneof: scalars only.
+  oneof status {
+    bool   status_ok    = 4;
+    string status_error = 5;
+  }
+  string outside = 6;
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Recursive messages (output only)
+// ──────────────────────────────────────────────────────────────────────────────
+
+// Self-referential tree node.
+message TreeNode {
+  string id = 1;
+  TreeNode parent = 2;
+  repeated TreeNode children = 3;
+}
+
+// Mutually recursive.
+message MutualA { MutualB b = 1; }
+message MutualB { MutualA a = 1; }
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Everything: the mega output message
+// ──────────────────────────────────────────────────────────────────────────────
+
+message Everything {
+  ScalarTypes    scalars    = 1;
+  OptionalScalars optionals = 2;
+  RepeatedScalars repeateds  = 3;
+  WKTMessage     wkt        = 4;
+  MapMessage     maps       = 5;
+  MultiOneof     multi      = 6;
+  TreeNode       tree       = 7;
+  MutualA        mutual     = 8;
+  Outer          outer      = 9;
+
+  repeated Everything recursive = 10;
+
+  oneof terminal {
+    bool   done  = 11;
+    string error = 12;
+  }
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Request / Response messages
+// ──────────────────────────────────────────────────────────────────────────────
+
+message GetEverythingRequest { string id = 1; }
+message GetEverythingResponse { Everything everything = 1; }
+
+// GetScalarsRequest: exercises optional + repeated on input side.
+message GetScalarsRequest {
+  string         id           = 1;
+  optional int64 limit        = 2;
+  repeated string tags        = 3;
+  Genre          genre        = 4;
+}
+message GetScalarsResponse {
+  ScalarTypes    scalars   = 1;
+  OptionalScalars optionals = 2;
+  RepeatedScalars repeateds = 3;
+}
+
+// EchoRequest: exercises nested input + enum + optional.
+message EchoRequest {
+  Book           book   = 1;
+  Genre          genre  = 2;
+  optional string note  = 3;
+}
+message EchoResponse { Book book = 1; }
+
+// AddBookRequest / AddBookResponse.
+message AddBookRequest { Book book = 1; }
+message AddBookResponse { Book book = 1; }
+
+// WatchRequest / WatchEvent.
+message WatchRequest { Genre genre = 1; }
+message WatchEvent {
+  Book book = 1;
+  google.protobuf.Timestamp at = 2;
 }
