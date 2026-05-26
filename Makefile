@@ -13,7 +13,7 @@ EXAMPLE_OUT_DIR := $(EXAMPLE_DIR)/gen
 # Override if your protoc bundles them elsewhere: make WKT_INC=/usr/local/include ...
 WKT_INC ?= /usr/include
 
-.PHONY: help build gen-test test tidy release
+.PHONY: help build gen-test test tidy release integration-test
 
 help:
 	@echo "make build        - build bin/protoc-gen-go-graphql (+ protoc-gen-go, protoc-gen-go-grpc)"
@@ -51,6 +51,9 @@ test:
 	if [ -n "$$out" ]; then echo "gofmt needed:"; echo "$$out"; exit 1; fi
 	go vet ./generator/ ./graphqlpb/
 	go test ./generator/ ./graphqlpb/ ./example/...
+
+integration-test: gen-test
+	go test ./tests/...
 
 tidy:
 	go mod tidy
