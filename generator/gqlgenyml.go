@@ -38,9 +38,23 @@ func buildGqlgenYml(f *protogen.File, pbImport, pbgqlImport string) string {
 	// Scalar bindings (only for scalars actually used).
 	usedScalars := collectUsedScalars(f)
 	runtimePkg := "github.com/gopherex/protoc-gen-go-graphql/runtime"
+	// These scalars live in the runtime package.
 	for _, sc := range []string{"Int64", "Uint64", "Bytes", "Timestamp", "Duration", "JSON"} {
 		if usedScalars[sc] {
 			fmt.Fprintf(&sb, "  %s:     { model: %s.%s }\n", sc, runtimePkg, sc)
+		}
+	}
+	// FieldMask scalar lives in runtime (protojson adapter).
+	if usedScalars["FieldMask"] {
+		fmt.Fprintf(&sb, "  FieldMask:     { model: %s.FieldMask }\n", runtimePkg)
+	}
+	// Wrapper type scalars: per-wrapper adapters live in pbgql.
+	for _, sc := range []string{
+		"DoubleValue", "FloatValue", "Int32Value", "UInt32Value",
+		"Int64Value", "UInt64Value", "BoolValue", "StringValue", "BytesValue",
+	} {
+		if usedScalars[sc] {
+			fmt.Fprintf(&sb, "  %s:     { model: %s.%s }\n", sc, pbgqlImport, sc)
 		}
 	}
 
@@ -79,11 +93,8 @@ func buildGqlgenYml(f *protogen.File, pbImport, pbgqlImport string) string {
 	// And for @oneOf input types:
 	//   <OneofInputName>: { model: pbgqlImport.<OneofInputName> }
 
-	// Collect all file-level messages (not map entries).
-	for _, msg := range f.Messages {
-		if msg.Desc.IsMapEntry() {
-			continue
-		}
+	// Collect all messages (including nested — they become flat Go types).
+	for _, msg := range allMessages(f) {
 		name := msg.GoIdent.GoName
 		mi := msgInfo[name]
 		if mi == nil {

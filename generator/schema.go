@@ -17,6 +17,18 @@ var wellKnownGQLType = map[string]string{
 	"google.protobuf.Value":     "JSON",
 	"google.protobuf.ListValue": "JSON",
 	"google.protobuf.Any":       "JSON",
+	"google.protobuf.Empty":     "JSON",
+	"google.protobuf.FieldMask": "FieldMask",
+	// Wrapper types → per-wrapper nullable scalar (protojson: bare inner value or null).
+	"google.protobuf.DoubleValue": "DoubleValue",
+	"google.protobuf.FloatValue":  "FloatValue",
+	"google.protobuf.Int32Value":  "Int32Value",
+	"google.protobuf.UInt32Value": "UInt32Value",
+	"google.protobuf.Int64Value":  "Int64Value",
+	"google.protobuf.UInt64Value": "UInt64Value",
+	"google.protobuf.BoolValue":   "BoolValue",
+	"google.protobuf.StringValue": "StringValue",
+	"google.protobuf.BytesValue":  "BytesValue",
 }
 
 // messageRole describes how a message is used.
@@ -128,6 +140,39 @@ func analyzeMessages(f *protogen.File) map[string]*messageInfo {
 	return info
 }
 
+// allMessages returns a flat slice of all non-map-entry messages in the file,
+// including nested messages, in DFS order (parent before children).
+func allMessages(f *protogen.File) []*protogen.Message {
+	var result []*protogen.Message
+	var walk func([]*protogen.Message)
+	walk = func(msgs []*protogen.Message) {
+		for _, m := range msgs {
+			if m.Desc.IsMapEntry() {
+				continue
+			}
+			result = append(result, m)
+			walk(m.Messages)
+		}
+	}
+	walk(f.Messages)
+	return result
+}
+
+// allEnums returns all enums in the file, including those nested inside messages.
+func allEnums(f *protogen.File) []*protogen.Enum {
+	var result []*protogen.Enum
+	result = append(result, f.Enums...)
+	var walkMsgs func([]*protogen.Message)
+	walkMsgs = func(msgs []*protogen.Message) {
+		for _, m := range msgs {
+			result = append(result, m.Enums...)
+			walkMsgs(m.Messages)
+		}
+	}
+	walkMsgs(f.Messages)
+	return result
+}
+
 // buildSchema walks f's descriptors and returns a GraphQL SDL string.
 // The output matches spike/schema.graphql for the golden proto:
 //  1. @goField and @oneOf directive declarations
@@ -167,7 +212,11 @@ func buildSchema(f *protogen.File) string {
 
 	// 2. Scalar declarations (only those actually used).
 	usedScalars := collectUsedScalars(f)
-	for _, sc := range []string{"Int64", "Uint64", "Bytes", "Timestamp", "Duration", "JSON"} {
+	for _, sc := range []string{
+		"Int64", "Uint64", "Bytes", "Timestamp", "Duration", "JSON", "FieldMask",
+		"DoubleValue", "FloatValue", "Int32Value", "UInt32Value",
+		"Int64Value", "UInt64Value", "BoolValue", "StringValue", "BytesValue",
+	} {
 		if usedScalars[sc] {
 			fmt.Fprintf(&sb, "scalar %s\n", sc)
 		}
@@ -176,8 +225,8 @@ func buildSchema(f *protogen.File) string {
 		sb.WriteString("\n")
 	}
 
-	// 3. Enum types.
-	for _, e := range f.Enums {
+	// 3. Enum types (including nested enums).
+	for _, e := range allEnums(f) {
 		emitEnum(&sb, e) // emitEnum already adds trailing blank line
 	}
 
@@ -205,10 +254,7 @@ func buildSchema(f *protogen.File) string {
 	// 5. Domain output types: roleOutput AND roleInput (used in both contexts).
 	// E.g., Author and Book — used as output AND as templates for BookInput/AuthorInput.
 	// Each may be single-line (Author) or multi-line (Book); add blank line after each.
-	for _, msg := range f.Messages {
-		if msg.Desc.IsMapEntry() {
-			continue
-		}
+	for _, msg := range allMessages(f) {
 		mi := msgInfo[msg.GoIdent.GoName]
 		if mi == nil {
 			continue
@@ -225,10 +271,7 @@ func buildSchema(f *protogen.File) string {
 
 	// 7. Pure output types: roleOutput only (response wrappers like GetBookResponse).
 	// Multiple single-line types appear consecutively without inter-item blank lines.
-	for _, msg := range f.Messages {
-		if msg.Desc.IsMapEntry() {
-			continue
-		}
+	for _, msg := range allMessages(f) {
 		mi := msgInfo[msg.GoIdent.GoName]
 		if mi == nil {
 			continue
@@ -246,26 +289,21 @@ func buildSchema(f *protogen.File) string {
 }
 
 // collectUsedScalars scans every message field and returns the set of custom
-// GraphQL scalar names (Int64, Uint64, Bytes, Timestamp, Duration, JSON) used.
+// GraphQL scalar names (Int64, Uint64, Bytes, Timestamp, Duration, JSON, etc.) used.
 func collectUsedScalars(f *protogen.File) map[string]bool {
 	used := map[string]bool{}
-	var scanMsg func(msg *protogen.Message)
-	scanMsg = func(msg *protogen.Message) {
+	for _, msg := range allMessages(f) {
 		for _, field := range msg.Fields {
 			sc := fieldGQLScalar(field)
 			if sc != "" {
 				switch sc {
-				case "Int64", "Uint64", "Bytes", "Timestamp", "Duration", "JSON":
+				case "Int64", "Uint64", "Bytes", "Timestamp", "Duration", "JSON", "FieldMask",
+					"DoubleValue", "FloatValue", "Int32Value", "UInt32Value",
+					"Int64Value", "UInt64Value", "BoolValue", "StringValue", "BytesValue":
 					used[sc] = true
 				}
 			}
 		}
-		for _, nested := range msg.Messages {
-			scanMsg(nested)
-		}
-	}
-	for _, msg := range f.Messages {
-		scanMsg(msg)
 	}
 	return used
 }
@@ -389,6 +427,10 @@ func outputFields(msg *protogen.Message, oneofsByMsg map[string][]oneofInfo) []s
 		if field.Desc.IsMap() {
 			gqlType := "JSON"
 			goFieldName := fieldName(protoName)
+			line = fmt.Sprintf("%s: %s @goField(forceResolver: true)", goFieldName, gqlType)
+		} else if needsForceResolver(field) {
+			goFieldName := fieldName(protoName)
+			gqlType := fieldGQLType(field)
 			line = fmt.Sprintf("%s: %s @goField(forceResolver: true)", goFieldName, gqlType)
 		} else {
 			goFieldName := fieldName(protoName)

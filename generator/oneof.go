@@ -69,10 +69,7 @@ type oneofInfo struct {
 func collectOneofs(f *protogen.File, msgInfo map[string]*messageInfo) []oneofInfo {
 	var result []oneofInfo
 
-	for _, msg := range f.Messages {
-		if msg.Desc.IsMapEntry() {
-			continue
-		}
+	for _, msg := range allMessages(f) {
 		name := msg.GoIdent.GoName
 		mi := msgInfo[name]
 		if mi == nil {
@@ -99,9 +96,15 @@ func collectOneofs(f *protogen.File, msgInfo map[string]*messageInfo) []oneofInf
 				var gqlType, msgGoName string
 				isMsg := false
 				if field.Desc.Kind() == protoreflect.MessageKind {
-					isMsg = true
-					msgGoName = field.Message.GoIdent.GoName
-					gqlType = msgGoName
+					fqn := string(field.Desc.Message().FullName())
+					if wktScalar, ok := wellKnownGQLType[fqn]; ok {
+						// WKT message in a oneof: treat as a scalar variant (not a message wrapper).
+						gqlType = wktScalar
+					} else {
+						isMsg = true
+						msgGoName = field.Message.GoIdent.GoName
+						gqlType = msgGoName
+					}
 				} else if field.Desc.Kind() == protoreflect.EnumKind {
 					gqlType = string(field.Enum.GoIdent.GoName)
 				} else {

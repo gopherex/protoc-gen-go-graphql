@@ -1,6 +1,96 @@
 package generator
 
-import "google.golang.org/protobuf/reflect/protoreflect"
+import (
+	"google.golang.org/protobuf/compiler/protogen"
+	"google.golang.org/protobuf/reflect/protoreflect"
+)
+
+// needsForceResolver returns true when the field's Go type is incompatible with
+// gqlgen's default binding for its GraphQL scalar type.
+//
+// Specifically:
+//   - float32 fields map to the "Float" scalar, but gqlgen's Float is float64.
+//     gqlgen generates a field resolver for the mismatch — we force it explicitly.
+//   - uint32 / fixed32 fields map to the "Int" scalar, but gqlgen's Int is int32.
+//
+// By emitting @goField(forceResolver: true) for these fields, the generator
+// controls the resolver signature (returning the compatible scalar type) instead of
+// relying on gqlgen's auto-detection. The resolver methods are emitted in resolvers.go.
+// wktJSONTypes is the set of WKT FQNs that map to the JSON scalar and need field resolvers.
+// gqlgen cannot bind `any` to `*Struct`, `*Value`, etc. directly.
+var wktJSONTypes = map[string]bool{
+	"google.protobuf.Struct":    true,
+	"google.protobuf.Value":     true,
+	"google.protobuf.ListValue": true,
+	"google.protobuf.Any":       true,
+	"google.protobuf.Empty":     true,
+}
+
+func needsForceResolver(field *protogen.Field) bool {
+	if field.Desc.IsMap() {
+		return false
+	}
+	switch field.Desc.Kind() {
+	case protoreflect.FloatKind:
+		return true
+	case protoreflect.Uint32Kind, protoreflect.Fixed32Kind:
+		return true
+	case protoreflect.MessageKind, protoreflect.GroupKind:
+		fqn := string(field.Desc.Message().FullName())
+		return wktJSONTypes[fqn]
+	default:
+		return false
+	}
+}
+
+// pbElemType returns the Go proto element type name for a repeated incompatible field.
+// Used in the resolver to convert []pbType → []retType.
+func pbElemType(field *protogen.Field) string {
+	switch field.Desc.Kind() {
+	case protoreflect.FloatKind:
+		return "float32"
+	case protoreflect.Uint32Kind, protoreflect.Fixed32Kind:
+		return "uint32"
+	default:
+		return "any"
+	}
+}
+
+// wktGoType returns the fully qualified Go type name for a WKT JSON type.
+func wktGoType(fqn string) string {
+	switch fqn {
+	case "google.protobuf.Any":
+		return "*anypb.Any"
+	case "google.protobuf.Empty":
+		return "*emptypb.Empty"
+	case "google.protobuf.Struct":
+		return "*structpb.Struct"
+	case "google.protobuf.Value":
+		return "*structpb.Value"
+	case "google.protobuf.ListValue":
+		return "*structpb.ListValue"
+	default:
+		return "proto.Message"
+	}
+}
+
+// coerceReturnType returns the Go type that the resolver method should return
+// for a field that needs @goField(forceResolver: true) due to type incompatibility.
+// float32 → float64 (gqlgen's Float is float64)
+// uint32 / fixed32 → int (gqlgen's Int is int32, but resolver returns int)
+// WKT JSON types → "any" (handled separately via isWKTJSON flag)
+func coerceReturnType(field *protogen.Field) string {
+	switch field.Desc.Kind() {
+	case protoreflect.FloatKind:
+		return "float64"
+	case protoreflect.Uint32Kind, protoreflect.Fixed32Kind:
+		return "int"
+	case protoreflect.MessageKind, protoreflect.GroupKind:
+		return "any"
+	default:
+		return "any"
+	}
+}
 
 // scalarForKind maps a scalar proto kind to a GraphQL scalar name.
 // Message/enum/group kinds are handled by the caller (named types).

@@ -89,8 +89,8 @@ func (g *Generator) generateFile(f *protogen.File) error {
 	genFile := g.Plugin.NewGeneratedFile(gqlapiDir+"/generate.go", protogen.GoImportPath(gqlapiImport))
 	genFile.P(genContent)
 
-	// 4. pbgql/<enum_lower>.go — enum adapters.
-	for _, e := range f.Enums {
+	// 4. pbgql/<enum_lower>.go — enum adapters (including nested enums).
+	for _, e := range allEnums(f) {
 		adapterContent := buildEnumAdapter(e, pbImport)
 		enumFileName := strings.ToLower(e.GoIdent.GoName)
 		adapterFile := g.Plugin.NewGeneratedFile(
@@ -100,7 +100,18 @@ func (g *Generator) generateFile(f *protogen.File) error {
 		adapterFile.P(adapterContent)
 	}
 
-	// 4b. pbgql/<msg_lower>_oneof.go — oneof adapters (union wrappers + @oneOf input structs).
+	// 4b. pbgql/wkt_adapters.go — wrapper type scalar adapters.
+	usedScalars := collectUsedScalars(f)
+	wktContent := buildWKTAdapters(usedScalars)
+	if wktContent != "" {
+		wktFile := g.Plugin.NewGeneratedFile(
+			gqlapiDir+"/pbgql/wkt_adapters.go",
+			protogen.GoImportPath(pbgqlImport),
+		)
+		wktFile.P(wktContent)
+	}
+
+	// 4c. pbgql/<msg_lower>_oneof.go — oneof adapters (union wrappers + @oneOf input structs).
 	msgInfo := analyzeMessages(f)
 	ois := collectOneofs(f, msgInfo)
 	// Group oneofs by message so we emit one file per message.
@@ -108,11 +119,8 @@ func (g *Generator) generateFile(f *protogen.File) error {
 	for _, oi := range ois {
 		oneofsByMsg[oi.MsgGoName] = append(oneofsByMsg[oi.MsgGoName], oi)
 	}
-	// Walk messages in file order to emit deterministically.
-	for _, msg := range f.Messages {
-		if msg.Desc.IsMapEntry() {
-			continue
-		}
+	// Walk messages in DFS order to emit deterministically (incl. nested).
+	for _, msg := range allMessages(f) {
 		msgOis, ok := oneofsByMsg[msg.GoIdent.GoName]
 		if !ok {
 			continue
