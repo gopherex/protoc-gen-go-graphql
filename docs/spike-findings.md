@@ -100,6 +100,87 @@ NOT save you; gqlgen's loader ignores it. Put the runner in its own subdirectory
 
 Runner body: `config.LoadConfig("gqlgen.yml")` then `api.Generate(cfg)`.
 
+## 8. oneof — proven pattern (oneofprobe/ spike)
+
+Spike directory: `oneofprobe/` (throwaway; removed after generalization).
+All four spike tests (output union Hit, output union Miss, input @oneOf text, input @oneOf author) pass.
+
+### 8a. Output oneof → GraphQL union
+
+**Problem**: gqlgen requires each union MEMBER Go type to implement a marker method
+`func (T) IsUnionName(){}`. We cannot add that method to `pb.Hit` (generated code).
+
+**Solution — wrapper types in pbgql**:
+1. Define the union as a Go **interface** in `pbgql`: `type RespR interface { IsRespR() }`.
+   - Must be an interface (not a struct) — gqlgen calls `findGoInterface` on the union model.
+2. Define per-variant wrapper structs in `pbgql`:
+   ```go
+   type HitWrapper  struct{ *pb.Hit  }; func (HitWrapper)  IsRespR() {}
+   type MissWrapper struct{ *pb.Miss }; func (MissWrapper) IsRespR() {}
+   ```
+   Embedding `*pb.X` gives gqlgen access to all fields for selection sets.
+3. In `gqlgen.yml` models:
+   ```yaml
+   RespR: { model: .../pbgql.RespR }
+   Hit:   { model: .../pbgql.HitWrapper }
+   Miss:  { model: .../pbgql.MissWrapper }
+   ```
+4. The oneof field in the parent message (`Resp.r`) **must be** `@goField(forceResolver: true)`.
+   gqlgen then emits `RespResolver.R(ctx, obj *pb.Resp) (RespR, error)`.
+5. The resolver wraps the pb oneof value:
+   ```go
+   func (r respResolver) R(ctx context.Context, obj *pb.Resp) (pbgql.RespR, error) {
+       return pbgql.WrapRespR(obj), nil
+   }
+   ```
+
+**Why wrappers go in pbgql (not gqlapi)**:
+`exec` imports the wrapper types; `gqlapi` imports `exec`. If wrappers were in `gqlapi`,
+the cycle would be `exec → gqlapi → exec`. Putting them in `pbgql` breaks the cycle:
+`exec → pbgql`, `gqlapi → exec`, `gqlapi → pbgql` — all acyclic.
+
+### 8b. Input oneof → @oneOf input
+
+**Problem**: a proto oneof field (`message Req { oneof q { string text=1; ... } }`) compiles
+to `Req.Q isReq_Q` — a Go interface. gqlgen cannot populate an interface field.
+Binding `Req` directly to `pb.Req` and using a @oneOf input type for the field won't
+work because gqlgen would try to assign a struct to the interface field.
+
+**Solution — intermediate input struct in pbgql**:
+1. Declare the `@oneOf` input in schema: `input ReqQ @oneOf { text: String; author: String }`.
+2. Declare `@oneOf` directive in schema (same as `@goField` — see finding #5):
+   ```graphql
+   directive @oneOf on INPUT_OBJECT
+   ```
+3. Define in `pbgql`:
+   ```go
+   type ReqQ struct { Text *string; Author *string }
+   type ReqInput struct { Q *ReqQ }
+   ```
+4. In `gqlgen.yml` bind `Req → pbgql.ReqInput`, `ReqQ → pbgql.ReqQ` (NOT to pb types).
+5. gqlgen emits: `QueryResolver.Do(ctx, input pbgql.ReqInput) (*pb.Resp, error)`.
+6. The resolver converts via a small shim:
+   ```go
+   func ToPbReq(r *ReqInput) *pb.Req { /* switch on r.Q.Text / r.Q.Author */ }
+   ```
+
+This localized shim is **the only place** a non-pb type is used in the resolver path.
+All non-oneof types continue to bind directly to pb.
+
+### 8c. Schema for both cases
+
+```graphql
+directive @oneOf on INPUT_OBJECT
+
+# Output union
+union RespR = Hit | Miss
+type Resp { r: RespR @goField(forceResolver: true) }
+
+# Input @oneOf
+input ReqQ @oneOf { text: String; author: String }
+input Req { q: ReqQ }
+```
+
 ## 7. copylocks vet warnings are expected and benign
 
 Because gqlgen copies proto messages by value (input args, args map, some
