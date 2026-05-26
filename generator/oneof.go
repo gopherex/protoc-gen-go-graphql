@@ -160,36 +160,6 @@ func collectOneofs(f *protogen.File, msgInfo map[string]*messageInfo) []oneofInf
 	return result
 }
 
-// messageHasOutputOneof returns true if msg has at least one non-synthetic oneof
-// and is an output message.
-func messageHasOutputOneof(msg *protogen.Message, msgInfo map[string]*messageInfo) bool {
-	mi := msgInfo[msg.GoIdent.GoName]
-	if mi == nil || !mi.role.has(roleOutput) {
-		return false
-	}
-	for _, oo := range msg.Oneofs {
-		if !oo.Desc.IsSynthetic() {
-			return true
-		}
-	}
-	return false
-}
-
-// messageHasInputOneof returns true if msg is a request message with at least
-// one non-synthetic oneof.
-func messageHasInputOneof(msg *protogen.Message, msgInfo map[string]*messageInfo) bool {
-	mi := msgInfo[msg.GoIdent.GoName]
-	if mi == nil || !mi.role.has(roleInput) || !mi.isRequest {
-		return false
-	}
-	for _, oo := range msg.Oneofs {
-		if !oo.Desc.IsSynthetic() {
-			return true
-		}
-	}
-	return false
-}
-
 // ── pbgql oneof adapter emitter ───────────────────────────────────────────────
 
 // buildOneofAdapter emits the pbgql/<msg_lower>_oneof.go source for a single
