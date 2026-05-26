@@ -17,6 +17,10 @@ func TestBuildEnumAdapter_Golden(t *testing.T) {
 	pbImport := "github.com/gopherex/protoc-gen-go-graphql/example/gen"
 
 	got := normalizeSchema(buildEnumAdapter(goldenFile.Enums[0], pbImport))
+	if testdataUpdateMode() {
+		writeTestdata(t, "golden.genre.go.txt", got)
+		return
+	}
 	want := normalizeSchema(readTestdata(t, "golden.genre.go.txt"))
 
 	if got != want {

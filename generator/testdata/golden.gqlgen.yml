@@ -11,28 +11,68 @@ autobind:
 
 models:
   Int64:     { model: github.com/gopherex/protoc-gen-go-graphql/runtime.Int64 }
+  Uint64:     { model: github.com/gopherex/protoc-gen-go-graphql/runtime.Uint64 }
   Bytes:     { model: github.com/gopherex/protoc-gen-go-graphql/runtime.Bytes }
   Timestamp:     { model: github.com/gopherex/protoc-gen-go-graphql/runtime.Timestamp }
+  Duration:     { model: github.com/gopherex/protoc-gen-go-graphql/runtime.Duration }
   JSON:     { model: github.com/gopherex/protoc-gen-go-graphql/runtime.JSON }
+  FieldMask:     { model: github.com/gopherex/protoc-gen-go-graphql/runtime.FieldMask }
+  DoubleValue:     { model: github.com/gopherex/protoc-gen-go-graphql/example/gen/gqlapi/pbgql.DoubleValue }
+  FloatValue:     { model: github.com/gopherex/protoc-gen-go-graphql/example/gen/gqlapi/pbgql.FloatValue }
+  Int32Value:     { model: github.com/gopherex/protoc-gen-go-graphql/example/gen/gqlapi/pbgql.Int32Value }
+  UInt32Value:     { model: github.com/gopherex/protoc-gen-go-graphql/example/gen/gqlapi/pbgql.UInt32Value }
+  Int64Value:     { model: github.com/gopherex/protoc-gen-go-graphql/example/gen/gqlapi/pbgql.Int64Value }
+  UInt64Value:     { model: github.com/gopherex/protoc-gen-go-graphql/example/gen/gqlapi/pbgql.UInt64Value }
+  BoolValue:     { model: github.com/gopherex/protoc-gen-go-graphql/example/gen/gqlapi/pbgql.BoolValue }
+  StringValue:     { model: github.com/gopherex/protoc-gen-go-graphql/example/gen/gqlapi/pbgql.StringValue }
+  BytesValue:     { model: github.com/gopherex/protoc-gen-go-graphql/example/gen/gqlapi/pbgql.BytesValue }
   Genre:        { model: github.com/gopherex/protoc-gen-go-graphql/example/gen/gqlapi/pbgql.Genre }
-  Author:    { model: github.com/gopherex/protoc-gen-go-graphql/example/gen.Author }
-  AuthorInput:    { model: github.com/gopherex/protoc-gen-go-graphql/example/gen.Author }
+  Status:        { model: github.com/gopherex/protoc-gen-go-graphql/example/gen/gqlapi/pbgql.Status }
+  ScalarTypes:    { model: github.com/gopherex/protoc-gen-go-graphql/example/gen.ScalarTypes }
+  OptionalScalars:    { model: github.com/gopherex/protoc-gen-go-graphql/example/gen.OptionalScalars }
+  RepeatedScalars:    { model: github.com/gopherex/protoc-gen-go-graphql/example/gen.RepeatedScalars }
+  Outer:    { model: github.com/gopherex/protoc-gen-go-graphql/example/gen.Outer }
+  Outer_Inner:    { model: github.com/gopherex/protoc-gen-go-graphql/example/gen.Outer_Inner }
+  Outer_Inner_DeepInner:    { model: github.com/gopherex/protoc-gen-go-graphql/example/gen.Outer_Inner_DeepInner }
+  WKTMessage:    { model: github.com/gopherex/protoc-gen-go-graphql/example/gen.WKTMessage }
+  MapMessage:    { model: github.com/gopherex/protoc-gen-go-graphql/example/gen.MapMessage }
   Book:    { model: github.com/gopherex/protoc-gen-go-graphql/example/gen.Book }
   BookInput:    { model: github.com/gopherex/protoc-gen-go-graphql/example/gen.Book }
-  GetBookRequest:    { model: github.com/gopherex/protoc-gen-go-graphql/example/gen.GetBookRequest }
-  GetBookResponse:    { model: github.com/gopherex/protoc-gen-go-graphql/example/gen.GetBookResponse }
-  AddBookRequest:    { model: github.com/gopherex/protoc-gen-go-graphql/example/gen.AddBookRequest }
-  AddBookResponse:    { model: github.com/gopherex/protoc-gen-go-graphql/example/gen.AddBookResponse }
-  WatchBooksRequest:    { model: github.com/gopherex/protoc-gen-go-graphql/example/gen.WatchBooksRequest }
-  SearchRequest:    { model: github.com/gopherex/protoc-gen-go-graphql/example/gen/gqlapi/pbgql.SearchRequestInput }
+  Author:    { model: github.com/gopherex/protoc-gen-go-graphql/example/gen.Author }
+  AuthorInput:    { model: github.com/gopherex/protoc-gen-go-graphql/example/gen.Author }
   NotFound:    { model: github.com/gopherex/protoc-gen-go-graphql/example/gen.NotFound }
   SearchResponse:    { model: github.com/gopherex/protoc-gen-go-graphql/example/gen.SearchResponse }
-  SearchRequestQuery:    { model: github.com/gopherex/protoc-gen-go-graphql/example/gen/gqlapi/pbgql.SearchRequestQuery }
+  SearchRequest:    { model: github.com/gopherex/protoc-gen-go-graphql/example/gen/gqlapi/pbgql.SearchRequestInput }
+  MultiOneof:    { model: github.com/gopherex/protoc-gen-go-graphql/example/gen.MultiOneof }
+  TreeNode:    { model: github.com/gopherex/protoc-gen-go-graphql/example/gen.TreeNode }
+  MutualA:    { model: github.com/gopherex/protoc-gen-go-graphql/example/gen.MutualA }
+  MutualB:    { model: github.com/gopherex/protoc-gen-go-graphql/example/gen.MutualB }
+  Everything:    { model: github.com/gopherex/protoc-gen-go-graphql/example/gen.Everything }
+  GetEverythingRequest:    { model: github.com/gopherex/protoc-gen-go-graphql/example/gen.GetEverythingRequest }
+  GetEverythingResponse:    { model: github.com/gopherex/protoc-gen-go-graphql/example/gen.GetEverythingResponse }
+  GetScalarsRequest:    { model: github.com/gopherex/protoc-gen-go-graphql/example/gen.GetScalarsRequest }
+  GetScalarsResponse:    { model: github.com/gopherex/protoc-gen-go-graphql/example/gen.GetScalarsResponse }
+  EchoRequest:    { model: github.com/gopherex/protoc-gen-go-graphql/example/gen.EchoRequest }
+  EchoResponse:    { model: github.com/gopherex/protoc-gen-go-graphql/example/gen.EchoResponse }
+  AddBookRequest:    { model: github.com/gopherex/protoc-gen-go-graphql/example/gen.AddBookRequest }
+  AddBookResponse:    { model: github.com/gopherex/protoc-gen-go-graphql/example/gen.AddBookResponse }
+  WatchRequest:    { model: github.com/gopherex/protoc-gen-go-graphql/example/gen.WatchRequest }
+  WatchEvent:    { model: github.com/gopherex/protoc-gen-go-graphql/example/gen.WatchEvent }
   SearchResponseResult:    { model: github.com/gopherex/protoc-gen-go-graphql/example/gen/gqlapi/pbgql.SearchResponseResult }
   SearchResponseResultBook:    { model: github.com/gopherex/protoc-gen-go-graphql/example/gen/gqlapi/pbgql.SearchResponseResultBook }
   SearchResponseResultNotFound:    { model: github.com/gopherex/protoc-gen-go-graphql/example/gen/gqlapi/pbgql.SearchResponseResultNotFound }
+  SearchRequestQuery:    { model: github.com/gopherex/protoc-gen-go-graphql/example/gen/gqlapi/pbgql.SearchRequestQuery }
+  MultiOneofChoice:    { model: github.com/gopherex/protoc-gen-go-graphql/example/gen/gqlapi/pbgql.MultiOneofChoice }
+  MultiOneofChoiceChoiceString:    { model: github.com/gopherex/protoc-gen-go-graphql/example/gen/gqlapi/pbgql.MultiOneofChoiceChoiceString }
+  MultiOneofChoiceChoiceInt64:    { model: github.com/gopherex/protoc-gen-go-graphql/example/gen/gqlapi/pbgql.MultiOneofChoiceChoiceInt64 }
+  MultiOneofChoiceChoiceBook:    { model: github.com/gopherex/protoc-gen-go-graphql/example/gen/gqlapi/pbgql.MultiOneofChoiceChoiceBook }
+  MultiOneofStatus:    { model: github.com/gopherex/protoc-gen-go-graphql/example/gen/gqlapi/pbgql.MultiOneofStatus }
+  MultiOneofStatusStatusOk:    { model: github.com/gopherex/protoc-gen-go-graphql/example/gen/gqlapi/pbgql.MultiOneofStatusStatusOk }
+  MultiOneofStatusStatusError:    { model: github.com/gopherex/protoc-gen-go-graphql/example/gen/gqlapi/pbgql.MultiOneofStatusStatusError }
+  EverythingTerminal:    { model: github.com/gopherex/protoc-gen-go-graphql/example/gen/gqlapi/pbgql.EverythingTerminal }
+  EverythingTerminalDone:    { model: github.com/gopherex/protoc-gen-go-graphql/example/gen/gqlapi/pbgql.EverythingTerminalDone }
+  EverythingTerminalError:    { model: github.com/gopherex/protoc-gen-go-graphql/example/gen/gqlapi/pbgql.EverythingTerminalError }
 
 # No `resolver:` block on purpose: gqlgen then emits only the exec engine and the
 # resolver INTERFACES (no stub files). The generator owns the resolver
 # implementation that satisfies those interfaces and delegates to gRPC.
-

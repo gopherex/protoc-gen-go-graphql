@@ -132,10 +132,30 @@ func readTestdata(t *testing.T, name string) string {
 	return string(data)
 }
 
+// writeTestdata writes a file to generator/testdata/ (used when TESTDATA_UPDATE=1).
+func writeTestdata(t *testing.T, name, content string) {
+	t.Helper()
+	root := repoRoot(t)
+	path := filepath.Join(root, "generator", "testdata", name)
+	if err := os.WriteFile(path, []byte(content), 0644); err != nil {
+		t.Fatalf("write testdata %s: %v", name, err)
+	}
+	t.Logf("updated testdata/%s", name)
+}
+
+// testdataUpdateMode returns true when TESTDATA_UPDATE=1 is set.
+func testdataUpdateMode() bool {
+	return os.Getenv("TESTDATA_UPDATE") == "1"
+}
+
 func TestBuildSchema_Golden(t *testing.T) {
 	goldenFile := loadGoldenProtoFile(t)
 
 	got := normalizeSchema(buildSchema(goldenFile))
+	if testdataUpdateMode() {
+		writeTestdata(t, "golden.schema.graphql", got)
+		return
+	}
 	want := normalizeSchema(readTestdata(t, "golden.schema.graphql"))
 
 	if got != want {

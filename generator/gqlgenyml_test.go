@@ -13,6 +13,10 @@ func TestBuildGqlgenYml_Golden(t *testing.T) {
 	pbgqlImport := "github.com/gopherex/protoc-gen-go-graphql/example/gen/gqlapi/pbgql"
 
 	got := normalizeSchema(buildGqlgenYml(goldenFile, pbImport, pbgqlImport))
+	if testdataUpdateMode() {
+		writeTestdata(t, "golden.gqlgen.yml", got)
+		return
+	}
 	want := normalizeSchema(readTestdata(t, "golden.gqlgen.yml"))
 
 	if got != want {

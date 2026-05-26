@@ -15,6 +15,10 @@ func TestBuildResolvers_Golden(t *testing.T) {
 	runtimeImport := "github.com/gopherex/protoc-gen-go-graphql/runtime"
 
 	got := normalizeSchema(buildResolvers(goldenFile, pbImport, pbgqlImport, execImport, runtimeImport))
+	if testdataUpdateMode() {
+		writeTestdata(t, "golden.resolver.go.txt", got)
+		return
+	}
 	want := normalizeSchema(readTestdata(t, "golden.resolver.go.txt"))
 
 	if got != want {
