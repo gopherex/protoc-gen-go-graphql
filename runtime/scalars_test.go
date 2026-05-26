@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/types/known/durationpb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
@@ -25,13 +26,27 @@ func TestInt64RoundTrip(t *testing.T) {
 }
 
 func TestTimestampRoundTrip(t *testing.T) {
-	ts := timestamppb.New(time.Unix(1700000000, 123456789).UTC())
-	var sb strings.Builder
-	MarshalTimestamp(ts).MarshalGQL(&sb)
-	got := strings.Trim(sb.String(), `"`)
-	back, err := UnmarshalTimestamp(got)
-	if err != nil || !back.AsTime().Equal(ts.AsTime()) {
-		t.Fatalf("roundtrip mismatch: %v / %v", back, err)
+	// Include trailing-zero nanos (100ms) and zero nanos: protojson emits 3/6/9
+	// fractional digits, time.RFC3339Nano would strip them and diverge.
+	for _, nanos := range []int64{123456789, 100000000, 0} {
+		ts := timestamppb.New(time.Unix(1700000000, nanos).UTC())
+		var sb strings.Builder
+		MarshalTimestamp(ts).MarshalGQL(&sb)
+		got := sb.String()
+
+		// Byte-identical to protojson (the canonical wire form).
+		want, err := protojson.Marshal(ts)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got != string(want) {
+			t.Fatalf("nanos=%d: marshal=%s, protojson=%s", nanos, got, want)
+		}
+
+		back, err := UnmarshalTimestamp(strings.Trim(got, `"`))
+		if err != nil || !back.AsTime().Equal(ts.AsTime()) {
+			t.Fatalf("nanos=%d roundtrip mismatch: %v / %v", nanos, back, err)
+		}
 	}
 }
 

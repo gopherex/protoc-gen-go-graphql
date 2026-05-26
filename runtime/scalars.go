@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"strconv"
-	"time"
 
 	"github.com/99designs/gqlgen/graphql"
 	"google.golang.org/protobuf/encoding/protojson"
@@ -68,14 +67,21 @@ func UnmarshalBytes(v any) ([]byte, error) {
 	return base64.StdEncoding.DecodeString(s)
 }
 
-// Timestamp: protojson RFC3339 with nanos, e.g. "2006-01-02T15:04:05.999999999Z".
+// Timestamp: protojson RFC3339, e.g. "2006-01-02T15:04:05.100Z". Uses protojson
+// (not time.RFC3339Nano) so fractional seconds are exactly 0/3/6/9 digits,
+// byte-identical to protobuf-es. time.RFC3339Nano strips trailing zeros (".1Z")
+// which would diverge from protojson (".100Z").
 func MarshalTimestamp(v *timestamppb.Timestamp) graphql.Marshaler {
 	return graphql.WriterFunc(func(w io.Writer) {
 		if v == nil {
 			_, _ = io.WriteString(w, "null")
 			return
 		}
-		_, _ = io.WriteString(w, strconv.Quote(v.AsTime().UTC().Format(time.RFC3339Nano)))
+		b, err := protojson.Marshal(v)
+		if err != nil {
+			panic(err)
+		}
+		_, _ = w.Write(b)
 	})
 }
 
@@ -84,11 +90,11 @@ func UnmarshalTimestamp(v any) (*timestamppb.Timestamp, error) {
 	if !ok {
 		return nil, fmt.Errorf("Timestamp must be an RFC3339 string, got %T", v)
 	}
-	t, err := time.Parse(time.RFC3339Nano, s)
-	if err != nil {
+	ts := &timestamppb.Timestamp{}
+	if err := protojson.Unmarshal([]byte(strconv.Quote(s)), ts); err != nil {
 		return nil, err
 	}
-	return timestamppb.New(t), nil
+	return ts, nil
 }
 
 // Duration: protojson string with trailing "s", e.g. "1.000340012s".
