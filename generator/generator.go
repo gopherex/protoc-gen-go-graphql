@@ -87,19 +87,27 @@ func (g *Generator) generateFile(f *protogen.File) error {
 	ymlFile.P(ymlContent)
 
 	// 3. generate.go (Go source — //go:generate directive).
-	genContent := buildGoGenerate(g.Settings.RunnerPkg, outDir)
-	genFile := g.Plugin.NewGeneratedFile(gqlapiDir+"/generate.go", protogen.GoImportPath(gqlapiImport))
-	genFile.P(genContent)
+	// In single_pass mode we skip this file (gqlgen runs inside the plugin).
+	if !g.Settings.SinglePass {
+		genContent := buildGoGenerate(g.Settings.RunnerPkg, outDir)
+		genFile := g.Plugin.NewGeneratedFile(gqlapiDir+"/generate.go", protogen.GoImportPath(gqlapiImport))
+		genFile.P(genContent)
+	}
 
 	// 4. pbgql/<enum_lower>.go — enum adapters (including nested enums).
+	// In single_pass mode we also collect the content for the tmp module.
+	pbgqlFiles := map[string]string{} // filename → content (used by runSinglePass)
 	for _, e := range allEnums(f) {
 		adapterContent := buildEnumAdapter(e, pbImport)
-		enumFileName := strings.ToLower(e.GoIdent.GoName)
+		enumFileName := strings.ToLower(e.GoIdent.GoName) + ".go"
 		adapterFile := g.Plugin.NewGeneratedFile(
-			gqlapiDir+"/pbgql/"+enumFileName+".go",
+			gqlapiDir+"/pbgql/"+enumFileName,
 			protogen.GoImportPath(pbgqlImport),
 		)
 		adapterFile.P(adapterContent)
+		if g.Settings.SinglePass {
+			pbgqlFiles[enumFileName] = adapterContent
+		}
 	}
 
 	// 4b. pbgql/wkt_adapters.go — wrapper type scalar adapters.
@@ -111,6 +119,9 @@ func (g *Generator) generateFile(f *protogen.File) error {
 			protogen.GoImportPath(pbgqlImport),
 		)
 		wktFile.P(wktContent)
+		if g.Settings.SinglePass {
+			pbgqlFiles["wkt_adapters.go"] = wktContent
+		}
 	}
 
 	// 4c. pbgql/<msg_lower>_oneof.go — oneof adapters (union wrappers + @oneOf input structs).
@@ -131,18 +142,37 @@ func (g *Generator) generateFile(f *protogen.File) error {
 		if adapterContent == "" {
 			continue
 		}
-		adapterFileName := strings.ToLower(msg.GoIdent.GoName) + "_oneof"
+		adapterFileName := strings.ToLower(msg.GoIdent.GoName) + "_oneof.go"
 		adapterFile := g.Plugin.NewGeneratedFile(
-			gqlapiDir+"/pbgql/"+adapterFileName+".go",
+			gqlapiDir+"/pbgql/"+adapterFileName,
 			protogen.GoImportPath(pbgqlImport),
 		)
 		adapterFile.P(adapterContent)
+		if g.Settings.SinglePass {
+			pbgqlFiles[adapterFileName] = adapterContent
+		}
 	}
 
 	// 5. resolver.go.
 	resolverContent := buildResolvers(f, outDir, pbImport, pbgqlImport, execImport, runtimeImport)
 	resolverFile := g.Plugin.NewGeneratedFile(gqlapiDir+"/resolver.go", protogen.GoImportPath(gqlapiImport))
 	resolverFile.P(resolverContent)
+
+	// 6. Single-pass: run gqlgen inside the plugin and emit exec + models_gen.
+	if g.Settings.SinglePass {
+		if err := g.runSinglePass(
+			f,
+			gqlapiDir,
+			pbImport,
+			pbgqlImport,
+			schemaContent,
+			ymlContent,
+			pbgqlFiles,
+			resolverContent,
+		); err != nil {
+			return err
+		}
+	}
 
 	return nil
 }
