@@ -36,7 +36,7 @@ needed — the default rule fully covers all practical cases.
 
 ### Custom scalars are protojson-aligned
 
-All custom scalar implementations in `runtime/scalars.go` produce output
+All custom scalar implementations in `graphqlpb/scalars.go` produce output
 byte-compatible with protobuf-es `toJson`/`fromJson`. A TypeScript client using
 protobuf-es can parse GraphQL field values directly without conversion for 64-bit
 integers, enums, Timestamp, Duration, bytes, and `Struct`/`Any`/`Value`.

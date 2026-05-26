@@ -10,13 +10,13 @@ autobind:
   - github.com/gopherex/protoc-gen-go-graphql/example/gen
 
 models:
-  Int64:     { model: github.com/gopherex/protoc-gen-go-graphql/runtime.Int64 }
-  Uint64:     { model: github.com/gopherex/protoc-gen-go-graphql/runtime.Uint64 }
-  Bytes:     { model: github.com/gopherex/protoc-gen-go-graphql/runtime.Bytes }
-  Timestamp:     { model: github.com/gopherex/protoc-gen-go-graphql/runtime.Timestamp }
-  Duration:     { model: github.com/gopherex/protoc-gen-go-graphql/runtime.Duration }
-  JSON:     { model: github.com/gopherex/protoc-gen-go-graphql/runtime.JSON }
-  FieldMask:     { model: github.com/gopherex/protoc-gen-go-graphql/runtime.FieldMask }
+  Int64:     { model: github.com/gopherex/protoc-gen-go-graphql/graphqlpb.Int64 }
+  Uint64:     { model: github.com/gopherex/protoc-gen-go-graphql/graphqlpb.Uint64 }
+  Bytes:     { model: github.com/gopherex/protoc-gen-go-graphql/graphqlpb.Bytes }
+  Timestamp:     { model: github.com/gopherex/protoc-gen-go-graphql/graphqlpb.Timestamp }
+  Duration:     { model: github.com/gopherex/protoc-gen-go-graphql/graphqlpb.Duration }
+  JSON:     { model: github.com/gopherex/protoc-gen-go-graphql/graphqlpb.JSON }
+  FieldMask:     { model: github.com/gopherex/protoc-gen-go-graphql/graphqlpb.FieldMask }
   DoubleValue:     { model: github.com/gopherex/protoc-gen-go-graphql/example/gen/gqlapi/pbgql.DoubleValue }
   FloatValue:     { model: github.com/gopherex/protoc-gen-go-graphql/example/gen/gqlapi/pbgql.FloatValue }
   Int32Value:     { model: github.com/gopherex/protoc-gen-go-graphql/example/gen/gqlapi/pbgql.Int32Value }

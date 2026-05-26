@@ -13,7 +13,7 @@ func TestBuildResolvers_Golden(t *testing.T) {
 	pbImport := "github.com/gopherex/protoc-gen-go-graphql/example/gen"
 	pbgqlImport := "github.com/gopherex/protoc-gen-go-graphql/example/gen/gqlapi/pbgql"
 	execImport := "github.com/gopherex/protoc-gen-go-graphql/example/gen/gqlapi/exec"
-	runtimeImport := "github.com/gopherex/protoc-gen-go-graphql/runtime"
+	runtimeImport := "github.com/gopherex/protoc-gen-go-graphql/graphqlpb"
 
 	got := normalizeSchema(buildResolvers(goldenFile, pkgName, pbImport, pbgqlImport, execImport, runtimeImport))
 	if testdataUpdateMode() {

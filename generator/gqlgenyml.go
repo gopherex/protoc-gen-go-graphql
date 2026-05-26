@@ -37,7 +37,7 @@ func buildGqlgenYml(f *protogen.File, pbImport, pbgqlImport string) string {
 
 	// Scalar bindings (only for scalars actually used).
 	usedScalars := collectUsedScalars(f)
-	runtimePkg := "github.com/gopherex/protoc-gen-go-graphql/runtime"
+	runtimePkg := "github.com/gopherex/protoc-gen-go-graphql/graphqlpb"
 	// These scalars live in the runtime package.
 	for _, sc := range []string{"Int64", "Uint64", "Bytes", "Timestamp", "Duration", "JSON"} {
 		if usedScalars[sc] {

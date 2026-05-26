@@ -388,7 +388,7 @@ func buildResolvers(f *protogen.File, pkgName, pbImport, pbgqlImport, execImport
 					fmt.Fprintf(&sb, "\tresp, err := r.%s.%s(ctx, &input)\n", svc.GoName, methodName)
 				}
 				sb.WriteString("\tif err != nil {\n")
-				sb.WriteString("\t\treturn nil, runtime.GraphQLError(ctx, err)\n")
+				sb.WriteString("\t\treturn nil, graphqlpb.GraphQLError(ctx, err)\n")
 				sb.WriteString("\t}\n")
 				sb.WriteString("\treturn resp, nil\n")
 				sb.WriteString("}\n")
@@ -401,7 +401,7 @@ func buildResolvers(f *protogen.File, pkgName, pbImport, pbgqlImport, execImport
 				streamMsgType := outputType
 				fmt.Fprintf(&sb, "func (r %s) %s(ctx context.Context, input pb.%s) (<-chan *pb.%s, error) {\n",
 					recvName, methodName, inputGoName, streamMsgType)
-				fmt.Fprintf(&sb, "\treturn runtime.PumpServerStream[pb.%s](ctx, func(ss *runtime.StreamServer[pb.%s]) error {\n",
+				fmt.Fprintf(&sb, "\treturn graphqlpb.PumpServerStream[pb.%s](ctx, func(ss *graphqlpb.StreamServer[pb.%s]) error {\n",
 					streamMsgType, streamMsgType)
 				fmt.Fprintf(&sb, "\t\treturn r.%s.%s(&input, ss)\n", svc.GoName, methodName)
 				sb.WriteString("\t}), nil\n")

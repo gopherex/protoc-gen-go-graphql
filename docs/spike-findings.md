@@ -213,9 +213,9 @@ Wrapper types (`DoubleValue`, `FloatValue`, `Int32Value`, `UInt32Value`, `Int64V
 - `UnmarshalXxxValue(any) (*wrapperspb.XxxValue, error)` — re-encodes via `json.Marshal(v)` then `protojson.Unmarshal`.
 - gqlgen.yml binds `XxxValue → pbgql.XxxValue`.
 
-### 9e. FieldMask → runtime scalar
+### 9e. FieldMask → graphqlpb scalar
 
-`FieldMask` maps to a `FieldMask` scalar whose adapters live in the `runtime` package (consistent with Timestamp/Duration). `MarshalFieldMask` and `UnmarshalFieldMask` use `protojson.Marshal`/`protojson.Unmarshal` so the wire form is the comma-separated path string protojson uses.
+`FieldMask` maps to a `FieldMask` scalar whose adapters live in the `graphqlpb` package (consistent with Timestamp/Duration). `MarshalFieldMask` and `UnmarshalFieldMask` use `protojson.Marshal`/`protojson.Unmarshal` so the wire form is the comma-separated path string protojson uses.
 
 ### 9f. Multiple oneofs per message
 

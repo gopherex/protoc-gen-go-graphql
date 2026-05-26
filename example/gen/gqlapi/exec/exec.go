@@ -15,7 +15,7 @@ import (
 	"github.com/99designs/gqlgen/graphql/introspection"
 	"github.com/gopherex/protoc-gen-go-graphql/example/gen"
 	"github.com/gopherex/protoc-gen-go-graphql/example/gen/gqlapi/pbgql"
-	"github.com/gopherex/protoc-gen-go-graphql/runtime"
+	"github.com/gopherex/protoc-gen-go-graphql/graphqlpb"
 	gqlparser "github.com/vektah/gqlparser/v2"
 	"github.com/vektah/gqlparser/v2/ast"
 	"google.golang.org/protobuf/types/known/durationpb"
@@ -9853,7 +9853,7 @@ func (ec *executionContext) marshalNBoolean2ᚕboolᚄ(ctx context.Context, sel 
 }
 
 func (ec *executionContext) unmarshalNBytes2ᚕbyte(ctx context.Context, v any) ([]byte, error) {
-	res, err := runtime.UnmarshalBytes(v)
+	res, err := graphqlpb.UnmarshalBytes(v)
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
@@ -9865,7 +9865,7 @@ func (ec *executionContext) marshalNBytes2ᚕbyte(ctx context.Context, sel ast.S
 		return graphql.Null
 	}
 	_ = sel
-	res := runtime.MarshalBytes(v)
+	res := graphqlpb.MarshalBytes(v)
 	if res == graphql.Null {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
 			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
@@ -10096,13 +10096,13 @@ func (ec *executionContext) marshalNInt2ᚕint32ᚄ(ctx context.Context, sel ast
 }
 
 func (ec *executionContext) unmarshalNInt642int64(ctx context.Context, v any) (int64, error) {
-	res, err := runtime.UnmarshalInt64(v)
+	res, err := graphqlpb.UnmarshalInt64(v)
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
 func (ec *executionContext) marshalNInt642int64(ctx context.Context, sel ast.SelectionSet, v int64) graphql.Marshaler {
 	_ = sel
-	res := runtime.MarshalInt64(v)
+	res := graphqlpb.MarshalInt64(v)
 	if res == graphql.Null {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
 			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
@@ -10237,7 +10237,7 @@ func (ec *executionContext) marshalNTimestamp2ᚕᚖgoogleᚗgolangᚗorgᚋprot
 }
 
 func (ec *executionContext) unmarshalNTimestamp2ᚖgoogleᚗgolangᚗorgᚋprotobufᚋtypesᚋknownᚋtimestamppbᚐTimestamp(ctx context.Context, v any) (*timestamppb.Timestamp, error) {
-	res, err := runtime.UnmarshalTimestamp(v)
+	res, err := graphqlpb.UnmarshalTimestamp(v)
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
@@ -10249,7 +10249,7 @@ func (ec *executionContext) marshalNTimestamp2ᚖgoogleᚗgolangᚗorgᚋprotobu
 		return graphql.Null
 	}
 	_ = sel
-	res := runtime.MarshalTimestamp(v)
+	res := graphqlpb.MarshalTimestamp(v)
 	if res == graphql.Null {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
 			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
@@ -10269,13 +10269,13 @@ func (ec *executionContext) marshalNTreeNode2ᚕᚖgithubᚗcomᚋgopherexᚋpro
 }
 
 func (ec *executionContext) unmarshalNUint642uint64(ctx context.Context, v any) (uint64, error) {
-	res, err := runtime.UnmarshalUint64(v)
+	res, err := graphqlpb.UnmarshalUint64(v)
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
 func (ec *executionContext) marshalNUint642uint64(ctx context.Context, sel ast.SelectionSet, v uint64) graphql.Marshaler {
 	_ = sel
-	res := runtime.MarshalUint64(v)
+	res := graphqlpb.MarshalUint64(v)
 	if res == graphql.Null {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
 			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
@@ -10556,7 +10556,7 @@ func (ec *executionContext) unmarshalOBytes2ᚕbyte(ctx context.Context, v any) 
 	if v == nil {
 		return nil, nil
 	}
-	res, err := runtime.UnmarshalBytes(v)
+	res, err := graphqlpb.UnmarshalBytes(v)
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
@@ -10566,7 +10566,7 @@ func (ec *executionContext) marshalOBytes2ᚕbyte(ctx context.Context, sel ast.S
 	}
 	_ = sel
 	_ = ctx
-	res := runtime.MarshalBytes(v)
+	res := graphqlpb.MarshalBytes(v)
 	return res
 }
 
@@ -10610,7 +10610,7 @@ func (ec *executionContext) unmarshalODuration2ᚖgoogleᚗgolangᚗorgᚋprotob
 	if v == nil {
 		return nil, nil
 	}
-	res, err := runtime.UnmarshalDuration(v)
+	res, err := graphqlpb.UnmarshalDuration(v)
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
@@ -10620,7 +10620,7 @@ func (ec *executionContext) marshalODuration2ᚖgoogleᚗgolangᚗorgᚋprotobuf
 	}
 	_ = sel
 	_ = ctx
-	res := runtime.MarshalDuration(v)
+	res := graphqlpb.MarshalDuration(v)
 	return res
 }
 
@@ -10642,7 +10642,7 @@ func (ec *executionContext) unmarshalOFieldMask2ᚖgoogleᚗgolangᚗorgᚋproto
 	if v == nil {
 		return nil, nil
 	}
-	res, err := runtime.UnmarshalFieldMask(v)
+	res, err := graphqlpb.UnmarshalFieldMask(v)
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
@@ -10652,7 +10652,7 @@ func (ec *executionContext) marshalOFieldMask2ᚖgoogleᚗgolangᚗorgᚋprotobu
 	}
 	_ = sel
 	_ = ctx
-	res := runtime.MarshalFieldMask(v)
+	res := graphqlpb.MarshalFieldMask(v)
 	return res
 }
 
@@ -10749,7 +10749,7 @@ func (ec *executionContext) unmarshalOInt642ᚖint64(ctx context.Context, v any)
 	if v == nil {
 		return nil, nil
 	}
-	res, err := runtime.UnmarshalInt64(v)
+	res, err := graphqlpb.UnmarshalInt64(v)
 	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
@@ -10759,7 +10759,7 @@ func (ec *executionContext) marshalOInt642ᚖint64(ctx context.Context, sel ast.
 	}
 	_ = sel
 	_ = ctx
-	res := runtime.MarshalInt64(*v)
+	res := graphqlpb.MarshalInt64(*v)
 	return res
 }
 
@@ -10785,7 +10785,7 @@ func (ec *executionContext) unmarshalOJSON2interface(ctx context.Context, v any)
 	if v == nil {
 		return nil, nil
 	}
-	res, err := runtime.UnmarshalJSON(v)
+	res, err := graphqlpb.UnmarshalJSON(v)
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
@@ -10795,7 +10795,7 @@ func (ec *executionContext) marshalOJSON2interface(ctx context.Context, sel ast.
 	}
 	_ = sel
 	_ = ctx
-	res := runtime.MarshalJSON(v)
+	res := graphqlpb.MarshalJSON(v)
 	return res
 }
 
@@ -10938,7 +10938,7 @@ func (ec *executionContext) unmarshalOTimestamp2ᚖgoogleᚗgolangᚗorgᚋproto
 	if v == nil {
 		return nil, nil
 	}
-	res, err := runtime.UnmarshalTimestamp(v)
+	res, err := graphqlpb.UnmarshalTimestamp(v)
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
@@ -10948,7 +10948,7 @@ func (ec *executionContext) marshalOTimestamp2ᚖgoogleᚗgolangᚗorgᚋprotobu
 	}
 	_ = sel
 	_ = ctx
-	res := runtime.MarshalTimestamp(v)
+	res := graphqlpb.MarshalTimestamp(v)
 	return res
 }
 
@@ -10999,7 +10999,7 @@ func (ec *executionContext) unmarshalOUint642ᚖuint64(ctx context.Context, v an
 	if v == nil {
 		return nil, nil
 	}
-	res, err := runtime.UnmarshalUint64(v)
+	res, err := graphqlpb.UnmarshalUint64(v)
 	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
@@ -11009,7 +11009,7 @@ func (ec *executionContext) marshalOUint642ᚖuint64(ctx context.Context, sel as
 	}
 	_ = sel
 	_ = ctx
-	res := runtime.MarshalUint64(*v)
+	res := graphqlpb.MarshalUint64(*v)
 	return res
 }
 

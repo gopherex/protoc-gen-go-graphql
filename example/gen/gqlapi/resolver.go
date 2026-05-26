@@ -8,7 +8,7 @@ import (
 	pb "github.com/gopherex/protoc-gen-go-graphql/example/gen"
 	"github.com/gopherex/protoc-gen-go-graphql/example/gen/gqlapi/exec"
 	"github.com/gopherex/protoc-gen-go-graphql/example/gen/gqlapi/pbgql"
-	"github.com/gopherex/protoc-gen-go-graphql/runtime"
+	"github.com/gopherex/protoc-gen-go-graphql/graphqlpb"
 	"google.golang.org/protobuf/encoding/protojson"
 )
 
@@ -262,7 +262,7 @@ func (r everythingResolver) Terminal(ctx context.Context, obj *pb.Everything) (p
 func (r queryResolver) GetEverything(ctx context.Context, input pb.GetEverythingRequest) (*pb.GetEverythingResponse, error) {
 	resp, err := r.Library.GetEverything(ctx, &input)
 	if err != nil {
-		return nil, runtime.GraphQLError(ctx, err)
+		return nil, graphqlpb.GraphQLError(ctx, err)
 	}
 	return resp, nil
 }
@@ -270,7 +270,7 @@ func (r queryResolver) GetEverything(ctx context.Context, input pb.GetEverything
 func (r queryResolver) GetScalars(ctx context.Context, input pb.GetScalarsRequest) (*pb.GetScalarsResponse, error) {
 	resp, err := r.Library.GetScalars(ctx, &input)
 	if err != nil {
-		return nil, runtime.GraphQLError(ctx, err)
+		return nil, graphqlpb.GraphQLError(ctx, err)
 	}
 	return resp, nil
 }
@@ -278,7 +278,7 @@ func (r queryResolver) GetScalars(ctx context.Context, input pb.GetScalarsReques
 func (r queryResolver) SearchBooks(ctx context.Context, input pbgql.SearchRequestInput) (*pb.SearchResponse, error) {
 	resp, err := r.Library.SearchBooks(ctx, pbgql.ToPbSearchRequest(&input))
 	if err != nil {
-		return nil, runtime.GraphQLError(ctx, err)
+		return nil, graphqlpb.GraphQLError(ctx, err)
 	}
 	return resp, nil
 }
@@ -286,7 +286,7 @@ func (r queryResolver) SearchBooks(ctx context.Context, input pbgql.SearchReques
 func (r mutationResolver) EchoInput(ctx context.Context, input pb.EchoRequest) (*pb.EchoResponse, error) {
 	resp, err := r.Library.EchoInput(ctx, &input)
 	if err != nil {
-		return nil, runtime.GraphQLError(ctx, err)
+		return nil, graphqlpb.GraphQLError(ctx, err)
 	}
 	return resp, nil
 }
@@ -294,13 +294,13 @@ func (r mutationResolver) EchoInput(ctx context.Context, input pb.EchoRequest) (
 func (r mutationResolver) AddBook(ctx context.Context, input pb.AddBookRequest) (*pb.AddBookResponse, error) {
 	resp, err := r.Library.AddBook(ctx, &input)
 	if err != nil {
-		return nil, runtime.GraphQLError(ctx, err)
+		return nil, graphqlpb.GraphQLError(ctx, err)
 	}
 	return resp, nil
 }
 
 func (r subscriptionResolver) WatchItems(ctx context.Context, input pb.WatchRequest) (<-chan *pb.WatchEvent, error) {
-	return runtime.PumpServerStream[pb.WatchEvent](ctx, func(ss *runtime.StreamServer[pb.WatchEvent]) error {
+	return graphqlpb.PumpServerStream[pb.WatchEvent](ctx, func(ss *graphqlpb.StreamServer[pb.WatchEvent]) error {
 		return r.Library.WatchItems(&input, ss)
 	}), nil
 }

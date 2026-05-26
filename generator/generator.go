@@ -64,7 +64,7 @@ func (g *Generator) generateFile(f *protogen.File) error {
 	gqlapiImport := pbImport + "/" + outDir
 	pbgqlImport := gqlapiImport + "/pbgql"
 	execImport := gqlapiImport + "/exec"
-	runtimeImport := "github.com/gopherex/protoc-gen-go-graphql/runtime"
+	runtimeImport := "github.com/gopherex/protoc-gen-go-graphql/graphqlpb"
 
 	// Base output directory for gqlapi files: source_relative means the proto
 	// file's directory is used. The plugin writes files relative to the output root.

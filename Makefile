@@ -49,8 +49,8 @@ gen-test: build
 test:
 	out=$$(gofmt -l .)
 	if [ -n "$$out" ]; then echo "gofmt needed:"; echo "$$out"; exit 1; fi
-	go vet ./generator/ ./runtime/
-	go test ./generator/ ./runtime/ ./example/...
+	go vet ./generator/ ./graphqlpb/
+	go test ./generator/ ./graphqlpb/ ./example/...
 
 tidy:
 	go mod tidy
