@@ -100,8 +100,37 @@ func (g *Generator) generateFile(f *protogen.File) error {
 		adapterFile.P(adapterContent)
 	}
 
+	// 4b. pbgql/<msg_lower>_oneof.go — oneof adapters (union wrappers + @oneOf input structs).
+	msgInfo := analyzeMessages(f)
+	ois := collectOneofs(f, msgInfo)
+	// Group oneofs by message so we emit one file per message.
+	oneofsByMsg := map[string][]oneofInfo{}
+	for _, oi := range ois {
+		oneofsByMsg[oi.MsgGoName] = append(oneofsByMsg[oi.MsgGoName], oi)
+	}
+	// Walk messages in file order to emit deterministically.
+	for _, msg := range f.Messages {
+		if msg.Desc.IsMapEntry() {
+			continue
+		}
+		msgOis, ok := oneofsByMsg[msg.GoIdent.GoName]
+		if !ok {
+			continue
+		}
+		adapterContent := buildOneofAdapter(msg, msgOis, pbImport)
+		if adapterContent == "" {
+			continue
+		}
+		adapterFileName := strings.ToLower(msg.GoIdent.GoName) + "_oneof"
+		adapterFile := g.Plugin.NewGeneratedFile(
+			gqlapiDir+"/pbgql/"+adapterFileName+".go",
+			protogen.GoImportPath(pbgqlImport),
+		)
+		adapterFile.P(adapterContent)
+	}
+
 	// 5. resolver.go.
-	resolverContent := buildResolvers(f, pbImport, execImport, runtimeImport)
+	resolverContent := buildResolvers(f, pbImport, pbgqlImport, execImport, runtimeImport)
 	resolverFile := g.Plugin.NewGeneratedFile(gqlapiDir+"/resolver.go", protogen.GoImportPath(gqlapiImport))
 	resolverFile.P(resolverContent)
 
