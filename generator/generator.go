@@ -31,6 +31,10 @@ func (g *Generator) Generate() error {
 
 // generateFile is implemented across schema.go, gqlgenyml.go, resolvers.go.
 func (g *Generator) generateFile(f *protogen.File) error {
+	// Ensure defaults even when Settings is constructed directly (e.g. in tests)
+	// without going through RegisterFlags.
+	g.Settings.applyDefaults()
+
 	// Fail fast on unsupported streaming shapes.
 	for _, svc := range f.Services {
 		for _, m := range svc.Methods {
