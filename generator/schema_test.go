@@ -4,8 +4,8 @@ package generator
 // *protogen.File (which requires driving protoc's wire protocol), this test
 // shells out to protoc to compile golden.proto into a FileDescriptorSet, loads
 // it via protodesc + protogen, calls buildSchema, and compares the result to
-// spike/schema.graphql (normalized: trailing whitespace stripped, trailing
-// newlines collapsed to one).
+// generator/testdata/golden.schema.graphql (normalized: trailing whitespace
+// stripped, trailing newlines collapsed to one).
 //
 // Requirements: `protoc` and WKT includes must be available. The test is
 // skipped if protoc is not on PATH.
@@ -48,17 +48,19 @@ func normalizeSchema(s string) string {
 	return result
 }
 
-func TestBuildSchema_Golden(t *testing.T) {
-	// Skip if protoc is not available.
+// loadGoldenProtoFile compiles golden.proto with protoc and returns the parsed
+// *protogen.File. The test is skipped if protoc is not on PATH.
+func loadGoldenProtoFile(t *testing.T) *protogen.File {
+	t.Helper()
+
 	if _, err := exec.LookPath("protoc"); err != nil {
-		t.Skip("protoc not found on PATH, skipping schema golden test")
+		t.Skip("protoc not found on PATH, skipping golden test")
 	}
 
 	root := repoRoot(t)
 	exampleDir := filepath.Join(root, "example")
 	wktInc := "/usr/include"
 
-	// Compile golden.proto to a descriptor set in a temp file.
 	tmp, err := os.CreateTemp("", "golden-*.pb")
 	if err != nil {
 		t.Fatalf("create temp: %v", err)
@@ -80,7 +82,6 @@ func TestBuildSchema_Golden(t *testing.T) {
 		t.Fatalf("protoc failed: %v\n%s", err, out)
 	}
 
-	// Load the descriptor set.
 	raw, err := os.ReadFile(tmp.Name())
 	if err != nil {
 		t.Fatalf("read descriptor set: %v", err)
@@ -90,63 +91,61 @@ func TestBuildSchema_Golden(t *testing.T) {
 		t.Fatalf("unmarshal FileDescriptorSet: %v", err)
 	}
 
-	// Find the golden.proto file index.
-	goldenIdx := -1
 	var fileToGen []string
-	for i, fd := range fds.File {
+	for _, fd := range fds.File {
 		if fd.GetName() == "golden.proto" {
-			goldenIdx = i
 			fileToGen = append(fileToGen, fd.GetName())
 		}
 	}
-	if goldenIdx < 0 {
+	if len(fileToGen) == 0 {
 		t.Fatal("golden.proto not found in descriptor set")
 	}
 
-	// Build a CodeGeneratorRequest.
 	req := &pluginpb.CodeGeneratorRequest{
 		ProtoFile:      fds.File,
 		FileToGenerate: fileToGen,
 		Parameter:      proto.String("paths=source_relative"),
 	}
 
-	// Create a Plugin from the request.
 	plugin, err := protogen.Options{}.New(req)
 	if err != nil {
 		t.Fatalf("protogen.New: %v", err)
 	}
 
-	// Find the golden file.
-	var goldenFile *protogen.File
 	for _, f := range plugin.Files {
 		if f.Desc.Path() == "golden.proto" {
-			goldenFile = f
-			break
+			return f
 		}
 	}
-	if goldenFile == nil {
-		t.Fatal("golden.proto not found in plugin.Files")
-	}
+	t.Fatal("golden.proto not found in plugin.Files")
+	return nil
+}
 
-	// Call buildSchema.
-	got := normalizeSchema(buildSchema(goldenFile))
-
-	// Read the spike schema.
-	spikeSchema, err := os.ReadFile(filepath.Join(root, "spike", "schema.graphql"))
+// readTestdata reads a file from generator/testdata/.
+func readTestdata(t *testing.T, name string) string {
+	t.Helper()
+	root := repoRoot(t)
+	data, err := os.ReadFile(filepath.Join(root, "generator", "testdata", name))
 	if err != nil {
-		t.Fatalf("read spike schema: %v", err)
+		t.Fatalf("read testdata %s: %v", name, err)
 	}
-	want := normalizeSchema(string(spikeSchema))
+	return string(data)
+}
+
+func TestBuildSchema_Golden(t *testing.T) {
+	goldenFile := loadGoldenProtoFile(t)
+
+	got := normalizeSchema(buildSchema(goldenFile))
+	want := normalizeSchema(readTestdata(t, "golden.schema.graphql"))
 
 	if got != want {
-		// Print a diff-friendly view.
 		gotLines := strings.Split(got, "\n")
 		wantLines := strings.Split(want, "\n")
 		maxLines := len(gotLines)
 		if len(wantLines) > maxLines {
 			maxLines = len(wantLines)
 		}
-		t.Errorf("buildSchema output does not match spike/schema.graphql\n")
+		t.Errorf("buildSchema output does not match testdata/golden.schema.graphql\n")
 		t.Logf("=== GOT ===\n%s", got)
 		t.Logf("=== WANT ===\n%s", want)
 		for i := 0; i < maxLines; i++ {

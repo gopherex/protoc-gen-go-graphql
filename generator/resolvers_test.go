@@ -1,0 +1,42 @@
+package generator
+
+import (
+	"strings"
+	"testing"
+)
+
+func TestBuildResolvers_Golden(t *testing.T) {
+	goldenFile := loadGoldenProtoFile(t)
+
+	// These match the values generator.go derives from golden.proto's go_package.
+	pbImport := "github.com/gopherex/protoc-gen-go-graphql/example/gen"
+	execImport := "github.com/gopherex/protoc-gen-go-graphql/example/gen/gqlapi/exec"
+	runtimeImport := "github.com/gopherex/protoc-gen-go-graphql/runtime"
+
+	got := normalizeSchema(buildResolvers(goldenFile, pbImport, execImport, runtimeImport))
+	want := normalizeSchema(readTestdata(t, "golden.resolver.go.txt"))
+
+	if got != want {
+		gotLines := strings.Split(got, "\n")
+		wantLines := strings.Split(want, "\n")
+		maxLines := len(gotLines)
+		if len(wantLines) > maxLines {
+			maxLines = len(wantLines)
+		}
+		t.Errorf("buildResolvers output does not match testdata/golden.resolver.go.txt\n")
+		t.Logf("=== GOT ===\n%s", got)
+		t.Logf("=== WANT ===\n%s", want)
+		for i := 0; i < maxLines; i++ {
+			g, w := "", ""
+			if i < len(gotLines) {
+				g = gotLines[i]
+			}
+			if i < len(wantLines) {
+				w = wantLines[i]
+			}
+			if g != w {
+				t.Logf("line %d diff:\n  got:  %q\n  want: %q", i+1, g, w)
+			}
+		}
+	}
+}

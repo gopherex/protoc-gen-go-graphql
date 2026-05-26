@@ -1,0 +1,43 @@
+directive @goField(forceResolver: Boolean, name: String) on FIELD_DEFINITION | INPUT_FIELD_DEFINITION
+
+scalar Int64
+scalar Bytes
+scalar Timestamp
+scalar JSON
+
+enum Genre { GENRE_UNSPECIFIED FICTION NONFICTION }
+
+type Author { name: String! }
+
+type Book {
+  id: String!
+  title: String!
+  genre: Genre!
+  copies: Int64!
+  cover: Bytes!
+  publishedAt: Timestamp
+  tags: JSON @goField(forceResolver: true)
+  author: Author
+}
+
+input GetBookRequest { id: String! }
+input AddBookRequest { book: BookInput }
+input BookInput {
+  id: String!
+  title: String!
+  genre: Genre!
+  copies: Int64!
+  cover: Bytes!
+  publishedAt: Timestamp
+  author: AuthorInput
+}
+input AuthorInput { name: String! }
+input WatchBooksRequest { genre: Genre! }
+
+type GetBookResponse { book: Book }
+type AddBookResponse { book: Book }
+
+type Query { getBook(input: GetBookRequest!): GetBookResponse! }
+type Mutation { addBook(input: AddBookRequest!): AddBookResponse! }
+type Subscription { watchBooks(input: WatchBooksRequest!): Book! }
+
