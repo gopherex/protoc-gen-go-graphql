@@ -1,0 +1,42 @@
+syntax = "proto3";
+
+package golden.v1;
+
+option go_package = "github.com/gopherex/protoc-gen-go-graphql/example/gen;gen";
+
+import "google/protobuf/timestamp.proto";
+
+service Library {
+  rpc GetBook(GetBookRequest) returns (GetBookResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS; // -> Query
+  }
+  rpc AddBook(AddBookRequest) returns (AddBookResponse); // default -> Mutation
+  rpc WatchBooks(WatchBooksRequest) returns (stream Book); // -> Subscription
+}
+
+enum Genre {
+  GENRE_UNSPECIFIED = 0;
+  FICTION = 1;
+  NONFICTION = 2;
+}
+
+message Author {
+  string name = 1;
+}
+
+message Book {
+  string id = 1;
+  string title = 2;
+  Genre genre = 3;
+  int64 copies = 4;                          // -> String scalar
+  bytes cover = 5;                           // -> base64 String
+  google.protobuf.Timestamp published_at = 6;// -> Timestamp scalar
+  map<string, string> tags = 7;              // -> JSON scalar
+  Author author = 8;                         // nested message
+}
+
+message GetBookRequest { string id = 1; }
+message GetBookResponse { Book book = 1; }
+message AddBookRequest { Book book = 1; }
+message AddBookResponse { Book book = 1; }
+message WatchBooksRequest { Genre genre = 1; }
