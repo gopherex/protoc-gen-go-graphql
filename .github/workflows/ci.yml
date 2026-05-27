@@ -1,0 +1,66 @@
+name: CI
+
+on:
+  push:
+    branches: [master, main]
+  pull_request:
+  workflow_call: # reused by release.yml to gate releases on a green build
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # Fast checks against the committed generated output (example/gen).
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+          cache-dependency-path: go.sum
+      - name: gofmt
+        run: |
+          out=$(gofmt -l .)
+          if [ -n "$out" ]; then
+            echo "::error::gofmt needed:"; echo "$out"; exit 1
+          fi
+      - name: go vet
+        # Scoped: example/gen/gqlapi/exec is gqlgen output that copies proto
+        # messages by value -> expected copylocks warnings. Not a gate.
+        run: go vet ./generator/ ./graphqlpb/
+      - name: go build
+        run: go build ./...
+      - name: go test -race
+        run: go test -race ./...
+
+  # Verifies the full generation pipeline and that committed output is current.
+  generate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+          cache-dependency-path: go.sum
+      - name: install protoc
+        run: sudo apt-get update && sudo apt-get install -y protobuf-compiler
+      - name: build plugins (also puts protoc-gen-go on PATH for single_pass)
+        run: |
+          make build
+          echo "$PWD/bin" >> "$GITHUB_PATH"
+      - name: regenerate (two-phase) and check committed gqlapi output is current
+        run: |
+          make gen-test
+          # Only diff generator/gqlgen output (deterministic). *.pb.go carry a
+          # protoc version stamp that varies by toolchain, so they are excluded.
+          git diff --exit-code -- example/gen/gqlapi || {
+            echo "::error::example/gen/gqlapi is stale; run 'make gen-test' and commit"; exit 1; }
+      - name: single_pass mode builds
+        run: |
+          make gen-test-singlepass
+          go build ./...
