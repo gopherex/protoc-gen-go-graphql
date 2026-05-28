@@ -139,6 +139,15 @@ func buildGqlgenYml(f *protogen.File, pbImport, pbgqlImport string) string {
 		}
 	}
 
+	// Directives block: only emit when custom directives with no runtime behavior are used.
+	// @idempotent carries no runtime behavior and must be marked skip_runtime to avoid
+	// gqlgen generating a DirectiveRoot method that requires an implementation.
+	if hasAnyIdempotentMutation(f) {
+		sb.WriteString("\ndirectives:\n")
+		sb.WriteString("  idempotent:\n")
+		sb.WriteString("    skip_runtime: true\n")
+	}
+
 	// No `resolver:` block (spike-findings §1).
 	sb.WriteString("\n")
 	sb.WriteString("# No `resolver:` block on purpose: gqlgen then emits only the exec engine and the\n")

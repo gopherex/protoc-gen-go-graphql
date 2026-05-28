@@ -208,6 +208,10 @@ func buildSchema(f *protogen.File) string {
 	if hasInputOneof {
 		sb.WriteString("directive @oneOf on INPUT_OBJECT\n")
 	}
+	// @idempotent is needed when at least one IDEMPOTENT mutation exists.
+	if hasAnyIdempotentMutation(f) {
+		sb.WriteString("directive @idempotent on FIELD_DEFINITION\n")
+	}
 	sb.WriteString("\n")
 
 	// 2. Scalar declarations (only those actually used).
@@ -725,6 +729,32 @@ func operationType(m *protogen.Method) string {
 	return "Mutation"
 }
 
+// isIdempotentMutation returns true iff the method is a Mutation with
+// idempotency_level = IDEMPOTENT (not NO_SIDE_EFFECTS, not streaming).
+func isIdempotentMutation(m *protogen.Method) bool {
+	if m.Desc.IsStreamingServer() {
+		return false
+	}
+	opts, ok := m.Desc.Options().(*descriptorpb.MethodOptions)
+	if !ok || opts == nil {
+		return false
+	}
+	return opts.GetIdempotencyLevel() == descriptorpb.MethodOptions_IDEMPOTENT
+}
+
+// hasAnyIdempotentMutation returns true iff f contains at least one
+// method that should carry the @idempotent directive.
+func hasAnyIdempotentMutation(f *protogen.File) bool {
+	for _, svc := range f.Services {
+		for _, m := range svc.Methods {
+			if isIdempotentMutation(m) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
 // emitOperationRoots emits Query, Mutation, Subscription root types.
 func emitOperationRoots(sb *strings.Builder, f *protogen.File) {
 	queryFields := []string{}
@@ -744,8 +774,11 @@ func emitOperationRoots(sb *strings.Builder, f *protogen.File) {
 					fmt.Sprintf("%s(input: %s!): %s!", opField, reqTypeName, retType))
 			case "Mutation":
 				retType := m.Output.GoIdent.GoName
-				mutationFields = append(mutationFields,
-					fmt.Sprintf("%s(input: %s!): %s!", opField, reqTypeName, retType))
+				field := fmt.Sprintf("%s(input: %s!): %s!", opField, reqTypeName, retType)
+				if isIdempotentMutation(m) {
+					field += " @idempotent"
+				}
+				mutationFields = append(mutationFields, field)
 			case "Subscription":
 				streamType := m.Output.GoIdent.GoName
 				subscriptionFields = append(subscriptionFields,
