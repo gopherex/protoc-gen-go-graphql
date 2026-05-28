@@ -16,6 +16,8 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
+	"runtime/debug"
 	"strings"
 
 	"github.com/99designs/gqlgen/api"
@@ -85,6 +87,14 @@ func (g *Generator) runSinglePass(
 		if err := copyFile(goSumSrc, filepath.Join(tmpRoot, "go.sum")); err != nil {
 			return fmt.Errorf("single_pass: copy go.sum: %w", err)
 		}
+	}
+	if err := prepareSinglePassGoMod(tmpRoot); err != nil {
+		return fmt.Errorf("single_pass: prepare go.mod: %w", err)
+	}
+	modDownload := exec.Command("go", "mod", "download", "all")
+	modDownload.Dir = tmpRoot
+	if out, err := modDownload.CombinedOutput(); err != nil {
+		return fmt.Errorf("single_pass: go mod download: %w\n%s", err, out)
 	}
 
 	// --- 5. Shell protoc-gen-go to produce pb .go files. ---
@@ -163,24 +173,32 @@ func (g *Generator) runSinglePass(
 		return fmt.Errorf("single_pass: protoc-gen-go returned error: %s", pgResp.GetError())
 	}
 
-	// Write each pb .go file under tmp/<pbRelDir>/<filename>.
-	// protoc-gen-go with paths=source_relative emits filenames relative to the proto
-	// file location. We place them at tmp/<pbRelDir>/<basename>.
-	tmpPbDir := filepath.Join(tmpRoot, pbRelDir)
-	if err := os.MkdirAll(tmpPbDir, 0o755); err != nil {
-		return fmt.Errorf("single_pass: mkdir pb dir: %w", err)
+	// Write each pb .go file under the module directory matching the source
+	// file's Go import path. With multiple proto packages in one request,
+	// source_relative response names cannot all be placed under this graph's
+	// pbRelDir.
+	prefixToFile := map[string]*protogen.File{}
+	for _, pluginFile := range g.Plugin.Files {
+		prefixToFile[pluginFile.GeneratedFilenamePrefix] = pluginFile
 	}
 	for _, respFile := range pgResp.File {
-		// The filename from protoc-gen-go is relative to the proto file dir.
-		// Since we're using source_relative, it's just "<base>.pb.go" or
-		// "<base>_grpc.pb.go" possibly with subdirs if proto is in a subdir.
-		// We write them under tmpPbDir preserving the relative path.
-		dest := filepath.Join(tmpPbDir, filepath.FromSlash(respFile.GetName()))
+		respName := respFile.GetName()
+		respPrefix := strings.TrimSuffix(respName, ".pb.go")
+		pluginFile := prefixToFile[respPrefix]
+		if pluginFile == nil {
+			return fmt.Errorf("single_pass: cannot map protoc-gen-go output %s to a proto file", respName)
+		}
+		importPath := string(pluginFile.GoImportPath)
+		if !strings.HasPrefix(importPath, modulePrefix) {
+			return fmt.Errorf("single_pass: generated pb import path %q does not start with module path %q/", importPath, modulePath)
+		}
+		relImportDir := strings.TrimPrefix(importPath, modulePrefix)
+		dest := filepath.Join(tmpRoot, relImportDir, filepath.Base(filepath.FromSlash(respName)))
 		if err := os.MkdirAll(filepath.Dir(dest), 0o755); err != nil {
-			return fmt.Errorf("single_pass: mkdir for pb file %s: %w", respFile.GetName(), err)
+			return fmt.Errorf("single_pass: mkdir for pb file %s: %w", respName, err)
 		}
 		if err := os.WriteFile(dest, []byte(respFile.GetContent()), 0o644); err != nil {
-			return fmt.Errorf("single_pass: write pb file %s: %w", respFile.GetName(), err)
+			return fmt.Errorf("single_pass: write pb file %s: %w", respName, err)
 		}
 	}
 
@@ -227,6 +245,17 @@ func (g *Generator) runSinglePass(
 		}
 	}
 
+	preloadTargets := []string{pbImport}
+	if len(pbgqlFiles) > 0 {
+		preloadTargets = append(preloadTargets, pbgqlImport)
+	}
+	preloadArgs := append([]string{"list", "-deps", "-mod=mod"}, preloadTargets...)
+	preload := exec.Command("go", preloadArgs...)
+	preload.Dir = tmpRoot
+	if out, err := preload.CombinedOutput(); err != nil {
+		return fmt.Errorf("single_pass: go list deps: %w\n%s", err, out)
+	}
+
 	// --- 8. Run gqlgen in-process with CWD = tmp gqlapi dir. ---
 	// Save and restore CWD.
 	origDir, err := os.Getwd()
@@ -244,6 +273,7 @@ func (g *Generator) runSinglePass(
 	}
 	cfg.SkipValidation = true
 	cfg.SkipModTidy = true
+	cfg.OmitRootModels = true
 
 	if err := api.Generate(cfg); err != nil {
 		return fmt.Errorf("single_pass: gqlgen api.Generate: %w", err)
@@ -263,23 +293,119 @@ func (g *Generator) runSinglePass(
 		return fmt.Errorf("single_pass: read generated exec/exec.go: %w", err)
 	}
 
-	modelsGenPath := filepath.Join(tmpGqlapiDir, "models_gen.go")
-	modelsContent, err := os.ReadFile(modelsGenPath)
-	if err != nil {
-		return fmt.Errorf("single_pass: read generated models_gen.go: %w", err)
-	}
-
 	// Emit exec/exec.go.
 	execFile := g.Plugin.NewGeneratedFile(gqlapiDir+"/exec/exec.go", protogen.GoImportPath(pbgqlImport+"/exec"))
 	execFile.P(string(execContent))
 
-	// Emit models_gen.go.
-	// gqlapiImport = pbImport + "/" + outDir
-	gqlapiImport := pbImport + "/" + outDir
-	modelsFile := g.Plugin.NewGeneratedFile(gqlapiDir+"/models_gen.go", protogen.GoImportPath(gqlapiImport))
-	modelsFile.P(string(modelsContent))
+	// Emit models_gen.go when gqlgen produced one. With OmitRootModels=true and
+	// full proto autobinding, gqlgen may not need a model file at all.
+	modelsGenPath := filepath.Join(tmpGqlapiDir, "models_gen.go")
+	if modelsContent, err := os.ReadFile(modelsGenPath); err == nil {
+		gqlapiImport := pbImport + "/" + outDir
+		modelsFile := g.Plugin.NewGeneratedFile(gqlapiDir+"/models_gen.go", protogen.GoImportPath(gqlapiImport))
+		modelsFile.P(string(modelsContent))
+	} else if !os.IsNotExist(err) {
+		return fmt.Errorf("single_pass: read generated models_gen.go: %w", err)
+	}
 
 	return nil
+}
+
+// pluginModulePath is the module that owns graphqlpb (and this plugin).
+const pluginModulePath = "github.com/gopherex/protoc-gen-go-graphql"
+
+// prepareSinglePassGoMod injects the deps the synthetic /tmp module needs to
+// type-check pb + pbgql for gqlgen: gqlgen itself and graphqlpb.
+//
+// graphqlpb is pinned to the plugin's OWN module version. When the plugin runs
+// as a published/installed module (real semver), that require resolves from the
+// proxy/cache — no replace needed. When the plugin runs from a source checkout
+// (version "(devel)", e.g. `go build`/CI/dev), there is no published version, so
+// we fall back to a local `replace` pointing at the plugin's source tree.
+//
+// Uses `go mod edit` (not raw append) so it is idempotent against a go.mod that
+// already requires these modules.
+func prepareSinglePassGoMod(tmpRoot string) error {
+	gqlgenVersion := moduleVersion("github.com/99designs/gqlgen")
+	if gqlgenVersion == "" {
+		gqlgenVersion = "v0.17.90"
+	}
+	if err := goModEdit(tmpRoot, "-require=github.com/99designs/gqlgen@"+gqlgenVersion); err != nil {
+		return err
+	}
+
+	if v := pluginModuleVersion(); isRealVersion(v) {
+		// Published: a normal versioned require, resolvable from the module proxy.
+		return goModEdit(tmpRoot, "-require="+pluginModulePath+"@"+v)
+	}
+
+	// Dev/source build: no published version — replace with the local source tree.
+	root, err := currentModuleRoot()
+	if err != nil {
+		return err
+	}
+	if err := goModEdit(tmpRoot, "-require="+pluginModulePath+"@v0.0.0"); err != nil {
+		return err
+	}
+	return goModEdit(tmpRoot, "-replace="+pluginModulePath+"="+filepath.ToSlash(root))
+}
+
+// goModEdit runs `go mod edit <arg>` in dir.
+func goModEdit(dir, arg string) error {
+	cmd := exec.Command("go", "mod", "edit", arg)
+	cmd.Dir = dir
+	if out, err := cmd.CombinedOutput(); err != nil {
+		return fmt.Errorf("go mod edit %s: %w\n%s", arg, err, out)
+	}
+	return nil
+}
+
+// pluginModuleVersion returns the version of the plugin's own (main) module, or
+// "" if unavailable.
+func pluginModuleVersion() string {
+	if info, ok := debug.ReadBuildInfo(); ok {
+		return info.Main.Version
+	}
+	return ""
+}
+
+// isRealVersion reports whether v is a resolvable published version (not a
+// source/dev build).
+func isRealVersion(v string) bool {
+	return v != "" && v != "(devel)"
+}
+
+func moduleVersion(path string) string {
+	if info, ok := debug.ReadBuildInfo(); ok {
+		for _, dep := range info.Deps {
+			if dep.Path == path {
+				if dep.Replace != nil {
+					return dep.Replace.Version
+				}
+				return dep.Version
+			}
+		}
+	}
+	return ""
+}
+
+func currentModuleRoot() (string, error) {
+	_, file, _, ok := runtime.Caller(0)
+	if !ok {
+		return "", fmt.Errorf("runtime.Caller failed")
+	}
+	dir := filepath.Dir(file)
+	for {
+		if _, err := os.Stat(filepath.Join(dir, "go.mod")); err == nil {
+			return dir, nil
+		}
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			break
+		}
+		dir = parent
+	}
+	return "", fmt.Errorf("cannot locate generator module root from %s", file)
 }
 
 // findGoMod walks up from startDir until it finds a go.mod file. Returns the
