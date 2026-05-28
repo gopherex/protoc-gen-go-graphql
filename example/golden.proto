@@ -31,6 +31,10 @@ service Library {
   // Mutations (default → Mutation root).
   rpc EchoInput(EchoRequest) returns (EchoResponse);
   rpc AddBook(AddBookRequest) returns (AddBookResponse);
+  // Idempotent mutation: upsert a book (IDEMPOTENT → @idempotent directive).
+  rpc UpsertBook(UpsertBookRequest) returns (UpsertBookResponse) {
+    option idempotency_level = IDEMPOTENT;
+  }
 
   // Subscription (server-streaming → Subscription root).
   rpc WatchItems(WatchRequest) returns (stream WatchEvent);
@@ -289,3 +293,7 @@ message WatchEvent {
   Book book = 1;
   google.protobuf.Timestamp at = 2;
 }
+
+// UpsertBookRequest / UpsertBookResponse (used by UpsertBook IDEMPOTENT RPC).
+message UpsertBookRequest { Book book = 1; }
+message UpsertBookResponse { Book book = 1; }
