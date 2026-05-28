@@ -4,9 +4,44 @@ import (
 	"context"
 	"testing"
 
+	"google.golang.org/genproto/googleapis/rpc/errdetails"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/protoadapt"
 )
+
+func TestGraphQLErrorDetails(t *testing.T) {
+	info := &errdetails.ErrorInfo{
+		Reason:   "RATE_LIMIT",
+		Domain:   "api.example.com",
+		Metadata: map[string]string{"limit": "100"},
+	}
+	st, err := status.New(codes.ResourceExhausted, "slow down").
+		WithDetails(protoadapt.MessageV1Of(info))
+	if err != nil {
+		t.Fatal(err)
+	}
+	gqlErr := GraphQLError(context.Background(), st.Err())
+
+	det, ok := gqlErr.Extensions["details"].([]any)
+	if !ok || len(det) != 1 {
+		t.Fatalf("details = %#v", gqlErr.Extensions["details"])
+	}
+	obj, ok := det[0].(map[string]any)
+	if !ok {
+		t.Fatalf("detail not a structured object: %T", det[0])
+	}
+	if obj["@type"] != "google.rpc.ErrorInfo" {
+		t.Fatalf("@type = %v", obj["@type"])
+	}
+	if obj["reason"] != "RATE_LIMIT" {
+		t.Fatalf("reason = %v", obj["reason"])
+	}
+	md, ok := obj["metadata"].(map[string]any)
+	if !ok || md["limit"] != "100" {
+		t.Fatalf("metadata = %v", obj["metadata"])
+	}
+}
 
 func TestGraphQLErrorCode(t *testing.T) {
 	in := status.Error(codes.NotFound, "book missing")

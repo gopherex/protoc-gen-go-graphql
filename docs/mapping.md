@@ -28,11 +28,28 @@ layout.
 | `google.protobuf.Timestamp` | `Timestamp` scalar | RFC 3339 with nanoseconds, e.g. `"2024-01-15T10:30:00.123456789Z"` |
 | `google.protobuf.Duration` | `Duration` scalar | canonical proto3-JSON form, e.g. `"1.5s"` |
 | `google.protobuf.Struct` / `Value` / `Any` / `ListValue` | `JSON` scalar | pass-through; no structural typing |
-| gRPC `status` error | GraphQL error | `extensions.code` = SCREAMING_SNAKE_CASE code name (e.g. `NOT_FOUND`); message = status message; `extensions.details` = stringified details if present |
+| gRPC `status` error | GraphQL error | `extensions.code` = SCREAMING_SNAKE_CASE code name (e.g. `NOT_FOUND`); message = status message; `extensions.details` = structured (see below) |
 
 Operation type (`Query` vs `Mutation`) is derived from the builtin
 `google.protobuf.MethodOptions.idempotency_level`. No custom proto option is
-needed — the default rule fully covers all practical cases.
+needed — the default rule fully covers all practical cases. Methods with
+`idempotency_level = IDEMPOTENT` additionally carry the `@idempotent` schema
+directive on their Mutation field (introspectable metadata for client retry/dedup).
+
+### gRPC error mapping (`graphqlpb.GraphQLError`)
+
+- **code** → `extensions.code` (SCREAMING_SNAKE_CASE, e.g. `NOT_FOUND`).
+- **message** → the GraphQL error message.
+- **details** → `extensions.details`: each `status` detail (`google.rpc.ErrorInfo`,
+  `BadRequest`, `QuotaFailure`, …) is protojson-marshaled into a structured object
+  tagged with `"@type"` (e.g. `"google.rpc.ErrorInfo"`). Error metadata travels
+  here, in `ErrorInfo.metadata` — that is the gRPC-standard place for it.
+- **transport metadata / trailers** (`grpc.SetHeader` / `grpc.SetTrailer`) are
+  **NOT** surfaced. The generated resolvers delegate to the gRPC server
+  **in-process** (no transport), so headers/trailers never travel. Put any
+  error-side key/values in `google.rpc.ErrorInfo.metadata` (a status detail),
+  which IS surfaced. Success-path trailers would require a client-based (network)
+  delegation, which is out of scope for the in-process model.
 
 ### Custom scalars are protojson-aligned
 
