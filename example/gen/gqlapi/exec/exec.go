@@ -152,8 +152,9 @@ type ComplexityRoot struct {
 	}
 
 	Mutation struct {
-		AddBook   func(childComplexity int, input gen.AddBookRequest) int
-		EchoInput func(childComplexity int, input gen.EchoRequest) int
+		AddBook    func(childComplexity int, input gen.AddBookRequest) int
+		EchoInput  func(childComplexity int, input gen.EchoRequest) int
+		UpsertBook func(childComplexity int, input gen.UpsertBookRequest) int
 	}
 
 	MutualA struct {
@@ -258,6 +259,10 @@ type ComplexityRoot struct {
 		Parent   func(childComplexity int) int
 	}
 
+	UpsertBookResponse struct {
+		Book func(childComplexity int) int
+	}
+
 	WKTMessage struct {
 		Any                func(childComplexity int) int
 		BoolWrapper        func(childComplexity int) int
@@ -309,6 +314,7 @@ type MultiOneofChoiceChoiceBookResolver interface {
 type MutationResolver interface {
 	EchoInput(ctx context.Context, input gen.EchoRequest) (*gen.EchoResponse, error)
 	AddBook(ctx context.Context, input gen.AddBookRequest) (*gen.AddBookResponse, error)
+	UpsertBook(ctx context.Context, input gen.UpsertBookRequest) (*gen.UpsertBookResponse, error)
 }
 type OptionalScalarsResolver interface {
 	FieldFloat(ctx context.Context, obj *gen.OptionalScalars) (*float64, error)
@@ -694,6 +700,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.EchoInput(childComplexity, args["input"].(gen.EchoRequest)), true
+	case "Mutation.upsertBook":
+		if e.ComplexityRoot.Mutation.UpsertBook == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_upsertBook_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.UpsertBook(childComplexity, args["input"].(gen.UpsertBookRequest)), true
 
 	case "MutualA.b":
 		if e.ComplexityRoot.MutualA.B == nil {
@@ -1073,6 +1090,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.ComplexityRoot.TreeNode.Parent(childComplexity), true
 
+	case "UpsertBookResponse.book":
+		if e.ComplexityRoot.UpsertBookResponse.Book == nil {
+			break
+		}
+
+		return e.ComplexityRoot.UpsertBookResponse.Book(childComplexity), true
+
 	case "WKTMessage.any":
 		if e.ComplexityRoot.WKTMessage.Any == nil {
 			break
@@ -1211,6 +1235,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputGetScalarsRequest,
 		ec.unmarshalInputSearchRequest,
 		ec.unmarshalInputSearchRequestQuery,
+		ec.unmarshalInputUpsertBookRequest,
 		ec.unmarshalInputWatchRequest,
 	)
 	first := true
@@ -1306,6 +1331,7 @@ func newExecutionContext(
 var sources = []*ast.Source{
 	{Name: "../schema.graphql", Input: `directive @goField(forceResolver: Boolean, name: String) on FIELD_DEFINITION | INPUT_FIELD_DEFINITION
 directive @oneOf on INPUT_OBJECT
+directive @idempotent on FIELD_DEFINITION
 
 scalar Int64
 scalar Uint64
@@ -1401,6 +1427,7 @@ input BookInput {
 }
 input AuthorInput { name: String! }
 input AddBookRequest { book: BookInput }
+input UpsertBookRequest { book: BookInput }
 input WatchRequest { genre: Genre! }
 
 type ScalarTypes {
@@ -1517,6 +1544,7 @@ type WatchEvent {
   book: Book
   at: Timestamp
 }
+type UpsertBookResponse { book: Book }
 
 type Query {
   getEverything(input: GetEverythingRequest!): GetEverythingResponse!
@@ -1526,6 +1554,7 @@ type Query {
 type Mutation {
   echoInput(input: EchoRequest!): EchoResponse!
   addBook(input: AddBookRequest!): AddBookResponse!
+  upsertBook(input: UpsertBookRequest!): UpsertBookResponse! @idempotent
 }
 type Subscription { watchItems(input: WatchRequest!): WatchEvent! }
 
@@ -1807,6 +1836,14 @@ func (ec *executionContext) childFields_TreeNode(ctx context.Context, field grap
 	return nil, fmt.Errorf("no field named %q was found under type TreeNode", field.Name)
 }
 
+func (ec *executionContext) childFields_UpsertBookResponse(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+	switch field.Name {
+	case "book":
+		return ec.fieldContext_UpsertBookResponse_book(ctx, field)
+	}
+	return nil, fmt.Errorf("no field named %q was found under type UpsertBookResponse", field.Name)
+}
+
 func (ec *executionContext) childFields_WKTMessage(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 	switch field.Name {
 	case "timestamp":
@@ -1995,6 +2032,20 @@ func (ec *executionContext) field_Mutation_echoInput_args(ctx context.Context, r
 	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input",
 		func(ctx context.Context, v any) (gen.EchoRequest, error) {
 			return ec.unmarshalNEchoRequest2githubᚗcomᚋgopherexᚋprotocᚑgenᚑgoᚑgraphqlᚋexampleᚋgenᚐEchoRequest(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["input"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_upsertBook_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input",
+		func(ctx context.Context, v any) (gen.UpsertBookRequest, error) {
+			return ec.unmarshalNUpsertBookRequest2githubᚗcomᚋgopherexᚋprotocᚑgenᚑgoᚑgraphqlᚋexampleᚋgenᚐUpsertBookRequest(ctx, v)
 		})
 	if err != nil {
 		return nil, err
@@ -3508,6 +3559,50 @@ func (ec *executionContext) fieldContext_Mutation_addBook(ctx context.Context, f
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Mutation_addBook_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_upsertBook(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Mutation_upsertBook(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().UpsertBook(ctx, fc.Args["input"].(gen.UpsertBookRequest))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *gen.UpsertBookResponse) graphql.Marshaler {
+			return ec.marshalNUpsertBookResponse2ᚖgithubᚗcomᚋgopherexᚋprotocᚑgenᚑgoᚑgraphqlᚋexampleᚋgenᚐUpsertBookResponse(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Mutation_upsertBook(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_UpsertBookResponse(ctx, field)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_upsertBook_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -5043,6 +5138,38 @@ func (ec *executionContext) fieldContext_TreeNode_children(_ context.Context, fi
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return ec.childFields_TreeNode(ctx, field)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _UpsertBookResponse_book(ctx context.Context, field graphql.CollectedField, obj *gen.UpsertBookResponse) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_UpsertBookResponse_book(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Book, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *gen.Book) graphql.Marshaler {
+			return ec.marshalOBook2ᚖgithubᚗcomᚋgopherexᚋprotocᚑgenᚑgoᚑgraphqlᚋexampleᚋgenᚐBook(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_UpsertBookResponse_book(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "UpsertBookResponse",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_Book(ctx, field)
 		},
 	}
 	return fc, nil
@@ -6900,6 +7027,36 @@ func (ec *executionContext) unmarshalInputSearchRequestQuery(ctx context.Context
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputUpsertBookRequest(ctx context.Context, obj any) (gen.UpsertBookRequest, error) {
+	var it gen.UpsertBookRequest
+	if obj == nil {
+		return it, nil
+	}
+
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"book"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "book":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("book"))
+			data, err := ec.unmarshalOBookInput2ᚖgithubᚗcomᚋgopherexᚋprotocᚑgenᚑgoᚑgraphqlᚋexampleᚋgenᚐBook(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Book = data
+		}
+	}
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputWatchRequest(ctx context.Context, obj any) (gen.WatchRequest, error) {
 	var it gen.WatchRequest
 	if obj == nil {
@@ -8126,6 +8283,13 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "upsertBook":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_upsertBook(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -9163,6 +9327,42 @@ func (ec *executionContext) _TreeNode(ctx context.Context, sel ast.SelectionSet,
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(min(len(deferred), math.MaxInt32)))
+
+	for label, dfs := range deferred {
+		ec.ProcessDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var upsertBookResponseImplementors = []string{"UpsertBookResponse"}
+
+func (ec *executionContext) _UpsertBookResponse(ctx context.Context, sel ast.SelectionSet, obj *gen.UpsertBookResponse) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, upsertBookResponseImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("UpsertBookResponse")
+		case "book":
+			out.Values[i] = ec._UpsertBookResponse_book(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -10312,6 +10512,25 @@ func (ec *executionContext) marshalNUint642ᚕuint64ᚄ(ctx context.Context, sel
 	}
 
 	return ret
+}
+
+func (ec *executionContext) unmarshalNUpsertBookRequest2githubᚗcomᚋgopherexᚋprotocᚑgenᚑgoᚑgraphqlᚋexampleᚋgenᚐUpsertBookRequest(ctx context.Context, v any) (gen.UpsertBookRequest, error) {
+	res, err := ec.unmarshalInputUpsertBookRequest(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNUpsertBookResponse2githubᚗcomᚋgopherexᚋprotocᚑgenᚑgoᚑgraphqlᚋexampleᚋgenᚐUpsertBookResponse(ctx context.Context, sel ast.SelectionSet, v gen.UpsertBookResponse) graphql.Marshaler {
+	return ec._UpsertBookResponse(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNUpsertBookResponse2ᚖgithubᚗcomᚋgopherexᚋprotocᚑgenᚑgoᚑgraphqlᚋexampleᚋgenᚐUpsertBookResponse(ctx context.Context, sel ast.SelectionSet, v *gen.UpsertBookResponse) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._UpsertBookResponse(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalNWatchEvent2githubᚗcomᚋgopherexᚋprotocᚑgenᚑgoᚑgraphqlᚋexampleᚋgenᚐWatchEvent(ctx context.Context, sel ast.SelectionSet, v gen.WatchEvent) graphql.Marshaler {

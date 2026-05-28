@@ -24,6 +24,7 @@ const (
 	Library_SearchBooks_FullMethodName   = "/golden.v1.Library/SearchBooks"
 	Library_EchoInput_FullMethodName     = "/golden.v1.Library/EchoInput"
 	Library_AddBook_FullMethodName       = "/golden.v1.Library/AddBook"
+	Library_UpsertBook_FullMethodName    = "/golden.v1.Library/UpsertBook"
 	Library_WatchItems_FullMethodName    = "/golden.v1.Library/WatchItems"
 )
 
@@ -38,6 +39,8 @@ type LibraryClient interface {
 	// Mutations (default → Mutation root).
 	EchoInput(ctx context.Context, in *EchoRequest, opts ...grpc.CallOption) (*EchoResponse, error)
 	AddBook(ctx context.Context, in *AddBookRequest, opts ...grpc.CallOption) (*AddBookResponse, error)
+	// Idempotent mutation: upsert a book (IDEMPOTENT → @idempotent directive).
+	UpsertBook(ctx context.Context, in *UpsertBookRequest, opts ...grpc.CallOption) (*UpsertBookResponse, error)
 	// Subscription (server-streaming → Subscription root).
 	WatchItems(ctx context.Context, in *WatchRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[WatchEvent], error)
 }
@@ -100,6 +103,16 @@ func (c *libraryClient) AddBook(ctx context.Context, in *AddBookRequest, opts ..
 	return out, nil
 }
 
+func (c *libraryClient) UpsertBook(ctx context.Context, in *UpsertBookRequest, opts ...grpc.CallOption) (*UpsertBookResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(UpsertBookResponse)
+	err := c.cc.Invoke(ctx, Library_UpsertBook_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *libraryClient) WatchItems(ctx context.Context, in *WatchRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[WatchEvent], error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	stream, err := c.cc.NewStream(ctx, &Library_ServiceDesc.Streams[0], Library_WatchItems_FullMethodName, cOpts...)
@@ -130,6 +143,8 @@ type LibraryServer interface {
 	// Mutations (default → Mutation root).
 	EchoInput(context.Context, *EchoRequest) (*EchoResponse, error)
 	AddBook(context.Context, *AddBookRequest) (*AddBookResponse, error)
+	// Idempotent mutation: upsert a book (IDEMPOTENT → @idempotent directive).
+	UpsertBook(context.Context, *UpsertBookRequest) (*UpsertBookResponse, error)
 	// Subscription (server-streaming → Subscription root).
 	WatchItems(*WatchRequest, grpc.ServerStreamingServer[WatchEvent]) error
 	mustEmbedUnimplementedLibraryServer()
@@ -156,6 +171,9 @@ func (UnimplementedLibraryServer) EchoInput(context.Context, *EchoRequest) (*Ech
 }
 func (UnimplementedLibraryServer) AddBook(context.Context, *AddBookRequest) (*AddBookResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method AddBook not implemented")
+}
+func (UnimplementedLibraryServer) UpsertBook(context.Context, *UpsertBookRequest) (*UpsertBookResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method UpsertBook not implemented")
 }
 func (UnimplementedLibraryServer) WatchItems(*WatchRequest, grpc.ServerStreamingServer[WatchEvent]) error {
 	return status.Error(codes.Unimplemented, "method WatchItems not implemented")
@@ -271,6 +289,24 @@ func _Library_AddBook_Handler(srv interface{}, ctx context.Context, dec func(int
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Library_UpsertBook_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UpsertBookRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(LibraryServer).UpsertBook(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Library_UpsertBook_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(LibraryServer).UpsertBook(ctx, req.(*UpsertBookRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _Library_WatchItems_Handler(srv interface{}, stream grpc.ServerStream) error {
 	m := new(WatchRequest)
 	if err := stream.RecvMsg(m); err != nil {
@@ -308,6 +344,10 @@ var Library_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "AddBook",
 			Handler:    _Library_AddBook_Handler,
+		},
+		{
+			MethodName: "UpsertBook",
+			Handler:    _Library_UpsertBook_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{

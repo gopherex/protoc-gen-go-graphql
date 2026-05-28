@@ -5,6 +5,28 @@ import (
 	"testing"
 )
 
+// TestBuildGqlgenYml_IdempotentDirective asserts that gqlgen.yml contains the
+// directives block with skip_runtime: true for the @idempotent directive when
+// at least one IDEMPOTENT mutation exists in the proto file.
+func TestBuildGqlgenYml_IdempotentDirective(t *testing.T) {
+	goldenFile := loadGoldenProtoFile(t)
+
+	pbImport := "github.com/gopherex/protoc-gen-go-graphql/example/gen"
+	pbgqlImport := "github.com/gopherex/protoc-gen-go-graphql/example/gen/gqlapi/pbgql"
+
+	yml := buildGqlgenYml(goldenFile, pbImport, pbgqlImport)
+
+	if !strings.Contains(yml, "directives:") {
+		t.Errorf("gqlgen.yml missing 'directives:' block\ngot:\n%s", yml)
+	}
+	if !strings.Contains(yml, "idempotent:") {
+		t.Errorf("gqlgen.yml missing 'idempotent:' key\ngot:\n%s", yml)
+	}
+	if !strings.Contains(yml, "skip_runtime: true") {
+		t.Errorf("gqlgen.yml missing 'skip_runtime: true'\ngot:\n%s", yml)
+	}
+}
+
 func TestBuildGqlgenYml_Golden(t *testing.T) {
 	goldenFile := loadGoldenProtoFile(t)
 

@@ -295,6 +295,14 @@ func (r mutationResolver) AddBook(ctx context.Context, input pb.AddBookRequest) 
 	return resp, nil
 }
 
+func (r mutationResolver) UpsertBook(ctx context.Context, input pb.UpsertBookRequest) (*pb.UpsertBookResponse, error) {
+	resp, err := r.Library.UpsertBook(ctx, &input)
+	if err != nil {
+		return nil, graphqlpb.GraphQLError(ctx, err)
+	}
+	return resp, nil
+}
+
 func (r subscriptionResolver) WatchItems(ctx context.Context, input pb.WatchRequest) (<-chan *pb.WatchEvent, error) {
 	return graphqlpb.PumpServerStream[pb.WatchEvent](ctx, func(ss *graphqlpb.StreamServer[pb.WatchEvent]) error {
 		return r.Library.WatchItems(&input, ss)

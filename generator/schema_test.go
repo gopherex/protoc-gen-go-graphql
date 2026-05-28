@@ -148,6 +148,24 @@ func testdataUpdateMode() bool {
 	return os.Getenv("TESTDATA_UPDATE") == "1"
 }
 
+// TestBuildSchema_IdempotentDirective asserts that the schema contains the
+// @idempotent directive declaration and that the upsertBook mutation field
+// carries the @idempotent annotation.
+func TestBuildSchema_IdempotentDirective(t *testing.T) {
+	goldenFile := loadGoldenProtoFile(t)
+	schema := buildSchema(goldenFile)
+
+	directiveDecl := "directive @idempotent on FIELD_DEFINITION"
+	if !strings.Contains(schema, directiveDecl) {
+		t.Errorf("schema missing %q\ngot:\n%s", directiveDecl, schema)
+	}
+
+	fieldWithDirective := "upsertBook(input: UpsertBookRequest!): UpsertBookResponse! @idempotent"
+	if !strings.Contains(schema, fieldWithDirective) {
+		t.Errorf("schema missing %q\ngot:\n%s", fieldWithDirective, schema)
+	}
+}
+
 func TestBuildSchema_Golden(t *testing.T) {
 	goldenFile := loadGoldenProtoFile(t)
 

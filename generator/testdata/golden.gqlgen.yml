@@ -58,6 +58,8 @@ models:
   AddBookResponse:    { model: github.com/gopherex/protoc-gen-go-graphql/example/gen.AddBookResponse }
   WatchRequest:    { model: github.com/gopherex/protoc-gen-go-graphql/example/gen.WatchRequest }
   WatchEvent:    { model: github.com/gopherex/protoc-gen-go-graphql/example/gen.WatchEvent }
+  UpsertBookRequest:    { model: github.com/gopherex/protoc-gen-go-graphql/example/gen.UpsertBookRequest }
+  UpsertBookResponse:    { model: github.com/gopherex/protoc-gen-go-graphql/example/gen.UpsertBookResponse }
   SearchResponseResult:    { model: github.com/gopherex/protoc-gen-go-graphql/example/gen/gqlapi/pbgql.SearchResponseResult }
   SearchResponseResultBook:    { model: github.com/gopherex/protoc-gen-go-graphql/example/gen/gqlapi/pbgql.SearchResponseResultBook }
   SearchResponseResultNotFound:    { model: github.com/gopherex/protoc-gen-go-graphql/example/gen/gqlapi/pbgql.SearchResponseResultNotFound }
@@ -72,6 +74,10 @@ models:
   EverythingTerminal:    { model: github.com/gopherex/protoc-gen-go-graphql/example/gen/gqlapi/pbgql.EverythingTerminal }
   EverythingTerminalDone:    { model: github.com/gopherex/protoc-gen-go-graphql/example/gen/gqlapi/pbgql.EverythingTerminalDone }
   EverythingTerminalError:    { model: github.com/gopherex/protoc-gen-go-graphql/example/gen/gqlapi/pbgql.EverythingTerminalError }
+
+directives:
+  idempotent:
+    skip_runtime: true
 
 # No `resolver:` block on purpose: gqlgen then emits only the exec engine and the
 # resolver INTERFACES (no stub files). The generator owns the resolver

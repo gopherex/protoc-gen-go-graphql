@@ -2147,6 +2147,95 @@ func (x *WatchEvent) GetAt() *timestamppb.Timestamp {
 	return nil
 }
 
+// UpsertBookRequest / UpsertBookResponse (used by UpsertBook IDEMPOTENT RPC).
+type UpsertBookRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Book          *Book                  `protobuf:"bytes,1,opt,name=book,proto3" json:"book,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *UpsertBookRequest) Reset() {
+	*x = UpsertBookRequest{}
+	mi := &file_golden_proto_msgTypes[26]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UpsertBookRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UpsertBookRequest) ProtoMessage() {}
+
+func (x *UpsertBookRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_golden_proto_msgTypes[26]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UpsertBookRequest.ProtoReflect.Descriptor instead.
+func (*UpsertBookRequest) Descriptor() ([]byte, []int) {
+	return file_golden_proto_rawDescGZIP(), []int{26}
+}
+
+func (x *UpsertBookRequest) GetBook() *Book {
+	if x != nil {
+		return x.Book
+	}
+	return nil
+}
+
+type UpsertBookResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Book          *Book                  `protobuf:"bytes,1,opt,name=book,proto3" json:"book,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *UpsertBookResponse) Reset() {
+	*x = UpsertBookResponse{}
+	mi := &file_golden_proto_msgTypes[27]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UpsertBookResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UpsertBookResponse) ProtoMessage() {}
+
+func (x *UpsertBookResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_golden_proto_msgTypes[27]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UpsertBookResponse.ProtoReflect.Descriptor instead.
+func (*UpsertBookResponse) Descriptor() ([]byte, []int) {
+	return file_golden_proto_rawDescGZIP(), []int{27}
+}
+
+func (x *UpsertBookResponse) GetBook() *Book {
+	if x != nil {
+		return x.Book
+	}
+	return nil
+}
+
 type Outer_Inner struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Label         string                 `protobuf:"bytes,1,opt,name=label,proto3" json:"label,omitempty"`
@@ -2157,7 +2246,7 @@ type Outer_Inner struct {
 
 func (x *Outer_Inner) Reset() {
 	*x = Outer_Inner{}
-	mi := &file_golden_proto_msgTypes[26]
+	mi := &file_golden_proto_msgTypes[28]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2169,7 +2258,7 @@ func (x *Outer_Inner) String() string {
 func (*Outer_Inner) ProtoMessage() {}
 
 func (x *Outer_Inner) ProtoReflect() protoreflect.Message {
-	mi := &file_golden_proto_msgTypes[26]
+	mi := &file_golden_proto_msgTypes[28]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2208,7 +2297,7 @@ type Outer_Inner_DeepInner struct {
 
 func (x *Outer_Inner_DeepInner) Reset() {
 	*x = Outer_Inner_DeepInner{}
-	mi := &file_golden_proto_msgTypes[27]
+	mi := &file_golden_proto_msgTypes[29]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2220,7 +2309,7 @@ func (x *Outer_Inner_DeepInner) String() string {
 func (*Outer_Inner_DeepInner) ProtoMessage() {}
 
 func (x *Outer_Inner_DeepInner) ProtoReflect() protoreflect.Message {
-	mi := &file_golden_proto_msgTypes[27]
+	mi := &file_golden_proto_msgTypes[29]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2458,7 +2547,11 @@ const file_golden_proto_rawDesc = "" +
 	"\n" +
 	"WatchEvent\x12#\n" +
 	"\x04book\x18\x01 \x01(\v2\x0f.golden.v1.BookR\x04book\x12*\n" +
-	"\x02at\x18\x02 \x01(\v2\x1a.google.protobuf.TimestampR\x02at*;\n" +
+	"\x02at\x18\x02 \x01(\v2\x1a.google.protobuf.TimestampR\x02at\"8\n" +
+	"\x11UpsertBookRequest\x12#\n" +
+	"\x04book\x18\x01 \x01(\v2\x0f.golden.v1.BookR\x04book\"9\n" +
+	"\x12UpsertBookResponse\x12#\n" +
+	"\x04book\x18\x01 \x01(\v2\x0f.golden.v1.BookR\x04book*;\n" +
 	"\x05Genre\x12\x15\n" +
 	"\x11GENRE_UNSPECIFIED\x10\x00\x12\v\n" +
 	"\aFICTION\x10\x01\x12\x0e\n" +
@@ -2468,14 +2561,16 @@ const file_golden_proto_rawDesc = "" +
 	"\x12STATUS_UNSPECIFIED\x10\x00\x12\x11\n" +
 	"\rSTATUS_ACTIVE\x10\x01\x12\x12\n" +
 	"\x0eSTATUS_RUNNING\x10\x01\x12\x13\n" +
-	"\x0fSTATUS_INACTIVE\x10\x02\x1a\x02\x10\x012\xbb\x03\n" +
+	"\x0fSTATUS_INACTIVE\x10\x02\x1a\x02\x10\x012\x8b\x04\n" +
 	"\aLibrary\x12W\n" +
 	"\rGetEverything\x12\x1f.golden.v1.GetEverythingRequest\x1a .golden.v1.GetEverythingResponse\"\x03\x90\x02\x01\x12N\n" +
 	"\n" +
 	"GetScalars\x12\x1c.golden.v1.GetScalarsRequest\x1a\x1d.golden.v1.GetScalarsResponse\"\x03\x90\x02\x01\x12G\n" +
 	"\vSearchBooks\x12\x18.golden.v1.SearchRequest\x1a\x19.golden.v1.SearchResponse\"\x03\x90\x02\x01\x12<\n" +
 	"\tEchoInput\x12\x16.golden.v1.EchoRequest\x1a\x17.golden.v1.EchoResponse\x12@\n" +
-	"\aAddBook\x12\x19.golden.v1.AddBookRequest\x1a\x1a.golden.v1.AddBookResponse\x12>\n" +
+	"\aAddBook\x12\x19.golden.v1.AddBookRequest\x1a\x1a.golden.v1.AddBookResponse\x12N\n" +
+	"\n" +
+	"UpsertBook\x12\x1c.golden.v1.UpsertBookRequest\x1a\x1d.golden.v1.UpsertBookResponse\"\x03\x90\x02\x02\x12>\n" +
 	"\n" +
 	"WatchItems\x12\x17.golden.v1.WatchRequest\x1a\x15.golden.v1.WatchEvent0\x01B;Z9github.com/gopherex/protoc-gen-go-graphql/example/gen;genb\x06proto3"
 
@@ -2492,7 +2587,7 @@ func file_golden_proto_rawDescGZIP() []byte {
 }
 
 var file_golden_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
-var file_golden_proto_msgTypes = make([]protoimpl.MessageInfo, 35)
+var file_golden_proto_msgTypes = make([]protoimpl.MessageInfo, 37)
 var file_golden_proto_goTypes = []any{
 	(Genre)(0),                     // 0: golden.v1.Genre
 	(Status)(0),                    // 1: golden.v1.Status
@@ -2522,62 +2617,64 @@ var file_golden_proto_goTypes = []any{
 	(*AddBookResponse)(nil),        // 25: golden.v1.AddBookResponse
 	(*WatchRequest)(nil),           // 26: golden.v1.WatchRequest
 	(*WatchEvent)(nil),             // 27: golden.v1.WatchEvent
-	(*Outer_Inner)(nil),            // 28: golden.v1.Outer.Inner
-	(*Outer_Inner_DeepInner)(nil),  // 29: golden.v1.Outer.Inner.DeepInner
-	nil,                            // 30: golden.v1.MapMessage.StringMapEntry
-	nil,                            // 31: golden.v1.MapMessage.Int64MapEntry
-	nil,                            // 32: golden.v1.MapMessage.BoolMapEntry
-	nil,                            // 33: golden.v1.MapMessage.Int32KeyEntry
-	nil,                            // 34: golden.v1.MapMessage.EnumMapEntry
-	nil,                            // 35: golden.v1.MapMessage.MsgMapEntry
-	nil,                            // 36: golden.v1.Book.TagsEntry
-	(*timestamppb.Timestamp)(nil),  // 37: google.protobuf.Timestamp
-	(*durationpb.Duration)(nil),    // 38: google.protobuf.Duration
-	(*anypb.Any)(nil),              // 39: google.protobuf.Any
-	(*emptypb.Empty)(nil),          // 40: google.protobuf.Empty
-	(*fieldmaskpb.FieldMask)(nil),  // 41: google.protobuf.FieldMask
-	(*structpb.Struct)(nil),        // 42: google.protobuf.Struct
-	(*structpb.Value)(nil),         // 43: google.protobuf.Value
-	(*structpb.ListValue)(nil),     // 44: google.protobuf.ListValue
-	(*wrapperspb.DoubleValue)(nil), // 45: google.protobuf.DoubleValue
-	(*wrapperspb.FloatValue)(nil),  // 46: google.protobuf.FloatValue
-	(*wrapperspb.Int32Value)(nil),  // 47: google.protobuf.Int32Value
-	(*wrapperspb.Int64Value)(nil),  // 48: google.protobuf.Int64Value
-	(*wrapperspb.UInt32Value)(nil), // 49: google.protobuf.UInt32Value
-	(*wrapperspb.UInt64Value)(nil), // 50: google.protobuf.UInt64Value
-	(*wrapperspb.BoolValue)(nil),   // 51: google.protobuf.BoolValue
-	(*wrapperspb.StringValue)(nil), // 52: google.protobuf.StringValue
-	(*wrapperspb.BytesValue)(nil),  // 53: google.protobuf.BytesValue
+	(*UpsertBookRequest)(nil),      // 28: golden.v1.UpsertBookRequest
+	(*UpsertBookResponse)(nil),     // 29: golden.v1.UpsertBookResponse
+	(*Outer_Inner)(nil),            // 30: golden.v1.Outer.Inner
+	(*Outer_Inner_DeepInner)(nil),  // 31: golden.v1.Outer.Inner.DeepInner
+	nil,                            // 32: golden.v1.MapMessage.StringMapEntry
+	nil,                            // 33: golden.v1.MapMessage.Int64MapEntry
+	nil,                            // 34: golden.v1.MapMessage.BoolMapEntry
+	nil,                            // 35: golden.v1.MapMessage.Int32KeyEntry
+	nil,                            // 36: golden.v1.MapMessage.EnumMapEntry
+	nil,                            // 37: golden.v1.MapMessage.MsgMapEntry
+	nil,                            // 38: golden.v1.Book.TagsEntry
+	(*timestamppb.Timestamp)(nil),  // 39: google.protobuf.Timestamp
+	(*durationpb.Duration)(nil),    // 40: google.protobuf.Duration
+	(*anypb.Any)(nil),              // 41: google.protobuf.Any
+	(*emptypb.Empty)(nil),          // 42: google.protobuf.Empty
+	(*fieldmaskpb.FieldMask)(nil),  // 43: google.protobuf.FieldMask
+	(*structpb.Struct)(nil),        // 44: google.protobuf.Struct
+	(*structpb.Value)(nil),         // 45: google.protobuf.Value
+	(*structpb.ListValue)(nil),     // 46: google.protobuf.ListValue
+	(*wrapperspb.DoubleValue)(nil), // 47: google.protobuf.DoubleValue
+	(*wrapperspb.FloatValue)(nil),  // 48: google.protobuf.FloatValue
+	(*wrapperspb.Int32Value)(nil),  // 49: google.protobuf.Int32Value
+	(*wrapperspb.Int64Value)(nil),  // 50: google.protobuf.Int64Value
+	(*wrapperspb.UInt32Value)(nil), // 51: google.protobuf.UInt32Value
+	(*wrapperspb.UInt64Value)(nil), // 52: google.protobuf.UInt64Value
+	(*wrapperspb.BoolValue)(nil),   // 53: google.protobuf.BoolValue
+	(*wrapperspb.StringValue)(nil), // 54: google.protobuf.StringValue
+	(*wrapperspb.BytesValue)(nil),  // 55: google.protobuf.BytesValue
 }
 var file_golden_proto_depIdxs = []int32{
-	28, // 0: golden.v1.Outer.inner:type_name -> golden.v1.Outer.Inner
-	37, // 1: golden.v1.WKTMessage.timestamp:type_name -> google.protobuf.Timestamp
-	38, // 2: golden.v1.WKTMessage.duration:type_name -> google.protobuf.Duration
-	39, // 3: golden.v1.WKTMessage.any:type_name -> google.protobuf.Any
-	40, // 4: golden.v1.WKTMessage.empty:type_name -> google.protobuf.Empty
-	41, // 5: golden.v1.WKTMessage.field_mask:type_name -> google.protobuf.FieldMask
-	42, // 6: golden.v1.WKTMessage.struct:type_name -> google.protobuf.Struct
-	43, // 7: golden.v1.WKTMessage.value:type_name -> google.protobuf.Value
-	44, // 8: golden.v1.WKTMessage.list_value:type_name -> google.protobuf.ListValue
-	45, // 9: golden.v1.WKTMessage.double_wrapper:type_name -> google.protobuf.DoubleValue
-	46, // 10: golden.v1.WKTMessage.float_wrapper:type_name -> google.protobuf.FloatValue
-	47, // 11: golden.v1.WKTMessage.int32_wrapper:type_name -> google.protobuf.Int32Value
-	48, // 12: golden.v1.WKTMessage.int64_wrapper:type_name -> google.protobuf.Int64Value
-	49, // 13: golden.v1.WKTMessage.uint32_wrapper:type_name -> google.protobuf.UInt32Value
-	50, // 14: golden.v1.WKTMessage.uint64_wrapper:type_name -> google.protobuf.UInt64Value
-	51, // 15: golden.v1.WKTMessage.bool_wrapper:type_name -> google.protobuf.BoolValue
-	52, // 16: golden.v1.WKTMessage.string_wrapper:type_name -> google.protobuf.StringValue
-	53, // 17: golden.v1.WKTMessage.bytes_wrapper:type_name -> google.protobuf.BytesValue
-	37, // 18: golden.v1.WKTMessage.repeated_timestamps:type_name -> google.protobuf.Timestamp
-	30, // 19: golden.v1.MapMessage.string_map:type_name -> golden.v1.MapMessage.StringMapEntry
-	31, // 20: golden.v1.MapMessage.int64_map:type_name -> golden.v1.MapMessage.Int64MapEntry
-	32, // 21: golden.v1.MapMessage.bool_map:type_name -> golden.v1.MapMessage.BoolMapEntry
-	33, // 22: golden.v1.MapMessage.int32_key:type_name -> golden.v1.MapMessage.Int32KeyEntry
-	34, // 23: golden.v1.MapMessage.enum_map:type_name -> golden.v1.MapMessage.EnumMapEntry
-	35, // 24: golden.v1.MapMessage.msg_map:type_name -> golden.v1.MapMessage.MsgMapEntry
+	30, // 0: golden.v1.Outer.inner:type_name -> golden.v1.Outer.Inner
+	39, // 1: golden.v1.WKTMessage.timestamp:type_name -> google.protobuf.Timestamp
+	40, // 2: golden.v1.WKTMessage.duration:type_name -> google.protobuf.Duration
+	41, // 3: golden.v1.WKTMessage.any:type_name -> google.protobuf.Any
+	42, // 4: golden.v1.WKTMessage.empty:type_name -> google.protobuf.Empty
+	43, // 5: golden.v1.WKTMessage.field_mask:type_name -> google.protobuf.FieldMask
+	44, // 6: golden.v1.WKTMessage.struct:type_name -> google.protobuf.Struct
+	45, // 7: golden.v1.WKTMessage.value:type_name -> google.protobuf.Value
+	46, // 8: golden.v1.WKTMessage.list_value:type_name -> google.protobuf.ListValue
+	47, // 9: golden.v1.WKTMessage.double_wrapper:type_name -> google.protobuf.DoubleValue
+	48, // 10: golden.v1.WKTMessage.float_wrapper:type_name -> google.protobuf.FloatValue
+	49, // 11: golden.v1.WKTMessage.int32_wrapper:type_name -> google.protobuf.Int32Value
+	50, // 12: golden.v1.WKTMessage.int64_wrapper:type_name -> google.protobuf.Int64Value
+	51, // 13: golden.v1.WKTMessage.uint32_wrapper:type_name -> google.protobuf.UInt32Value
+	52, // 14: golden.v1.WKTMessage.uint64_wrapper:type_name -> google.protobuf.UInt64Value
+	53, // 15: golden.v1.WKTMessage.bool_wrapper:type_name -> google.protobuf.BoolValue
+	54, // 16: golden.v1.WKTMessage.string_wrapper:type_name -> google.protobuf.StringValue
+	55, // 17: golden.v1.WKTMessage.bytes_wrapper:type_name -> google.protobuf.BytesValue
+	39, // 18: golden.v1.WKTMessage.repeated_timestamps:type_name -> google.protobuf.Timestamp
+	32, // 19: golden.v1.MapMessage.string_map:type_name -> golden.v1.MapMessage.StringMapEntry
+	33, // 20: golden.v1.MapMessage.int64_map:type_name -> golden.v1.MapMessage.Int64MapEntry
+	34, // 21: golden.v1.MapMessage.bool_map:type_name -> golden.v1.MapMessage.BoolMapEntry
+	35, // 22: golden.v1.MapMessage.int32_key:type_name -> golden.v1.MapMessage.Int32KeyEntry
+	36, // 23: golden.v1.MapMessage.enum_map:type_name -> golden.v1.MapMessage.EnumMapEntry
+	37, // 24: golden.v1.MapMessage.msg_map:type_name -> golden.v1.MapMessage.MsgMapEntry
 	0,  // 25: golden.v1.Book.genre:type_name -> golden.v1.Genre
-	37, // 26: golden.v1.Book.published_at:type_name -> google.protobuf.Timestamp
-	36, // 27: golden.v1.Book.tags:type_name -> golden.v1.Book.TagsEntry
+	39, // 26: golden.v1.Book.published_at:type_name -> google.protobuf.Timestamp
+	38, // 27: golden.v1.Book.tags:type_name -> golden.v1.Book.TagsEntry
 	9,  // 28: golden.v1.Book.author:type_name -> golden.v1.Author
 	8,  // 29: golden.v1.SearchResponse.book:type_name -> golden.v1.Book
 	10, // 30: golden.v1.SearchResponse.not_found:type_name -> golden.v1.NotFound
@@ -2608,27 +2705,31 @@ var file_golden_proto_depIdxs = []int32{
 	8,  // 55: golden.v1.AddBookResponse.book:type_name -> golden.v1.Book
 	0,  // 56: golden.v1.WatchRequest.genre:type_name -> golden.v1.Genre
 	8,  // 57: golden.v1.WatchEvent.book:type_name -> golden.v1.Book
-	37, // 58: golden.v1.WatchEvent.at:type_name -> google.protobuf.Timestamp
-	29, // 59: golden.v1.Outer.Inner.deep:type_name -> golden.v1.Outer.Inner.DeepInner
-	0,  // 60: golden.v1.MapMessage.EnumMapEntry.value:type_name -> golden.v1.Genre
-	2,  // 61: golden.v1.MapMessage.MsgMapEntry.value:type_name -> golden.v1.ScalarTypes
-	18, // 62: golden.v1.Library.GetEverything:input_type -> golden.v1.GetEverythingRequest
-	20, // 63: golden.v1.Library.GetScalars:input_type -> golden.v1.GetScalarsRequest
-	12, // 64: golden.v1.Library.SearchBooks:input_type -> golden.v1.SearchRequest
-	22, // 65: golden.v1.Library.EchoInput:input_type -> golden.v1.EchoRequest
-	24, // 66: golden.v1.Library.AddBook:input_type -> golden.v1.AddBookRequest
-	26, // 67: golden.v1.Library.WatchItems:input_type -> golden.v1.WatchRequest
-	19, // 68: golden.v1.Library.GetEverything:output_type -> golden.v1.GetEverythingResponse
-	21, // 69: golden.v1.Library.GetScalars:output_type -> golden.v1.GetScalarsResponse
-	11, // 70: golden.v1.Library.SearchBooks:output_type -> golden.v1.SearchResponse
-	23, // 71: golden.v1.Library.EchoInput:output_type -> golden.v1.EchoResponse
-	25, // 72: golden.v1.Library.AddBook:output_type -> golden.v1.AddBookResponse
-	27, // 73: golden.v1.Library.WatchItems:output_type -> golden.v1.WatchEvent
-	68, // [68:74] is the sub-list for method output_type
-	62, // [62:68] is the sub-list for method input_type
-	62, // [62:62] is the sub-list for extension type_name
-	62, // [62:62] is the sub-list for extension extendee
-	0,  // [0:62] is the sub-list for field type_name
+	39, // 58: golden.v1.WatchEvent.at:type_name -> google.protobuf.Timestamp
+	8,  // 59: golden.v1.UpsertBookRequest.book:type_name -> golden.v1.Book
+	8,  // 60: golden.v1.UpsertBookResponse.book:type_name -> golden.v1.Book
+	31, // 61: golden.v1.Outer.Inner.deep:type_name -> golden.v1.Outer.Inner.DeepInner
+	0,  // 62: golden.v1.MapMessage.EnumMapEntry.value:type_name -> golden.v1.Genre
+	2,  // 63: golden.v1.MapMessage.MsgMapEntry.value:type_name -> golden.v1.ScalarTypes
+	18, // 64: golden.v1.Library.GetEverything:input_type -> golden.v1.GetEverythingRequest
+	20, // 65: golden.v1.Library.GetScalars:input_type -> golden.v1.GetScalarsRequest
+	12, // 66: golden.v1.Library.SearchBooks:input_type -> golden.v1.SearchRequest
+	22, // 67: golden.v1.Library.EchoInput:input_type -> golden.v1.EchoRequest
+	24, // 68: golden.v1.Library.AddBook:input_type -> golden.v1.AddBookRequest
+	28, // 69: golden.v1.Library.UpsertBook:input_type -> golden.v1.UpsertBookRequest
+	26, // 70: golden.v1.Library.WatchItems:input_type -> golden.v1.WatchRequest
+	19, // 71: golden.v1.Library.GetEverything:output_type -> golden.v1.GetEverythingResponse
+	21, // 72: golden.v1.Library.GetScalars:output_type -> golden.v1.GetScalarsResponse
+	11, // 73: golden.v1.Library.SearchBooks:output_type -> golden.v1.SearchResponse
+	23, // 74: golden.v1.Library.EchoInput:output_type -> golden.v1.EchoResponse
+	25, // 75: golden.v1.Library.AddBook:output_type -> golden.v1.AddBookResponse
+	29, // 76: golden.v1.Library.UpsertBook:output_type -> golden.v1.UpsertBookResponse
+	27, // 77: golden.v1.Library.WatchItems:output_type -> golden.v1.WatchEvent
+	71, // [71:78] is the sub-list for method output_type
+	64, // [64:71] is the sub-list for method input_type
+	64, // [64:64] is the sub-list for extension type_name
+	64, // [64:64] is the sub-list for extension extendee
+	0,  // [0:64] is the sub-list for field type_name
 }
 
 func init() { file_golden_proto_init() }
@@ -2664,7 +2765,7 @@ func file_golden_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_golden_proto_rawDesc), len(file_golden_proto_rawDesc)),
 			NumEnums:      2,
-			NumMessages:   35,
+			NumMessages:   37,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

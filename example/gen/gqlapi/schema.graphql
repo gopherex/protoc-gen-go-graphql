@@ -1,5 +1,6 @@
 directive @goField(forceResolver: Boolean, name: String) on FIELD_DEFINITION | INPUT_FIELD_DEFINITION
 directive @oneOf on INPUT_OBJECT
+directive @idempotent on FIELD_DEFINITION
 
 scalar Int64
 scalar Uint64
@@ -95,6 +96,7 @@ input BookInput {
 }
 input AuthorInput { name: String! }
 input AddBookRequest { book: BookInput }
+input UpsertBookRequest { book: BookInput }
 input WatchRequest { genre: Genre! }
 
 type ScalarTypes {
@@ -211,6 +213,7 @@ type WatchEvent {
   book: Book
   at: Timestamp
 }
+type UpsertBookResponse { book: Book }
 
 type Query {
   getEverything(input: GetEverythingRequest!): GetEverythingResponse!
@@ -220,6 +223,7 @@ type Query {
 type Mutation {
   echoInput(input: EchoRequest!): EchoResponse!
   addBook(input: AddBookRequest!): AddBookResponse!
+  upsertBook(input: UpsertBookRequest!): UpsertBookResponse! @idempotent
 }
 type Subscription { watchItems(input: WatchRequest!): WatchEvent! }
 
