@@ -2,6 +2,7 @@ package generator
 
 import (
 	"path"
+	"sort"
 	"strings"
 
 	"google.golang.org/protobuf/compiler/protogen"
@@ -18,11 +19,20 @@ func New(p *protogen.Plugin, s *Settings) *Generator {
 
 func (g *Generator) Generate() error {
 	g.Settings.applyDefaults()
+	groups := map[string][]*protogen.File{}
 	for _, f := range g.Plugin.Files {
 		if !f.Generate {
 			continue
 		}
-		if err := g.generateFile(f); err != nil {
+		groups[string(f.GoImportPath)] = append(groups[string(f.GoImportPath)], f)
+	}
+	var keys []string
+	for key := range groups {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+	for _, key := range keys {
+		if err := g.generateFiles(groups[key]); err != nil {
 			return err
 		}
 	}
@@ -31,23 +41,34 @@ func (g *Generator) Generate() error {
 
 // generateFile is implemented across schema.go, gqlgenyml.go, resolvers.go.
 func (g *Generator) generateFile(f *protogen.File) error {
+	return g.generateFiles([]*protogen.File{f})
+}
+
+func (g *Generator) generateFiles(files []*protogen.File) error {
+	if len(files) == 0 {
+		return nil
+	}
+	f := files[0]
 	// Ensure defaults even when Settings is constructed directly (e.g. in tests)
 	// without going through RegisterFlags.
 	g.Settings.applyDefaults()
 
 	// Fail fast on unsupported streaming shapes.
-	for _, svc := range f.Services {
-		for _, m := range svc.Methods {
-			if err := checkStreaming(
-				svc.GoName,
-				m.GoName,
-				m.Desc.IsStreamingClient(),
-				m.Desc.IsStreamingServer(),
-			); err != nil {
-				return err
+	for _, gf := range files {
+		for _, svc := range gf.Services {
+			for _, m := range svc.Methods {
+				if err := checkStreaming(
+					svc.GoName,
+					m.GoName,
+					m.Desc.IsStreamingClient(),
+					m.Desc.IsStreamingServer(),
+				); err != nil {
+					return err
+				}
 			}
 		}
 	}
+	graph := graphFromFiles(files)
 
 	// Derive import paths from the file descriptor.
 	// f.GoImportPath is the pb package import path (e.g. "github.com/.../example/gen").
@@ -77,12 +98,15 @@ func (g *Generator) generateFile(f *protogen.File) error {
 	gqlapiDir := joinPath(protoDir, outDir)
 
 	// 1. schema.graphql (non-Go, write raw).
-	schemaContent := buildSchema(f)
+	schemaContent, err := buildSchemaGraph(graph)
+	if err != nil {
+		return err
+	}
 	schemaFile := g.Plugin.NewGeneratedFile(gqlapiDir+"/schema.graphql", "")
 	schemaFile.P(schemaContent)
 
 	// 2. gqlgen.yml (non-Go, write raw).
-	ymlContent := buildGqlgenYml(f, pbImport, pbgqlImport)
+	ymlContent := buildGqlgenYmlGraph(graph, pbImport, pbgqlImport)
 	ymlFile := g.Plugin.NewGeneratedFile(gqlapiDir+"/gqlgen.yml", "")
 	ymlFile.P(ymlContent)
 
@@ -97,8 +121,8 @@ func (g *Generator) generateFile(f *protogen.File) error {
 	// 4. pbgql/<enum_lower>.go — enum adapters (including nested enums).
 	// In single_pass mode we also collect the content for the tmp module.
 	pbgqlFiles := map[string]string{} // filename → content (used by runSinglePass)
-	for _, e := range allEnums(f) {
-		adapterContent := buildEnumAdapter(e, pbImport)
+	for _, e := range graph.Enums {
+		adapterContent := buildEnumAdapter(e, string(e.GoIdent.GoImportPath))
 		enumFileName := strings.ToLower(e.GoIdent.GoName) + ".go"
 		adapterFile := g.Plugin.NewGeneratedFile(
 			gqlapiDir+"/pbgql/"+enumFileName,
@@ -125,20 +149,21 @@ func (g *Generator) generateFile(f *protogen.File) error {
 	}
 
 	// 4c. pbgql/<msg_lower>_oneof.go — oneof adapters (union wrappers + @oneOf input structs).
-	msgInfo := analyzeMessages(f)
-	ois := collectOneofs(f, msgInfo)
+	msgInfo := analyzeMessagesGraph(graph)
+	ois := collectOneofsGraph(graph, msgInfo)
 	// Group oneofs by message so we emit one file per message.
 	oneofsByMsg := map[string][]oneofInfo{}
 	for _, oi := range ois {
-		oneofsByMsg[oi.MsgGoName] = append(oneofsByMsg[oi.MsgGoName], oi)
+		key := messageKey(oi.Msg)
+		oneofsByMsg[key] = append(oneofsByMsg[key], oi)
 	}
 	// Walk messages in DFS order to emit deterministically (incl. nested).
-	for _, msg := range allMessages(f) {
-		msgOis, ok := oneofsByMsg[msg.GoIdent.GoName]
+	for _, msg := range graph.Messages {
+		msgOis, ok := oneofsByMsg[messageKey(msg)]
 		if !ok {
 			continue
 		}
-		adapterContent := buildOneofAdapter(msg, msgOis, pbImport)
+		adapterContent := buildOneofAdapter(msgOis, string(msg.GoIdent.GoImportPath))
 		if adapterContent == "" {
 			continue
 		}
@@ -154,7 +179,7 @@ func (g *Generator) generateFile(f *protogen.File) error {
 	}
 
 	// 5. resolver.go.
-	resolverContent := buildResolvers(f, outDir, pbImport, pbgqlImport, execImport, runtimeImport)
+	resolverContent := buildResolversGraph(graph, outDir, pbImport, pbgqlImport, execImport, runtimeImport)
 	resolverFile := g.Plugin.NewGeneratedFile(gqlapiDir+"/resolver.go", protogen.GoImportPath(gqlapiImport))
 	resolverFile.P(resolverContent)
 

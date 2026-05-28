@@ -27,6 +27,10 @@ service Library {
   rpc SearchBooks(SearchRequest) returns (SearchResponse) {
     option idempotency_level = NO_SIDE_EFFECTS;
   }
+  // Empty request and response (fieldless messages).
+  rpc Ping(PingRequest) returns (PingResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
 
   // Mutations (default → Mutation root).
   rpc EchoInput(EchoRequest) returns (EchoResponse);
@@ -297,3 +301,7 @@ message WatchEvent {
 // UpsertBookRequest / UpsertBookResponse (used by UpsertBook IDEMPOTENT RPC).
 message UpsertBookRequest { Book book = 1; }
 message UpsertBookResponse { Book book = 1; }
+
+// PingRequest / PingResponse — fieldless (empty) messages.
+message PingRequest {}
+message PingResponse {}

@@ -60,6 +60,7 @@ models:
   WatchEvent:    { model: github.com/gopherex/protoc-gen-go-graphql/example/gen.WatchEvent }
   UpsertBookRequest:    { model: github.com/gopherex/protoc-gen-go-graphql/example/gen.UpsertBookRequest }
   UpsertBookResponse:    { model: github.com/gopherex/protoc-gen-go-graphql/example/gen.UpsertBookResponse }
+  PingResponse:    { model: github.com/gopherex/protoc-gen-go-graphql/example/gen.PingResponse }
   SearchResponseResult:    { model: github.com/gopherex/protoc-gen-go-graphql/example/gen/gqlapi/pbgql.SearchResponseResult }
   SearchResponseResultBook:    { model: github.com/gopherex/protoc-gen-go-graphql/example/gen/gqlapi/pbgql.SearchResponseResultBook }
   SearchResponseResultNotFound:    { model: github.com/gopherex/protoc-gen-go-graphql/example/gen/gqlapi/pbgql.SearchResponseResultNotFound }

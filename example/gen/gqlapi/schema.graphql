@@ -214,11 +214,13 @@ type WatchEvent {
   at: Timestamp
 }
 type UpsertBookResponse { book: Book }
+type PingResponse { ok: Boolean! @goField(forceResolver: true) }
 
 type Query {
   getEverything(input: GetEverythingRequest!): GetEverythingResponse!
   getScalars(input: GetScalarsRequest!): GetScalarsResponse!
   searchBooks(input: SearchRequest!): SearchResponse!
+  ping: PingResponse!
 }
 type Mutation {
   echoInput(input: EchoRequest!): EchoResponse!

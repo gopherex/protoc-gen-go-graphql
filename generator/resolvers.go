@@ -17,22 +17,58 @@ import (
 //   - execImport: Go import path of the exec package (e.g. "...example/gen/gqlapi/exec")
 //   - runtimeImport: Go import path of the runtime package
 func buildResolvers(f *protogen.File, pkgName, pbImport, pbgqlImport, execImport, runtimeImport string) string {
+	return buildResolversGraph(graphFromFile(f), pkgName, pbImport, pbgqlImport, execImport, runtimeImport)
+}
+
+func buildResolversGraph(g *graph, pkgName, pbImport, pbgqlImport, execImport, runtimeImport string) string {
 	var sb strings.Builder
 
 	// Collect oneof info.
-	msgInfo := analyzeMessages(f)
-	ois := collectOneofs(f, msgInfo)
+	msgInfo := analyzeMessagesGraph(g)
+	ois := collectOneofsGraph(g, msgInfo)
 
-	// Index by message name.
-	outputOneofsByMsg := map[string][]oneofInfo{} // msgGoName → output oneofs
-	inputOneofsByMsg := map[string]oneofInfo{}    // reqMsgGoName → input oneof (at most one per request)
+	// Index by messageKey.
+	outputOneofsByMsg := map[string][]oneofInfo{} // messageKey(msg) → output oneofs
+	inputOneofsByMsg := map[string]oneofInfo{}    // messageKey(reqMsg) → input oneof (at most one per request)
 	for _, oi := range ois {
+		key := messageKey(oi.Msg)
 		if oi.IsOutput {
-			outputOneofsByMsg[oi.MsgGoName] = append(outputOneofsByMsg[oi.MsgGoName], oi)
+			outputOneofsByMsg[key] = append(outputOneofsByMsg[key], oi)
 		}
 		if oi.IsInput {
-			inputOneofsByMsg[oi.MsgGoName] = oi
+			inputOneofsByMsg[key] = oi
 		}
+	}
+
+	pbAliases := map[string]string{pbImport: "pb"}
+	var pbImports []string
+	addPbImport := func(importPath protogen.GoImportPath) {
+		path := string(importPath)
+		if path == "" || path == pbImport {
+			return
+		}
+		if _, ok := pbAliases[path]; ok {
+			return
+		}
+		pbAliases[path] = fmt.Sprintf("pb%d", len(pbAliases))
+		pbImports = append(pbImports, path)
+	}
+	for _, svc := range g.Services {
+		for _, m := range svc.Methods {
+			addPbImport(m.Input.GoIdent.GoImportPath)
+			addPbImport(m.Output.GoIdent.GoImportPath)
+		}
+	}
+	for _, msg := range g.Messages {
+		addPbImport(msg.GoIdent.GoImportPath)
+	}
+	pbType := func(id protogen.GoIdent) string {
+		path := string(id.GoImportPath)
+		alias := pbAliases[path]
+		if alias == "" {
+			alias = "pb"
+		}
+		return alias + "." + id.GoName
 	}
 
 	// Determine if pbgql import is needed (any oneof present).
@@ -40,8 +76,8 @@ func buildResolvers(f *protogen.File, pkgName, pbImport, pbgqlImport, execImport
 
 	// Determine if WKT JSON field resolvers are needed (any WKT JSON fields in output types).
 	needsWKTJSON := false
-	for _, msg := range allMessages(f) {
-		mi := msgInfo[msg.GoIdent.GoName]
+	for _, msg := range g.Messages {
+		mi := msgInfo[messageKey(msg)]
 		if mi == nil || !mi.role.has(roleOutput) {
 			continue
 		}
@@ -70,6 +106,9 @@ func buildResolvers(f *protogen.File, pkgName, pbImport, pbgqlImport, execImport
 	sb.WriteString("\n")
 	// Third-party imports: alphabetical order within each group (gofmt canonical).
 	fmt.Fprintf(&sb, "\tpb %q\n", pbImport)
+	for _, importPath := range pbImports {
+		fmt.Fprintf(&sb, "\t%s %q\n", pbAliases[importPath], importPath)
+	}
 	fmt.Fprintf(&sb, "\t%q\n", execImport)
 	if needsPbgql {
 		fmt.Fprintf(&sb, "\t%q\n", pbgqlImport)
@@ -86,7 +125,7 @@ func buildResolvers(f *protogen.File, pkgName, pbImport, pbgqlImport, execImport
 	sb.WriteString("// It implements exec.ResolverRoot and each sub-resolver interface,\n")
 	sb.WriteString("// delegating to the gRPC server with zero proto<->model conversion.\n")
 	sb.WriteString("type Resolver struct {\n")
-	for _, svc := range f.Services {
+	for _, svc := range g.Services {
 		fmt.Fprintf(&sb, "\t%s pb.%sServer\n", svc.GoName, svc.GoName)
 	}
 	sb.WriteString("}\n")
@@ -115,6 +154,13 @@ func buildResolvers(f *protogen.File, pkgName, pbImport, pbgqlImport, execImport
 	}
 	var mapResolvers []mapFieldResolver
 
+	// Collect empty-output-message resolvers (for fieldless messages that get an "ok" placeholder).
+	type emptyOutputResolver struct {
+		ownerType   string // e.g. "PingResponse"
+		ownerPbType string // e.g. "*pb.PingResponse"
+	}
+	var emptyOutputResolvers []emptyOutputResolver
+
 	// Collect incompatible-type field resolvers (float32 → float64, uint32 → int, WKT→JSON).
 	// These fields are emitted with @goField(forceResolver:true) in the schema and
 	// need resolver methods that coerce to the gqlgen-expected Go type.
@@ -132,11 +178,19 @@ func buildResolvers(f *protogen.File, pkgName, pbImport, pbgqlImport, execImport
 	}
 	var coerceResolvers []coerceFieldResolver
 
-	// First: direct pb message map fields (including nested messages).
-	for _, msg := range allMessages(f) {
-		mi := msgInfo[msg.GoIdent.GoName]
+	// First: direct pb message map fields (including nested messages) and empty output resolvers.
+	for _, msg := range g.Messages {
+		mi := msgInfo[messageKey(msg)]
 		// Only generate resolvers for types that are reachable as output.
 		if mi == nil || !mi.role.has(roleOutput) {
+			continue
+		}
+		// Empty output message: needs an "ok" placeholder field resolver.
+		if isEmptyMessage(msg) {
+			emptyOutputResolvers = append(emptyOutputResolvers, emptyOutputResolver{
+				ownerType:   msg.GoIdent.GoName,
+				ownerPbType: "*" + pbType(msg.GoIdent),
+			})
 			continue
 		}
 		for _, field := range msg.Fields {
@@ -145,7 +199,7 @@ func buildResolvers(f *protogen.File, pkgName, pbImport, pbgqlImport, execImport
 				getter := "Get" + string(field.GoName)
 				mapResolvers = append(mapResolvers, mapFieldResolver{
 					ownerType:   msg.GoIdent.GoName,
-					ownerPbType: "*pb." + msg.GoIdent.GoName,
+					ownerPbType: "*" + pbType(msg.GoIdent),
 					ownerPkg:    "pb",
 					fieldName:   camel,
 					mapGetter:   getter,
@@ -166,7 +220,7 @@ func buildResolvers(f *protogen.File, pkgName, pbImport, pbgqlImport, execImport
 				pbElem := pbElemType(field)
 				coerceResolvers = append(coerceResolvers, coerceFieldResolver{
 					ownerType:   msg.GoIdent.GoName,
-					ownerPbType: "*pb." + msg.GoIdent.GoName,
+					ownerPbType: "*" + pbType(msg.GoIdent),
 					fieldName:   camel,
 					getter:      getter,
 					retType:     retType,
@@ -227,6 +281,7 @@ func buildResolvers(f *protogen.File, pkgName, pbImport, pbgqlImport, execImport
 	//   - types with map fields (for JSON scalar field resolvers)
 	//   - types with output oneofs (for union field resolvers)
 	//   - types with incompatible fields (float32, uint32)
+	//   - empty output types (for the placeholder "ok" field resolver)
 	resolverTypes := map[string]bool{} // e.g. "Book" → true
 	for _, mr := range mapResolvers {
 		resolverTypes[mr.ownerType] = true
@@ -239,10 +294,13 @@ func buildResolvers(f *protogen.File, pkgName, pbImport, pbgqlImport, execImport
 			resolverTypes[oi.MsgGoName] = true
 		}
 	}
+	for _, er := range emptyOutputResolvers {
+		resolverTypes[er.ownerType] = true
+	}
 
 	// Operation sub-resolver types: queryResolver, mutationResolver, etc.
 	opTypes := map[string]bool{}
-	for _, svc := range f.Services {
+	for _, svc := range g.Services {
 		for _, m := range svc.Methods {
 			op := operationType(m)
 			opTypes[strings.ToLower(op)] = true
@@ -347,6 +405,17 @@ func buildResolvers(f *protogen.File, pkgName, pbImport, pbgqlImport, execImport
 		sb.WriteString("\n")
 	}
 
+	// Empty output message "ok" placeholder field resolvers.
+	for _, er := range emptyOutputResolvers {
+		recvName := strings.ToLower(er.ownerType[:1]) + er.ownerType[1:] + "Resolver"
+		fmt.Fprintf(&sb, "// Ok is the placeholder field resolver for the empty message %s.\n", er.ownerType)
+		fmt.Fprintf(&sb, "func (r %s) Ok(ctx context.Context, obj %s) (bool, error) {\n",
+			recvName, er.ownerPbType)
+		sb.WriteString("\treturn true, nil\n")
+		sb.WriteString("}\n")
+		sb.WriteString("\n")
+	}
+
 	// Output oneof union field resolvers.
 	for _, oi := range ois {
 		if !oi.IsOutput {
@@ -357,34 +426,40 @@ func buildResolvers(f *protogen.File, pkgName, pbImport, pbgqlImport, execImport
 		fmt.Fprintf(&sb, "// %s resolves the oneof field %q as a %s union.\n",
 			capField, oi.ProtoName, oi.UnionGQLName)
 		fmt.Fprintf(&sb, "// It wraps the pb oneof variant into the appropriate pbgql wrapper type.\n")
-		fmt.Fprintf(&sb, "func (r %s) %s(ctx context.Context, obj *pb.%s) (pbgql.%s, error) {\n",
-			recvName, capField, oi.MsgGoName, oi.InterfaceGoName)
+		fmt.Fprintf(&sb, "func (r %s) %s(ctx context.Context, obj *%s) (pbgql.%s, error) {\n",
+			recvName, capField, pbType(oi.Msg.GoIdent), oi.InterfaceGoName)
 		fmt.Fprintf(&sb, "\treturn pbgql.Wrap%s(obj), nil\n", oi.InterfaceGoName)
 		sb.WriteString("}\n")
 		sb.WriteString("\n")
 	}
 
 	// Operation resolver methods.
-	for _, svc := range f.Services {
+	for _, svc := range g.Services {
 		for _, m := range svc.Methods {
 			op := operationType(m)
 			recvName := strings.ToLower(op) + "Resolver"
 			methodName := m.GoName
 			inputGoName := m.Input.GoIdent.GoName
-			outputType := m.Output.GoIdent.GoName
+			emptyReq := isEmptyMessage(m.Input)
 
 			switch op {
 			case "Query", "Mutation":
-				if inputOI, hasInputOneof := inputOneofsByMsg[inputGoName]; hasInputOneof {
+				if emptyReq {
+					// Empty request: no input parameter; construct the empty request inline.
+					fmt.Fprintf(&sb, "func (r %s) %s(ctx context.Context) (*%s, error) {\n",
+						recvName, methodName, pbType(m.Output.GoIdent))
+					fmt.Fprintf(&sb, "\tresp, err := r.%s.%s(ctx, &%s{})\n",
+						svc.GoName, methodName, pbType(m.Input.GoIdent))
+				} else if inputOI, hasInputOneof := inputOneofsByMsg[messageKey(m.Input)]; hasInputOneof {
 					// Input has a oneof: the resolver receives the intermediate pbgql struct.
-					fmt.Fprintf(&sb, "func (r %s) %s(ctx context.Context, input pbgql.%s) (*pb.%s, error) {\n",
-						recvName, methodName, inputOI.MsgInputGoName, outputType)
+					fmt.Fprintf(&sb, "func (r %s) %s(ctx context.Context, input pbgql.%s) (*%s, error) {\n",
+						recvName, methodName, inputOI.MsgInputGoName, pbType(m.Output.GoIdent))
 					fmt.Fprintf(&sb, "\tresp, err := r.%s.%s(ctx, pbgql.ToPb%s(&input))\n",
 						svc.GoName, methodName, inputGoName)
 				} else {
 					// Normal input: bind directly to pb.
-					fmt.Fprintf(&sb, "func (r %s) %s(ctx context.Context, input pb.%s) (*pb.%s, error) {\n",
-						recvName, methodName, inputGoName, outputType)
+					fmt.Fprintf(&sb, "func (r %s) %s(ctx context.Context, input %s) (*%s, error) {\n",
+						recvName, methodName, pbType(m.Input.GoIdent), pbType(m.Output.GoIdent))
 					fmt.Fprintf(&sb, "\tresp, err := r.%s.%s(ctx, &input)\n", svc.GoName, methodName)
 				}
 				sb.WriteString("\tif err != nil {\n")
@@ -398,12 +473,19 @@ func buildResolvers(f *protogen.File, pkgName, pbImport, pbgqlImport, execImport
 				// The streaming message type: for server-streaming the output IS the
 				// message type (not a wrapper). For golden, WatchBooks returns stream Book,
 				// so m.Output.GoIdent.GoName is "Book".
-				streamMsgType := outputType
-				fmt.Fprintf(&sb, "func (r %s) %s(ctx context.Context, input pb.%s) (<-chan *pb.%s, error) {\n",
-					recvName, methodName, inputGoName, streamMsgType)
-				fmt.Fprintf(&sb, "\treturn graphqlpb.PumpServerStream[pb.%s](ctx, func(ss *graphqlpb.StreamServer[pb.%s]) error {\n",
-					streamMsgType, streamMsgType)
-				fmt.Fprintf(&sb, "\t\treturn r.%s.%s(&input, ss)\n", svc.GoName, methodName)
+				if emptyReq {
+					fmt.Fprintf(&sb, "func (r %s) %s(ctx context.Context) (<-chan *%s, error) {\n",
+						recvName, methodName, pbType(m.Output.GoIdent))
+					fmt.Fprintf(&sb, "\treturn graphqlpb.PumpServerStream[%s](ctx, func(ss *graphqlpb.StreamServer[%s]) error {\n",
+						pbType(m.Output.GoIdent), pbType(m.Output.GoIdent))
+					fmt.Fprintf(&sb, "\t\treturn r.%s.%s(&%s{}, ss)\n", svc.GoName, methodName, pbType(m.Input.GoIdent))
+				} else {
+					fmt.Fprintf(&sb, "func (r %s) %s(ctx context.Context, input %s) (<-chan *%s, error) {\n",
+						recvName, methodName, pbType(m.Input.GoIdent), pbType(m.Output.GoIdent))
+					fmt.Fprintf(&sb, "\treturn graphqlpb.PumpServerStream[%s](ctx, func(ss *graphqlpb.StreamServer[%s]) error {\n",
+						pbType(m.Output.GoIdent), pbType(m.Output.GoIdent))
+					fmt.Fprintf(&sb, "\t\treturn r.%s.%s(&input, ss)\n", svc.GoName, methodName)
+				}
 				sb.WriteString("\t}), nil\n")
 				sb.WriteString("}\n")
 				sb.WriteString("\n")

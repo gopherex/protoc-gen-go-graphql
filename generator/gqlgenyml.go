@@ -13,6 +13,10 @@ import (
 // pbgqlImport is the Go import path of the pbgql sub-package
 // (e.g. "github.com/gopherex/protoc-gen-go-graphql/example/gen/gqlapi/pbgql").
 func buildGqlgenYml(f *protogen.File, pbImport, pbgqlImport string) string {
+	return buildGqlgenYmlGraph(graphFromFile(f), pbImport, pbgqlImport)
+}
+
+func buildGqlgenYmlGraph(g *graph, pbImport, pbgqlImport string) string {
 	var sb strings.Builder
 
 	// Schema section.
@@ -29,14 +33,25 @@ func buildGqlgenYml(f *protogen.File, pbImport, pbgqlImport string) string {
 	// Autobind: bind pb package's types.
 	sb.WriteString("# Bind directly to the protoc-gen-go types; do NOT generate a second model set.\n")
 	sb.WriteString("autobind:\n")
-	fmt.Fprintf(&sb, "  - %s\n", pbImport)
+	autobinds := []string{pbImport}
+	seenAutobinds := map[string]bool{pbImport: true}
+	for _, msg := range g.Messages {
+		importPath := string(msg.GoIdent.GoImportPath)
+		if importPath != "" && !seenAutobinds[importPath] {
+			seenAutobinds[importPath] = true
+			autobinds = append(autobinds, importPath)
+		}
+	}
+	for _, importPath := range autobinds {
+		fmt.Fprintf(&sb, "  - %s\n", importPath)
+	}
 	sb.WriteString("\n")
 
 	// Models section.
 	sb.WriteString("models:\n")
 
 	// Scalar bindings (only for scalars actually used).
-	usedScalars := collectUsedScalars(f)
+	usedScalars := collectUsedScalarsGraph(g)
 	runtimePkg := "github.com/gopherex/protoc-gen-go-graphql/graphqlpb"
 	// These scalars live in the runtime package.
 	for _, sc := range []string{"Int64", "Uint64", "Bytes", "Timestamp", "Duration", "JSON"} {
@@ -59,25 +74,26 @@ func buildGqlgenYml(f *protogen.File, pbImport, pbgqlImport string) string {
 	}
 
 	// Enum bindings → pbgql package.
-	for _, e := range f.Enums {
+	for _, e := range g.Enums {
 		fmt.Fprintf(&sb, "  %s:        { model: %s.%s }\n", e.GoIdent.GoName, pbgqlImport, e.GoIdent.GoName)
 	}
 
 	// Collect oneof info for binding decisions.
-	msgInfo := analyzeMessages(f)
-	ois := collectOneofs(f, msgInfo)
+	msgInfo := analyzeMessagesGraph(g)
+	ois := collectOneofsGraph(g, msgInfo)
 
 	// Index oneofs by message name.
 	// Messages with output oneofs: their oneof field uses a field resolver; the message itself still binds to pb.
 	// Messages with input oneofs: the request message binds to an intermediate pbgql struct (not pb directly).
-	inputOneofMsgs := map[string]oneofInfo{} // reqMsgGoName → oi
-	outputOneofMsgs := map[string]bool{}     // msgGoName → true
+	inputOneofMsgs := map[string]oneofInfo{} // messageKey(reqMsg) → oi
+	outputOneofMsgs := map[string]bool{}     // messageKey(msg) → true
 	for _, oi := range ois {
+		key := messageKey(oi.Msg)
 		if oi.IsInput {
-			inputOneofMsgs[oi.MsgGoName] = oi
+			inputOneofMsgs[key] = oi
 		}
 		if oi.IsOutput {
-			outputOneofMsgs[oi.MsgGoName] = true
+			outputOneofMsgs[key] = true
 		}
 	}
 
@@ -94,31 +110,37 @@ func buildGqlgenYml(f *protogen.File, pbImport, pbgqlImport string) string {
 	//   <OneofInputName>: { model: pbgqlImport.<OneofInputName> }
 
 	// Collect all messages (including nested — they become flat Go types).
-	for _, msg := range allMessages(f) {
+	for _, msg := range g.Messages {
 		name := msg.GoIdent.GoName
-		mi := msgInfo[name]
+		mi := msgInfo[messageKey(msg)]
 		if mi == nil {
 			continue
 		}
 
 		// Emit output binding if used as output.
 		if mi.role.has(roleOutput) {
-			fmt.Fprintf(&sb, "  %s:    { model: %s.%s }\n", name, pbImport, name)
+			fmt.Fprintf(&sb, "  %s:    { model: %s.%s }\n", name, string(msg.GoIdent.GoImportPath), name)
 		}
 
 		// Emit input binding: top-level requests keep their name; nested get Input suffix.
 		if mi.role.has(roleInput) {
 			if mi.isRequest {
-				if oi, hasInputOneof := inputOneofMsgs[name]; hasInputOneof {
-					// Request with input oneof: bind to intermediate pbgql struct.
-					fmt.Fprintf(&sb, "  %s:    { model: %s.%s }\n", name, pbgqlImport, oi.MsgInputGoName)
-				} else if !mi.role.has(roleOutput) {
-					// Normal request without oneof: bind to pb directly.
-					fmt.Fprintf(&sb, "  %s:    { model: %s.%s }\n", name, pbImport, name)
+				// Empty request messages have no GraphQL input type — skip binding.
+				if isEmptyMessage(msg) {
+					// no binding needed: the operation field has no input arg
+				} else {
+					inputName := inputTypeName(msg, msgInfo)
+					if oi, hasInputOneof := inputOneofMsgs[messageKey(msg)]; hasInputOneof {
+						// Request with input oneof: bind to intermediate pbgql struct.
+						fmt.Fprintf(&sb, "  %s:    { model: %s.%s }\n", inputName, pbgqlImport, oi.MsgInputGoName)
+					} else if !mi.role.has(roleOutput) || inputName != name {
+						// Normal request without oneof: bind to pb directly.
+						fmt.Fprintf(&sb, "  %s:    { model: %s.%s }\n", inputName, string(msg.GoIdent.GoImportPath), name)
+					}
 				}
 			} else {
 				// Nested input: emit with Input suffix binding to same Go type.
-				fmt.Fprintf(&sb, "  %s:    { model: %s.%s }\n", name+"Input", pbImport, name)
+				fmt.Fprintf(&sb, "  %s:    { model: %s.%s }\n", name+"Input", string(msg.GoIdent.GoImportPath), name)
 			}
 		}
 	}
@@ -142,7 +164,7 @@ func buildGqlgenYml(f *protogen.File, pbImport, pbgqlImport string) string {
 	// Directives block: only emit when custom directives with no runtime behavior are used.
 	// @idempotent carries no runtime behavior and must be marked skip_runtime to avoid
 	// gqlgen generating a DirectiveRoot method that requires an implementation.
-	if hasAnyIdempotentMutation(f) {
+	if hasAnyIdempotentMutationGraph(g) {
 		sb.WriteString("\ndirectives:\n")
 		sb.WriteString("  idempotent:\n")
 		sb.WriteString("    skip_runtime: true\n")

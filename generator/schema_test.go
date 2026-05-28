@@ -148,12 +148,51 @@ func testdataUpdateMode() bool {
 	return os.Getenv("TESTDATA_UPDATE") == "1"
 }
 
+// TestBuildSchema_EmptyMessages asserts that fieldless proto messages are handled
+// correctly: empty request → no input arg; empty output → ok placeholder field.
+func TestBuildSchema_EmptyMessages(t *testing.T) {
+	goldenFile := loadGoldenProtoFile(t)
+	schema, err := buildSchema(goldenFile)
+	if err != nil {
+		t.Fatalf("buildSchema: %v", err)
+	}
+
+	// Empty request (PingRequest): operation field has NO input arg.
+	noArgField := "ping: PingResponse!"
+	if !strings.Contains(schema, noArgField) {
+		t.Errorf("schema missing no-arg Ping field %q\ngot:\n%s", noArgField, schema)
+	}
+	// Ensure the old broken form is absent.
+	badPing := "ping(input:"
+	if strings.Contains(schema, badPing) {
+		t.Errorf("schema should not have %q for empty request\ngot:\n%s", badPing, schema)
+	}
+
+	// Empty output (PingResponse): must have ok placeholder with forceResolver.
+	okField := "type PingResponse { ok: Boolean! @goField(forceResolver: true) }"
+	if !strings.Contains(schema, okField) {
+		t.Errorf("schema missing empty-output placeholder %q\ngot:\n%s", okField, schema)
+	}
+	// Ensure the old broken blank-name form is absent.
+	if strings.Contains(schema, "{ _: Boolean }") {
+		t.Errorf("schema must not contain blank-field placeholder '{ _: Boolean }'\ngot:\n%s", schema)
+	}
+
+	// PingRequest must NOT appear as an input type.
+	if strings.Contains(schema, "input PingRequest") {
+		t.Errorf("schema must not emit an input type for empty PingRequest\ngot:\n%s", schema)
+	}
+}
+
 // TestBuildSchema_IdempotentDirective asserts that the schema contains the
 // @idempotent directive declaration and that the upsertBook mutation field
 // carries the @idempotent annotation.
 func TestBuildSchema_IdempotentDirective(t *testing.T) {
 	goldenFile := loadGoldenProtoFile(t)
-	schema := buildSchema(goldenFile)
+	schema, err := buildSchema(goldenFile)
+	if err != nil {
+		t.Fatalf("buildSchema: %v", err)
+	}
 
 	directiveDecl := "directive @idempotent on FIELD_DEFINITION"
 	if !strings.Contains(schema, directiveDecl) {
@@ -169,7 +208,11 @@ func TestBuildSchema_IdempotentDirective(t *testing.T) {
 func TestBuildSchema_Golden(t *testing.T) {
 	goldenFile := loadGoldenProtoFile(t)
 
-	got := normalizeSchema(buildSchema(goldenFile))
+	schema, err := buildSchema(goldenFile)
+	if err != nil {
+		t.Fatalf("buildSchema: %v", err)
+	}
+	got := normalizeSchema(schema)
 	if testdataUpdateMode() {
 		writeTestdata(t, "golden.schema.graphql", got)
 		return

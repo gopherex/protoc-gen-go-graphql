@@ -65,6 +65,10 @@ func (f *fakeLibrary) AddBook(_ context.Context, req *pb.AddBookRequest) (*pb.Ad
 	return &pb.AddBookResponse{Book: req.Book}, nil
 }
 
+func (f *fakeLibrary) Ping(_ context.Context, _ *pb.PingRequest) (*pb.PingResponse, error) {
+	return &pb.PingResponse{}, nil
+}
+
 func (f *fakeLibrary) WatchItems(_ *pb.WatchRequest, srv pb.Library_WatchItemsServer) error {
 	for _, e := range f.watchEvents {
 		if err := srv.Send(e); err != nil {

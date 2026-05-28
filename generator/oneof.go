@@ -35,6 +35,8 @@ type oneofVariant struct {
 
 // oneofInfo describes a single proto oneof within a message.
 type oneofInfo struct {
+	// Msg is the containing proto message.
+	Msg *protogen.Message
 	// MsgGoName is the Go name of the containing message (e.g. "SearchResponse").
 	MsgGoName string
 	// OneofGoName is the exported Go name of the oneof (e.g. "Result").
@@ -67,11 +69,15 @@ type oneofInfo struct {
 // collectOneofs returns all non-synthetic oneofs in file f, annotated with
 // their role (output/input) based on msgInfo.
 func collectOneofs(f *protogen.File, msgInfo map[string]*messageInfo) []oneofInfo {
+	return collectOneofsGraph(graphFromFile(f), msgInfo)
+}
+
+func collectOneofsGraph(g *graph, msgInfo map[string]*messageInfo) []oneofInfo {
 	var result []oneofInfo
 
-	for _, msg := range allMessages(f) {
+	for _, msg := range g.Messages {
 		name := msg.GoIdent.GoName
-		mi := msgInfo[name]
+		mi := msgInfo[messageKey(msg)]
 		if mi == nil {
 			continue
 		}
@@ -134,6 +140,7 @@ func collectOneofs(f *protogen.File, msgInfo map[string]*messageInfo) []oneofInf
 			}
 
 			oi := oneofInfo{
+				Msg:             msg,
 				MsgGoName:       name,
 				OneofGoName:     ooGoName,
 				ProtoName:       protoName,
@@ -144,16 +151,21 @@ func collectOneofs(f *protogen.File, msgInfo map[string]*messageInfo) []oneofInf
 				PbMsgGoName:     name,
 			}
 
-			// Input @oneOf names.
-			oi.InputGQLName = name + ooGoName // e.g. "SearchRequestQuery"
-			oi.InputGoName = name + ooGoName  // same as Go struct name in pbgql
-
 			if mi.role.has(roleOutput) {
 				oi.IsOutput = true
 			}
 			if mi.role.has(roleInput) && mi.isRequest {
 				oi.IsInput = true
 				oi.MsgInputGoName = name + "Input" // e.g. "SearchRequestInput"
+			}
+			// Input @oneOf names. GraphQL has one global namespace for object,
+			// union, and input names, so an input oneof that is also an output
+			// union must use a distinct name.
+			oi.InputGQLName = name + ooGoName // e.g. "SearchRequestQuery"
+			oi.InputGoName = name + ooGoName  // same as Go struct name in pbgql
+			if oi.IsInput && oi.IsOutput {
+				oi.InputGQLName += "Input"
+				oi.InputGoName += "Input"
 			}
 
 			result = append(result, oi)
@@ -171,7 +183,7 @@ func collectOneofs(f *protogen.File, msgInfo map[string]*messageInfo) []oneofInf
 //   - a WrapXxx() conversion helper.
 //   - For each input oneof: the @oneOf input struct + the request intermediate
 //     struct + a ToPbXxx() conversion helper.
-func buildOneofAdapter(msg *protogen.Message, ois []oneofInfo, pbImport string) string {
+func buildOneofAdapter(ois []oneofInfo, pbImport string) string {
 	if len(ois) == 0 {
 		return ""
 	}

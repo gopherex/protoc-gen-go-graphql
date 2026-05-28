@@ -41,6 +41,7 @@ type ResolverRoot interface {
 	MultiOneofChoiceChoiceBook() MultiOneofChoiceChoiceBookResolver
 	Mutation() MutationResolver
 	OptionalScalars() OptionalScalarsResolver
+	PingResponse() PingResponseResolver
 	Query() QueryResolver
 	RepeatedScalars() RepeatedScalarsResolver
 	ScalarTypes() ScalarTypesResolver
@@ -195,9 +196,14 @@ type ComplexityRoot struct {
 		Value func(childComplexity int) int
 	}
 
+	PingResponse struct {
+		Ok func(childComplexity int) int
+	}
+
 	Query struct {
 		GetEverything func(childComplexity int, input gen.GetEverythingRequest) int
 		GetScalars    func(childComplexity int, input gen.GetScalarsRequest) int
+		Ping          func(childComplexity int) int
 		SearchBooks   func(childComplexity int, input pbgql.SearchRequestInput) int
 	}
 
@@ -321,10 +327,14 @@ type OptionalScalarsResolver interface {
 
 	FieldUint32(ctx context.Context, obj *gen.OptionalScalars) (*int, error)
 }
+type PingResponseResolver interface {
+	Ok(ctx context.Context, obj *gen.PingResponse) (bool, error)
+}
 type QueryResolver interface {
 	GetEverything(ctx context.Context, input gen.GetEverythingRequest) (*gen.GetEverythingResponse, error)
 	GetScalars(ctx context.Context, input gen.GetScalarsRequest) (*gen.GetScalarsResponse, error)
 	SearchBooks(ctx context.Context, input pbgql.SearchRequestInput) (*gen.SearchResponse, error)
+	Ping(ctx context.Context) (*gen.PingResponse, error)
 }
 type RepeatedScalarsResolver interface {
 	FieldFloat(ctx context.Context, obj *gen.RepeatedScalars) ([]float64, error)
@@ -821,6 +831,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.ComplexityRoot.Outer_Inner_DeepInner.Value(childComplexity), true
 
+	case "PingResponse.ok":
+		if e.ComplexityRoot.PingResponse.Ok == nil {
+			break
+		}
+
+		return e.ComplexityRoot.PingResponse.Ok(childComplexity), true
+
 	case "Query.getEverything":
 		if e.ComplexityRoot.Query.GetEverything == nil {
 			break
@@ -844,6 +861,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.ComplexityRoot.Query.GetScalars(childComplexity, args["input"].(gen.GetScalarsRequest)), true
 
+	case "Query.ping":
+		if e.ComplexityRoot.Query.Ping == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Query.Ping(childComplexity), true
 	case "Query.searchBooks":
 		if e.ComplexityRoot.Query.SearchBooks == nil {
 			break
@@ -1545,11 +1568,13 @@ type WatchEvent {
   at: Timestamp
 }
 type UpsertBookResponse { book: Book }
+type PingResponse { ok: Boolean! @goField(forceResolver: true) }
 
 type Query {
   getEverything(input: GetEverythingRequest!): GetEverythingResponse!
   getScalars(input: GetScalarsRequest!): GetScalarsResponse!
   searchBooks(input: SearchRequest!): SearchResponse!
+  ping: PingResponse!
 }
 type Mutation {
   echoInput(input: EchoRequest!): EchoResponse!
@@ -1756,6 +1781,14 @@ func (ec *executionContext) childFields_Outer_Inner_DeepInner(ctx context.Contex
 		return ec.fieldContext_Outer_Inner_DeepInner_value(ctx, field)
 	}
 	return nil, fmt.Errorf("no field named %q was found under type Outer_Inner_DeepInner", field.Name)
+}
+
+func (ec *executionContext) childFields_PingResponse(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+	switch field.Name {
+	case "ok":
+		return ec.fieldContext_PingResponse_ok(ctx, field)
+	}
+	return nil, fmt.Errorf("no field named %q was found under type PingResponse", field.Name)
 }
 
 func (ec *executionContext) childFields_RepeatedScalars(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
@@ -4036,6 +4069,29 @@ func (ec *executionContext) fieldContext_Outer_Inner_DeepInner_value(_ context.C
 	return graphql.NewScalarFieldContext("Outer_Inner_DeepInner", field, false, false, errors.New("field of type String does not have child fields"))
 }
 
+func (ec *executionContext) _PingResponse_ok(ctx context.Context, field graphql.CollectedField, obj *gen.PingResponse) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_PingResponse_ok(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return ec.Resolvers.PingResponse().Ok(ctx, obj)
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v bool) graphql.Marshaler {
+			return ec.marshalNBoolean2bool(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_PingResponse_ok(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("PingResponse", field, true, true, errors.New("field of type Boolean does not have child fields"))
+}
+
 func (ec *executionContext) _Query_getEverything(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -4164,6 +4220,38 @@ func (ec *executionContext) fieldContext_Query_searchBooks(ctx context.Context, 
 	if fc.Args, err = ec.field_Query_searchBooks_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_ping(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Query_ping(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return ec.Resolvers.Query().Ping(ctx)
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *gen.PingResponse) graphql.Marshaler {
+			return ec.marshalNPingResponse2ᚖgithubᚗcomᚋgopherexᚋprotocᚑgenᚑgoᚑgraphqlᚋexampleᚋgenᚐPingResponse(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Query_ping(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_PingResponse(ctx, field)
+		},
 	}
 	return fc, nil
 }
@@ -8659,6 +8747,76 @@ func (ec *executionContext) _Outer_Inner_DeepInner(ctx context.Context, sel ast.
 	return out
 }
 
+var pingResponseImplementors = []string{"PingResponse"}
+
+func (ec *executionContext) _PingResponse(ctx context.Context, sel ast.SelectionSet, obj *gen.PingResponse) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, pingResponseImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("PingResponse")
+		case "ok":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._PingResponse_ok(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(min(len(deferred), math.MaxInt32)))
+
+	for label, dfs := range deferred {
+		ec.ProcessDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
 var queryImplementors = []string{"Query"}
 
 func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) graphql.Marshaler {
@@ -8732,6 +8890,28 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_searchBooks(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "ping":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_ping(ctx, field)
 				if res == graphql.Null {
 					atomic.AddUint32(&fs.Invalids, 1)
 				}
@@ -10339,6 +10519,20 @@ func (ec *executionContext) marshalNInt642ᚕint64ᚄ(ctx context.Context, sel a
 	}
 
 	return ret
+}
+
+func (ec *executionContext) marshalNPingResponse2githubᚗcomᚋgopherexᚋprotocᚑgenᚑgoᚑgraphqlᚋexampleᚋgenᚐPingResponse(ctx context.Context, sel ast.SelectionSet, v gen.PingResponse) graphql.Marshaler {
+	return ec._PingResponse(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNPingResponse2ᚖgithubᚗcomᚋgopherexᚋprotocᚑgenᚑgoᚑgraphqlᚋexampleᚋgenᚐPingResponse(ctx context.Context, sel ast.SelectionSet, v *gen.PingResponse) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._PingResponse(ctx, sel, v)
 }
 
 func (ec *executionContext) unmarshalNSearchRequest2githubᚗcomᚋgopherexᚋprotocᚑgenᚑgoᚑgraphqlᚋexampleᚋgenᚋgqlapiᚋpbgqlᚐSearchRequestInput(ctx context.Context, v any) (pbgql.SearchRequestInput, error) {

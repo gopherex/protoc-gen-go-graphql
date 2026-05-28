@@ -27,6 +27,7 @@ func (r *Resolver) MultiOneofChoiceChoiceBook() exec.MultiOneofChoiceChoiceBookR
 	return multiOneofChoiceChoiceBookResolver{r}
 }
 func (r *Resolver) OptionalScalars() exec.OptionalScalarsResolver { return optionalScalarsResolver{r} }
+func (r *Resolver) PingResponse() exec.PingResponseResolver       { return pingResponseResolver{r} }
 func (r *Resolver) RepeatedScalars() exec.RepeatedScalarsResolver { return repeatedScalarsResolver{r} }
 func (r *Resolver) ScalarTypes() exec.ScalarTypesResolver         { return scalarTypesResolver{r} }
 func (r *Resolver) SearchResponse() exec.SearchResponseResolver   { return searchResponseResolver{r} }
@@ -44,6 +45,7 @@ type mapMessageResolver struct{ *Resolver }
 type multiOneofResolver struct{ *Resolver }
 type multiOneofChoiceChoiceBookResolver struct{ *Resolver }
 type optionalScalarsResolver struct{ *Resolver }
+type pingResponseResolver struct{ *Resolver }
 type repeatedScalarsResolver struct{ *Resolver }
 type scalarTypesResolver struct{ *Resolver }
 type searchResponseResolver struct{ *Resolver }
@@ -235,6 +237,11 @@ func (r wKTMessageResolver) ListValue(ctx context.Context, obj *pb.WKTMessage) (
 	return out, nil
 }
 
+// Ok is the placeholder field resolver for the empty message PingResponse.
+func (r pingResponseResolver) Ok(ctx context.Context, obj *pb.PingResponse) (bool, error) {
+	return true, nil
+}
+
 // Result resolves the oneof field "result" as a SearchResponseResult union.
 // It wraps the pb oneof variant into the appropriate pbgql wrapper type.
 func (r searchResponseResolver) Result(ctx context.Context, obj *pb.SearchResponse) (pbgql.SearchResponseResult, error) {
@@ -277,6 +284,14 @@ func (r queryResolver) GetScalars(ctx context.Context, input pb.GetScalarsReques
 
 func (r queryResolver) SearchBooks(ctx context.Context, input pbgql.SearchRequestInput) (*pb.SearchResponse, error) {
 	resp, err := r.Library.SearchBooks(ctx, pbgql.ToPbSearchRequest(&input))
+	if err != nil {
+		return nil, graphqlpb.GraphQLError(ctx, err)
+	}
+	return resp, nil
+}
+
+func (r queryResolver) Ping(ctx context.Context) (*pb.PingResponse, error) {
+	resp, err := r.Library.Ping(ctx, &pb.PingRequest{})
 	if err != nil {
 		return nil, graphqlpb.GraphQLError(ctx, err)
 	}

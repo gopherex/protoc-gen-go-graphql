@@ -9,6 +9,15 @@ import (
 	descriptorpb "google.golang.org/protobuf/types/descriptorpb"
 )
 
+// isEmptyMessage returns true if msg is a non-map-entry proto message with zero fields.
+// Such messages are "empty" and require special handling in schema/resolver generation.
+func isEmptyMessage(msg *protogen.Message) bool {
+	if msg == nil || msg.Desc.IsMapEntry() {
+		return false
+	}
+	return len(msg.Fields) == 0
+}
+
 // wellKnownGQLType maps a fully qualified WKT message name to its GraphQL scalar name.
 var wellKnownGQLType = map[string]string{
 	"google.protobuf.Timestamp": "Timestamp",
@@ -49,10 +58,23 @@ type messageInfo struct {
 	isRequest bool // top-level RPC request (keeps original name as input)
 }
 
-// analyzeMessages returns a map from GoName to messageInfo for all non-map-entry
+func inputTypeName(msg *protogen.Message, msgInfo map[string]*messageInfo) string {
+	name := msg.GoIdent.GoName
+	mi := msgInfo[messageKey(msg)]
+	if mi != nil && mi.isRequest && mi.role.has(roleOutput) {
+		return name + "Input"
+	}
+	return name
+}
+
+// analyzeMessages returns a map from messageKey to messageInfo for all non-map-entry
 // messages in f. It determines which messages are used as output types, input
 // types, or both.
 func analyzeMessages(f *protogen.File) map[string]*messageInfo {
+	return analyzeMessagesGraph(graphFromFile(f))
+}
+
+func analyzeMessagesGraph(g *graph) map[string]*messageInfo {
 	info := map[string]*messageInfo{}
 
 	// Initialize all top-level messages.
@@ -62,17 +84,18 @@ func analyzeMessages(f *protogen.File) map[string]*messageInfo {
 			if msg.Desc.IsMapEntry() {
 				continue
 			}
-			info[msg.GoIdent.GoName] = &messageInfo{}
+			info[messageKey(msg)] = &messageInfo{}
 			initAll(msg.Messages)
 		}
 	}
-	initAll(f.Messages)
+	for _, msg := range g.Messages {
+		info[messageKey(msg)] = &messageInfo{}
+	}
 
 	// Mark top-level request messages.
-	for _, svc := range f.Services {
+	for _, svc := range g.Services {
 		for _, m := range svc.Methods {
-			name := m.Input.GoIdent.GoName
-			if mi, ok := info[name]; ok {
+			if mi, ok := info[messageKey(m.Input)]; ok {
 				mi.isRequest = true
 				mi.role |= roleInput
 			}
@@ -82,8 +105,7 @@ func analyzeMessages(f *protogen.File) map[string]*messageInfo {
 	// BFS from RPC responses → mark output.
 	var markOutput func(msg *protogen.Message)
 	markOutput = func(msg *protogen.Message) {
-		name := msg.GoIdent.GoName
-		mi, ok := info[name]
+		mi, ok := info[messageKey(msg)]
 		if !ok {
 			return
 		}
@@ -116,8 +138,7 @@ func analyzeMessages(f *protogen.File) map[string]*messageInfo {
 				if _, wkt := wellKnownGQLType[fqn]; wkt {
 					continue
 				}
-				childName := field.Message.GoIdent.GoName
-				mi, ok := info[childName]
+				mi, ok := info[messageKey(field.Message)]
 				if !ok {
 					continue
 				}
@@ -130,7 +151,7 @@ func analyzeMessages(f *protogen.File) map[string]*messageInfo {
 		}
 	}
 
-	for _, svc := range f.Services {
+	for _, svc := range g.Services {
 		for _, m := range svc.Methods {
 			markOutput(m.Output)
 			markInput(m.Input)
@@ -143,34 +164,12 @@ func analyzeMessages(f *protogen.File) map[string]*messageInfo {
 // allMessages returns a flat slice of all non-map-entry messages in the file,
 // including nested messages, in DFS order (parent before children).
 func allMessages(f *protogen.File) []*protogen.Message {
-	var result []*protogen.Message
-	var walk func([]*protogen.Message)
-	walk = func(msgs []*protogen.Message) {
-		for _, m := range msgs {
-			if m.Desc.IsMapEntry() {
-				continue
-			}
-			result = append(result, m)
-			walk(m.Messages)
-		}
-	}
-	walk(f.Messages)
-	return result
+	return graphFromFile(f).Messages
 }
 
 // allEnums returns all enums in the file, including those nested inside messages.
 func allEnums(f *protogen.File) []*protogen.Enum {
-	var result []*protogen.Enum
-	result = append(result, f.Enums...)
-	var walkMsgs func([]*protogen.Message)
-	walkMsgs = func(msgs []*protogen.Message) {
-		for _, m := range msgs {
-			result = append(result, m.Enums...)
-			walkMsgs(m.Messages)
-		}
-	}
-	walkMsgs(f.Messages)
-	return result
+	return graphFromFile(f).Enums
 }
 
 // buildSchema walks f's descriptors and returns a GraphQL SDL string.
@@ -183,16 +182,21 @@ func allEnums(f *protogen.File) []*protogen.Enum {
 //  6. Input types (request messages and nested input types)
 //  7. Pure output types (roleOutput & !roleInput) — e.g. GetBookResponse
 //  8. Operation roots (Query / Mutation / Subscription)
-func buildSchema(f *protogen.File) string {
+func buildSchema(f *protogen.File) (string, error) {
+	return buildSchemaGraph(graphFromFile(f))
+}
+
+func buildSchemaGraph(g *graph) (string, error) {
 	var sb strings.Builder
 
-	msgInfo := analyzeMessages(f)
-	ois := collectOneofs(f, msgInfo)
+	msgInfo := analyzeMessagesGraph(g)
+	ois := collectOneofsGraph(g, msgInfo)
 
 	// Index oneofs by message name for fast lookup.
 	oneofsByMsg := map[string][]oneofInfo{}
 	for _, oi := range ois {
-		oneofsByMsg[oi.MsgGoName] = append(oneofsByMsg[oi.MsgGoName], oi)
+		key := messageKey(oi.Msg)
+		oneofsByMsg[key] = append(oneofsByMsg[key], oi)
 	}
 
 	// 1. Directive declarations (must be explicit per spike-findings §5).
@@ -209,13 +213,13 @@ func buildSchema(f *protogen.File) string {
 		sb.WriteString("directive @oneOf on INPUT_OBJECT\n")
 	}
 	// @idempotent is needed when at least one IDEMPOTENT mutation exists.
-	if hasAnyIdempotentMutation(f) {
+	if hasAnyIdempotentMutationGraph(g) {
 		sb.WriteString("directive @idempotent on FIELD_DEFINITION\n")
 	}
 	sb.WriteString("\n")
 
 	// 2. Scalar declarations (only those actually used).
-	usedScalars := collectUsedScalars(f)
+	usedScalars := collectUsedScalarsGraph(g)
 	for _, sc := range []string{
 		"Int64", "Uint64", "Bytes", "Timestamp", "Duration", "JSON", "FieldMask",
 		"DoubleValue", "FloatValue", "Int32Value", "UInt32Value",
@@ -230,7 +234,7 @@ func buildSchema(f *protogen.File) string {
 	}
 
 	// 3. Enum types (including nested enums).
-	for _, e := range allEnums(f) {
+	for _, e := range g.Enums {
 		emitEnum(&sb, e) // emitEnum already adds trailing blank line
 	}
 
@@ -241,7 +245,7 @@ func buildSchema(f *protogen.File) string {
 			hasUnions = true
 			// Emit member types for the union (wrapper types that will bind to pbgql wrappers).
 			for _, v := range oi.Variants {
-				emitUnionMemberType(&sb, v, oi)
+				emitUnionMemberType(&sb, v)
 			}
 			// Emit the union declaration.
 			memberNames := make([]string, len(oi.Variants))
@@ -258,25 +262,27 @@ func buildSchema(f *protogen.File) string {
 	// 5. Domain output types: roleOutput AND roleInput (used in both contexts).
 	// E.g., Author and Book — used as output AND as templates for BookInput/AuthorInput.
 	// Each may be single-line (Author) or multi-line (Book); add blank line after each.
-	for _, msg := range allMessages(f) {
-		mi := msgInfo[msg.GoIdent.GoName]
+	for _, msg := range g.Messages {
+		mi := msgInfo[messageKey(msg)]
 		if mi == nil {
 			continue
 		}
-		if mi.role.has(roleOutput) && mi.role.has(roleInput) && !mi.isRequest {
+		if mi.role.has(roleOutput) && mi.role.has(roleInput) && (!mi.isRequest || inputTypeName(msg, msgInfo) != msg.GoIdent.GoName) {
 			emitOutputType(&sb, msg, oneofsByMsg)
 			sb.WriteString("\n") // blank line after each domain type
 		}
 	}
 
 	// 6. Input types: in service/method order (request messages) with nested types.
-	emitInputTypes(&sb, f, msgInfo, oneofsByMsg)
+	if err := emitInputTypesGraph(&sb, g, msgInfo, oneofsByMsg); err != nil {
+		return "", err
+	}
 	sb.WriteString("\n") // blank line after input section
 
 	// 7. Pure output types: roleOutput only (response wrappers like GetBookResponse).
 	// Multiple single-line types appear consecutively without inter-item blank lines.
-	for _, msg := range allMessages(f) {
-		mi := msgInfo[msg.GoIdent.GoName]
+	for _, msg := range g.Messages {
+		mi := msgInfo[messageKey(msg)]
 		if mi == nil {
 			continue
 		}
@@ -287,16 +293,20 @@ func buildSchema(f *protogen.File) string {
 	sb.WriteString("\n") // blank line after response types section
 
 	// 8. Operation roots.
-	emitOperationRoots(&sb, f)
+	emitOperationRootsGraph(&sb, g)
 
-	return sb.String()
+	return sb.String(), nil
 }
 
 // collectUsedScalars scans every message field and returns the set of custom
 // GraphQL scalar names (Int64, Uint64, Bytes, Timestamp, Duration, JSON, etc.) used.
 func collectUsedScalars(f *protogen.File) map[string]bool {
+	return collectUsedScalarsGraph(graphFromFile(f))
+}
+
+func collectUsedScalarsGraph(g *graph) map[string]bool {
 	used := map[string]bool{}
-	for _, msg := range allMessages(f) {
+	for _, msg := range g.Messages {
 		for _, field := range msg.Fields {
 			sc := fieldGQLScalar(field)
 			if sc != "" {
@@ -390,14 +400,14 @@ func fieldGQLBaseType(field *protogen.Field) string {
 }
 
 // outputFields returns all renderable output fields for a message (nil for map-entry msgs).
-// oneofsByMsg maps message GoName to its oneof infos so oneof fields can be replaced
+// oneofsByMsg maps messageKey to its oneof infos so oneof fields can be replaced
 // by their union field with @goField(forceResolver: true).
 func outputFields(msg *protogen.Message, oneofsByMsg map[string][]oneofInfo) []string {
 	// Build a set of field names that belong to any non-synthetic oneof in this message.
 	oneofFieldNames := map[string]bool{}
 	// And build a map from oneof proto name → oneofInfo for union field emission.
 	oneofByProtoName := map[string]oneofInfo{}
-	for _, oi := range oneofsByMsg[msg.GoIdent.GoName] {
+	for _, oi := range oneofsByMsg[messageKey(msg)] {
 		if oi.IsOutput {
 			for _, v := range oi.Variants {
 				oneofFieldNames[v.ProtoFieldName] = true
@@ -457,11 +467,17 @@ func emitEnum(sb *strings.Builder, e *protogen.Enum) {
 
 // emitOutputType emits a `type` declaration (NO trailing blank line — callers add section separators).
 // Single-field types use inline format; multi-field use multi-line.
+// Empty messages (no fields) emit a placeholder: ok: Boolean! @goField(forceResolver: true)
 func emitOutputType(sb *strings.Builder, msg *protogen.Message, oneofsByMsg map[string][]oneofInfo) {
 	if msg.Desc.IsMapEntry() {
 		return
 	}
 	fields := outputFields(msg, oneofsByMsg)
+	if len(fields) == 0 {
+		// Empty message: emit a placeholder field to satisfy GraphQL (no blank field names).
+		fmt.Fprintf(sb, "type %s { ok: Boolean! @goField(forceResolver: true) }\n", msg.GoIdent.GoName)
+		return
+	}
 	if len(fields) == 1 {
 		// Inline format.
 		fmt.Fprintf(sb, "type %s { %s }\n", msg.GoIdent.GoName, fields[0])
@@ -481,7 +497,7 @@ func emitOutputType(sb *strings.Builder, msg *protogen.Message, oneofsByMsg map[
 // For message variants, the wrapper has the same fields as the underlying pb message
 // (the Go struct embeds *pb.Msg, so gqlgen resolves all fields via embedding).
 // For scalar variants, the wrapper has a single `value` field.
-func emitUnionMemberType(sb *strings.Builder, v oneofVariant, oi oneofInfo) {
+func emitUnionMemberType(sb *strings.Builder, v oneofVariant) {
 	if !v.IsMessage {
 		// Scalar variant: a simple type with a single value field.
 		fmt.Fprintf(sb, "type %s { value: %s! }\n", v.WrapperGoName, v.GQLTypeName)
@@ -493,7 +509,7 @@ func emitUnionMemberType(sb *strings.Builder, v oneofVariant, oi oneofInfo) {
 	// don't themselves have union substitution needed at this emission point.
 	fields := outputFields(v.Msg, map[string][]oneofInfo{})
 	if len(fields) == 0 {
-		fmt.Fprintf(sb, "type %s { _: Boolean }\n", v.WrapperGoName)
+		fmt.Fprintf(sb, "type %s { ok: Boolean! @goField(forceResolver: true) }\n", v.WrapperGoName)
 		return
 	}
 	if len(fields) == 1 {
@@ -550,8 +566,11 @@ func inputGQLBaseType(field *protogen.Field, msgInfo map[string]*messageInfo) st
 			return sc
 		}
 		msgName := field.Message.GoIdent.GoName
-		mi, ok := msgInfo[msgName]
-		if ok && !mi.isRequest {
+		mi, ok := msgInfo[messageKey(field.Message)]
+		if ok {
+			if mi.isRequest {
+				return inputTypeName(field.Message, msgInfo)
+			}
 			// Nested non-request messages get the "Input" suffix.
 			return msgName + "Input"
 		}
@@ -564,13 +583,13 @@ func inputGQLBaseType(field *protogen.Field, msgInfo map[string]*messageInfo) st
 }
 
 // inputFields returns the renderable input fields for a message (omitting maps).
-// oneofsByMsg maps message GoName to its oneof infos so oneof fields are replaced
+// oneofsByMsg maps messageKey to its oneof infos so oneof fields are replaced
 // by the @oneOf input type reference.
 func inputFields(msg *protogen.Message, msgInfo map[string]*messageInfo, oneofsByMsg map[string][]oneofInfo) []string {
 	// Build a set of field names that belong to any non-synthetic oneof in this message.
 	oneofFieldNames := map[string]bool{}
 	oneofByProtoName := map[string]oneofInfo{}
-	for _, oi := range oneofsByMsg[msg.GoIdent.GoName] {
+	for _, oi := range oneofsByMsg[messageKey(msg)] {
 		if oi.IsInput {
 			for _, v := range oi.Variants {
 				oneofFieldNames[v.ProtoFieldName] = true
@@ -623,36 +642,47 @@ func inputFields(msg *protogen.Message, msgInfo map[string]*messageInfo, oneofsB
 //
 // Note: the spike emits AddBookRequest BEFORE BookInput even though BookInput is
 // referenced by AddBookRequest. This is valid GraphQL (forward references are OK).
-func emitInputTypes(sb *strings.Builder, f *protogen.File, msgInfo map[string]*messageInfo, oneofsByMsg map[string][]oneofInfo) {
+func emitInputTypes(sb *strings.Builder, f *protogen.File, msgInfo map[string]*messageInfo, oneofsByMsg map[string][]oneofInfo) error {
+	return emitInputTypesGraph(sb, graphFromFile(f), msgInfo, oneofsByMsg)
+}
+
+func emitInputTypesGraph(sb *strings.Builder, g *graph, msgInfo map[string]*messageInfo, oneofsByMsg map[string][]oneofInfo) error {
 	emitted := map[string]bool{}
 
-	for _, svc := range f.Services {
+	for _, svc := range g.Services {
 		for _, m := range svc.Methods {
-			reqName := m.Input.GoIdent.GoName
+			reqName := inputTypeName(m.Input, msgInfo)
+			// Empty request messages have no GraphQL input type (the operation field has no arg).
 			if !emitted[reqName] {
 				emitted[reqName] = true
-				emitInputBlock(sb, m.Input, reqName, msgInfo, oneofsByMsg)
+				if !isEmptyMessage(m.Input) {
+					emitInputBlock(sb, m.Input, reqName, msgInfo, oneofsByMsg)
+				}
 			}
 			// Emit @oneOf input blocks for input oneofs in this request.
-			for _, oi := range oneofsByMsg[reqName] {
+			for _, oi := range oneofsByMsg[messageKey(m.Input)] {
 				if !oi.IsInput {
 					continue
 				}
 				oneofKey := oi.InputGQLName
 				if !emitted[oneofKey] {
 					emitted[oneofKey] = true
-					emitOneofInputBlock(sb, oi)
+					emitOneofInputBlock(sb, oi, msgInfo)
 				}
 			}
 			// Emit nested input types reachable from this request (DFS).
-			emitNestedInputs(sb, m.Input, msgInfo, oneofsByMsg, emitted)
+			if err := emitNestedInputs(sb, m.Input, msgInfo, oneofsByMsg, emitted); err != nil {
+				return err
+			}
 		}
 	}
+	return nil
 }
 
 // emitNestedInputs emits nested input blocks reachable from msg (DFS).
 // Nested types are emitted AFTER their parent request (not before).
-func emitNestedInputs(sb *strings.Builder, msg *protogen.Message, msgInfo map[string]*messageInfo, oneofsByMsg map[string][]oneofInfo, emitted map[string]bool) {
+// Returns an error if an empty (fieldless) nested input is encountered.
+func emitNestedInputs(sb *strings.Builder, msg *protogen.Message, msgInfo map[string]*messageInfo, oneofsByMsg map[string][]oneofInfo, emitted map[string]bool) error {
 	for _, field := range msg.Fields {
 		if field.Desc.IsMap() || field.Desc.Kind() != protoreflect.MessageKind {
 			continue
@@ -662,7 +692,7 @@ func emitNestedInputs(sb *strings.Builder, msg *protogen.Message, msgInfo map[st
 			continue
 		}
 		childName := field.Message.GoIdent.GoName
-		mi, ok := msgInfo[childName]
+		mi, ok := msgInfo[messageKey(field.Message)]
 		if !ok || !mi.role.has(roleInput) || mi.isRequest {
 			continue
 		}
@@ -670,10 +700,18 @@ func emitNestedInputs(sb *strings.Builder, msg *protogen.Message, msgInfo map[st
 			continue
 		}
 		emitted[childName] = true
+		// Fail-fast: empty nested inputs are not supported (they would produce
+		// an invalid GraphQL input type and cannot be used as operation arguments).
+		if isEmptyMessage(field.Message) {
+			return fmt.Errorf("message %s is empty and used as a nested GraphQL input; empty nested inputs are not supported", childName)
+		}
 		emitInputBlock(sb, field.Message, childName+"Input", msgInfo, oneofsByMsg)
 		// Recurse into nested types.
-		emitNestedInputs(sb, field.Message, msgInfo, oneofsByMsg, emitted)
+		if err := emitNestedInputs(sb, field.Message, msgInfo, oneofsByMsg, emitted); err != nil {
+			return err
+		}
 	}
+	return nil
 }
 
 // emitInputBlock emits a single `input` block.
@@ -681,7 +719,7 @@ func emitNestedInputs(sb *strings.Builder, msg *protogen.Message, msgInfo map[st
 func emitInputBlock(sb *strings.Builder, msg *protogen.Message, typeName string, msgInfo map[string]*messageInfo, oneofsByMsg map[string][]oneofInfo) {
 	fields := inputFields(msg, msgInfo, oneofsByMsg)
 	if len(fields) == 0 {
-		fmt.Fprintf(sb, "input %s { }\n", typeName)
+		fmt.Fprintf(sb, "input %s { _: Boolean }\n", typeName)
 		return
 	}
 	if len(fields) == 1 {
@@ -701,17 +739,31 @@ func emitInputBlock(sb *strings.Builder, msg *protogen.Message, typeName string,
 
 // emitOneofInputBlock emits an `input @oneOf` block for a proto oneof field.
 // The @oneOf input has one nullable field per oneof variant.
-func emitOneofInputBlock(sb *strings.Builder, oi oneofInfo) {
+func emitOneofInputBlock(sb *strings.Builder, oi oneofInfo, msgInfo map[string]*messageInfo) {
 	if len(oi.Variants) == 1 {
 		v := oi.Variants[0]
-		fmt.Fprintf(sb, "input %s @oneOf { %s: %s }\n", oi.InputGQLName, fieldName(v.ProtoFieldName), v.GQLTypeName)
+		fmt.Fprintf(sb, "input %s @oneOf { %s: %s }\n", oi.InputGQLName, fieldName(v.ProtoFieldName), oneofInputVariantGQLType(v, msgInfo))
 		return
 	}
 	fmt.Fprintf(sb, "input %s @oneOf {\n", oi.InputGQLName)
 	for _, v := range oi.Variants {
-		fmt.Fprintf(sb, "  %s: %s\n", fieldName(v.ProtoFieldName), v.GQLTypeName)
+		fmt.Fprintf(sb, "  %s: %s\n", fieldName(v.ProtoFieldName), oneofInputVariantGQLType(v, msgInfo))
 	}
 	sb.WriteString("}\n")
+}
+
+func oneofInputVariantGQLType(v oneofVariant, msgInfo map[string]*messageInfo) string {
+	if !v.IsMessage || v.Msg == nil {
+		return v.GQLTypeName
+	}
+	mi := msgInfo[messageKey(v.Msg)]
+	if mi == nil {
+		return v.GQLTypeName
+	}
+	if mi.isRequest {
+		return inputTypeName(v.Msg, msgInfo)
+	}
+	return v.Msg.GoIdent.GoName + "Input"
 }
 
 // operationType determines whether a method maps to Query, Mutation, or Subscription.
@@ -745,7 +797,11 @@ func isIdempotentMutation(m *protogen.Method) bool {
 // hasAnyIdempotentMutation returns true iff f contains at least one
 // method that should carry the @idempotent directive.
 func hasAnyIdempotentMutation(f *protogen.File) bool {
-	for _, svc := range f.Services {
+	return hasAnyIdempotentMutationGraph(graphFromFile(f))
+}
+
+func hasAnyIdempotentMutationGraph(g *graph) bool {
+	for _, svc := range g.Services {
 		for _, m := range svc.Methods {
 			if isIdempotentMutation(m) {
 				return true
@@ -757,32 +813,53 @@ func hasAnyIdempotentMutation(f *protogen.File) bool {
 
 // emitOperationRoots emits Query, Mutation, Subscription root types.
 func emitOperationRoots(sb *strings.Builder, f *protogen.File) {
+	emitOperationRootsGraph(sb, graphFromFile(f))
+}
+
+func emitOperationRootsGraph(sb *strings.Builder, g *graph) {
 	queryFields := []string{}
 	mutationFields := []string{}
 	subscriptionFields := []string{}
+	msgInfo := analyzeMessagesGraph(g)
 
-	for _, svc := range f.Services {
+	for _, svc := range g.Services {
 		for _, m := range svc.Methods {
 			opType := operationType(m)
 			opField := operationFieldName(m.GoName)
-			reqTypeName := m.Input.GoIdent.GoName
+			reqTypeName := inputTypeName(m.Input, msgInfo)
+			emptyReq := isEmptyMessage(m.Input)
 
 			switch opType {
 			case "Query":
 				retType := m.Output.GoIdent.GoName
-				queryFields = append(queryFields,
-					fmt.Sprintf("%s(input: %s!): %s!", opField, reqTypeName, retType))
+				var f string
+				if emptyReq {
+					f = fmt.Sprintf("%s: %s!", opField, retType)
+				} else {
+					f = fmt.Sprintf("%s(input: %s!): %s!", opField, reqTypeName, retType)
+				}
+				queryFields = append(queryFields, f)
 			case "Mutation":
 				retType := m.Output.GoIdent.GoName
-				field := fmt.Sprintf("%s(input: %s!): %s!", opField, reqTypeName, retType)
+				var field string
+				if emptyReq {
+					field = fmt.Sprintf("%s: %s!", opField, retType)
+				} else {
+					field = fmt.Sprintf("%s(input: %s!): %s!", opField, reqTypeName, retType)
+				}
 				if isIdempotentMutation(m) {
 					field += " @idempotent"
 				}
 				mutationFields = append(mutationFields, field)
 			case "Subscription":
 				streamType := m.Output.GoIdent.GoName
-				subscriptionFields = append(subscriptionFields,
-					fmt.Sprintf("%s(input: %s!): %s!", opField, reqTypeName, streamType))
+				var f string
+				if emptyReq {
+					f = fmt.Sprintf("%s: %s!", opField, streamType)
+				} else {
+					f = fmt.Sprintf("%s(input: %s!): %s!", opField, reqTypeName, streamType)
+				}
+				subscriptionFields = append(subscriptionFields, f)
 			}
 		}
 	}
