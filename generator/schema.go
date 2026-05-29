@@ -69,13 +69,9 @@ func inputTypeName(msg *protogen.Message, msgInfo map[string]*messageInfo) strin
 	return name
 }
 
-// analyzeMessages returns a map from messageKey to messageInfo for all non-map-entry
-// messages in f. It determines which messages are used as output types, input
-// types, or both.
-func analyzeMessages(f *protogen.File) map[string]*messageInfo {
-	return analyzeMessagesGraph(graphFromFile(f))
-}
-
+// analyzeMessagesGraph returns a map from messageKey to messageInfo for all
+// non-map-entry messages in the graph. It determines which messages are used as
+// output types, input types, or both.
 func analyzeMessagesGraph(g *graph) map[string]*messageInfo {
 	info := map[string]*messageInfo{}
 
@@ -161,17 +157,6 @@ func analyzeMessagesGraph(g *graph) map[string]*messageInfo {
 	}
 
 	return info
-}
-
-// allMessages returns a flat slice of all non-map-entry messages in the file,
-// including nested messages, in DFS order (parent before children).
-func allMessages(f *protogen.File) []*protogen.Message {
-	return graphFromFile(f).Messages
-}
-
-// allEnums returns all enums in the file, including those nested inside messages.
-func allEnums(f *protogen.File) []*protogen.Enum {
-	return graphFromFile(f).Enums
 }
 
 // buildSchema walks f's descriptors and returns a GraphQL SDL string.
@@ -644,10 +629,6 @@ func inputFields(msg *protogen.Message, msgInfo map[string]*messageInfo, oneofsB
 //
 // Note: the spike emits AddBookRequest BEFORE BookInput even though BookInput is
 // referenced by AddBookRequest. This is valid GraphQL (forward references are OK).
-func emitInputTypes(sb *strings.Builder, f *protogen.File, msgInfo map[string]*messageInfo, oneofsByMsg map[string][]oneofInfo) error {
-	return emitInputTypesGraph(sb, graphFromFile(f), msgInfo, oneofsByMsg)
-}
-
 func emitInputTypesGraph(sb *strings.Builder, g *graph, msgInfo map[string]*messageInfo, oneofsByMsg map[string][]oneofInfo) error {
 	emitted := map[string]bool{}
 
@@ -829,12 +810,8 @@ func isIdempotentMutation(m *protogen.Method) bool {
 	return opts.GetIdempotencyLevel() == descriptorpb.MethodOptions_IDEMPOTENT
 }
 
-// hasAnyIdempotentMutation returns true iff f contains at least one
+// hasAnyIdempotentMutationGraph returns true iff the graph contains at least one
 // method that should carry the @idempotent directive.
-func hasAnyIdempotentMutation(f *protogen.File) bool {
-	return hasAnyIdempotentMutationGraph(graphFromFile(f))
-}
-
 func hasAnyIdempotentMutationGraph(g *graph) bool {
 	for _, svc := range g.Services {
 		for _, m := range includedMethods(svc) {
@@ -846,11 +823,7 @@ func hasAnyIdempotentMutationGraph(g *graph) bool {
 	return false
 }
 
-// emitOperationRoots emits Query, Mutation, Subscription root types.
-func emitOperationRoots(sb *strings.Builder, f *protogen.File) {
-	emitOperationRootsGraph(sb, graphFromFile(f))
-}
-
+// emitOperationRootsGraph emits Query, Mutation, Subscription root types.
 func emitOperationRootsGraph(sb *strings.Builder, g *graph) {
 	queryFields := []string{}
 	mutationFields := []string{}

@@ -66,12 +66,8 @@ type oneofInfo struct {
 	PbMsgGoName string
 }
 
-// collectOneofs returns all non-synthetic oneofs in file f, annotated with
-// their role (output/input) based on msgInfo.
-func collectOneofs(f *protogen.File, msgInfo map[string]*messageInfo) []oneofInfo {
-	return collectOneofsGraph(graphFromFile(f), msgInfo)
-}
-
+// collectOneofsGraph returns all non-synthetic oneofs in the graph, annotated
+// with their role (output/input) based on msgInfo.
 func collectOneofsGraph(g *graph, msgInfo map[string]*messageInfo) []oneofInfo {
 	var result []oneofInfo
 
