@@ -45,6 +45,12 @@ func graphFromFiles(files []*protogen.File) *graph {
 		if m == nil || m.Desc.IsMapEntry() {
 			return
 		}
+		// Skipped messages are entirely omitted from the graph and not
+		// traversed into. A non-skipped rpc that references a skipped message
+		// is caught as a fail-fast error in validateSkippedReferences.
+		if messageSkipped(m) {
+			return
+		}
 		key := string(m.Desc.FullName())
 		if seenMsgs[key] {
 			return
@@ -81,13 +87,22 @@ func graphFromFiles(files []*protogen.File) *graph {
 			addEnum(e)
 		}
 		for _, m := range f.Messages {
+			if messageSkipped(m) {
+				continue
+			}
 			addMessage(m)
 		}
 	}
 	for _, f := range files {
 		for _, svc := range f.Services {
+			if serviceSkipped(svc) {
+				continue
+			}
 			g.Services = append(g.Services, svc)
 			for _, m := range svc.Methods {
+				if methodSkipped(m) {
+					continue
+				}
 				addMessage(m.Input)
 				addMessage(m.Output)
 			}
@@ -95,4 +110,16 @@ func graphFromFiles(files []*protogen.File) *graph {
 	}
 
 	return g
+}
+
+// includedMethods returns the methods of a service that are not skipped.
+func includedMethods(svc *protogen.Service) []*protogen.Method {
+	var out []*protogen.Method
+	for _, m := range svc.Methods {
+		if methodSkipped(m) {
+			continue
+		}
+		out = append(out, m)
+	}
+	return out
 }

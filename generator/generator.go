@@ -53,10 +53,18 @@ func (g *Generator) generateFiles(files []*protogen.File) error {
 	// without going through RegisterFlags.
 	g.Settings.applyDefaults()
 
-	// Fail fast on unsupported streaming shapes.
+	// Fail fast on unsupported streaming shapes. Skipped services and methods
+	// are omitted entirely, so they are NOT checked (a skipped client/bidi rpc
+	// must not error).
 	for _, gf := range files {
 		for _, svc := range gf.Services {
+			if serviceSkipped(svc) {
+				continue
+			}
 			for _, m := range svc.Methods {
+				if methodSkipped(m) {
+					continue
+				}
 				if err := checkStreaming(
 					svc.GoName,
 					m.GoName,
@@ -69,6 +77,18 @@ func (g *Generator) generateFiles(files []*protogen.File) error {
 		}
 	}
 	graph := graphFromFiles(files)
+
+	// Validate options: references to skipped messages, operation/idempotency
+	// conflicts, and set-but-unimplemented options.
+	if err := validateSkippedReferences(files); err != nil {
+		return err
+	}
+	if err := validateOperationOverrides(graph); err != nil {
+		return err
+	}
+	if err := validateUnsupportedOptions(graph); err != nil {
+		return err
+	}
 
 	// Derive import paths from the file descriptor.
 	// f.GoImportPath is the pb package import path (e.g. "github.com/.../example/gen").

@@ -7,6 +7,8 @@ import (
 	"google.golang.org/protobuf/compiler/protogen"
 	"google.golang.org/protobuf/reflect/protoreflect"
 	descriptorpb "google.golang.org/protobuf/types/descriptorpb"
+
+	"github.com/gopherex/protoc-gen-go-graphql/graphqlopt"
 )
 
 // isEmptyMessage returns true if msg is a non-map-entry proto message with zero fields.
@@ -94,7 +96,7 @@ func analyzeMessagesGraph(g *graph) map[string]*messageInfo {
 
 	// Mark top-level request messages.
 	for _, svc := range g.Services {
-		for _, m := range svc.Methods {
+		for _, m := range includedMethods(svc) {
 			if mi, ok := info[messageKey(m.Input)]; ok {
 				mi.isRequest = true
 				mi.role |= roleInput
@@ -152,7 +154,7 @@ func analyzeMessagesGraph(g *graph) map[string]*messageInfo {
 	}
 
 	for _, svc := range g.Services {
-		for _, m := range svc.Methods {
+		for _, m := range includedMethods(svc) {
 			markOutput(m.Output)
 			markInput(m.Input)
 		}
@@ -650,7 +652,7 @@ func emitInputTypesGraph(sb *strings.Builder, g *graph, msgInfo map[string]*mess
 	emitted := map[string]bool{}
 
 	for _, svc := range g.Services {
-		for _, m := range svc.Methods {
+		for _, m := range includedMethods(svc) {
 			reqName := inputTypeName(m.Input, msgInfo)
 			// Empty request messages have no GraphQL input type (the operation field has no arg).
 			if !emitted[reqName] {
@@ -766,8 +768,21 @@ func oneofInputVariantGQLType(v oneofVariant, msgInfo map[string]*messageInfo) s
 	return v.Msg.GoIdent.GoName + "Input"
 }
 
-// operationType determines whether a method maps to Query, Mutation, or Subscription.
+// operationType determines whether a method maps to Query, Mutation, or
+// Subscription. A graphqlopt.method.operation override takes precedence over
+// the idempotency-based default. (Conflicts between a streaming shape and the
+// override are validated separately in validateOperationOverrides.)
 func operationType(m *protogen.Method) string {
+	if o := methodOpts(m); o != nil {
+		switch o.GetOperation() {
+		case graphqlopt.Operation_QUERY:
+			return "Query"
+		case graphqlopt.Operation_MUTATION:
+			return "Mutation"
+		case graphqlopt.Operation_SUBSCRIPTION:
+			return "Subscription"
+		}
+	}
 	if m.Desc.IsStreamingServer() {
 		return "Subscription"
 	}
@@ -779,6 +794,26 @@ func operationType(m *protogen.Method) string {
 		}
 	}
 	return "Mutation"
+}
+
+// methodFieldName returns the GraphQL operation field name for a method,
+// honoring a graphqlopt.method.operation_name override.
+func methodFieldName(m *protogen.Method) string {
+	if o := methodOpts(m); o != nil && o.GetOperationName() != "" {
+		return o.GetOperationName()
+	}
+	return operationFieldName(m.GoName)
+}
+
+// resolverMethodName returns the Go method name gqlgen will generate for this
+// operation's resolver, i.e. the GraphQL field name with its first letter
+// upper-cased. When no operation_name override is set this equals m.GoName.
+func resolverMethodName(m *protogen.Method) string {
+	name := methodFieldName(m)
+	if name == "" {
+		return name
+	}
+	return strings.ToUpper(name[:1]) + name[1:]
 }
 
 // isIdempotentMutation returns true iff the method is a Mutation with
@@ -802,7 +837,7 @@ func hasAnyIdempotentMutation(f *protogen.File) bool {
 
 func hasAnyIdempotentMutationGraph(g *graph) bool {
 	for _, svc := range g.Services {
-		for _, m := range svc.Methods {
+		for _, m := range includedMethods(svc) {
 			if isIdempotentMutation(m) {
 				return true
 			}
@@ -823,9 +858,9 @@ func emitOperationRootsGraph(sb *strings.Builder, g *graph) {
 	msgInfo := analyzeMessagesGraph(g)
 
 	for _, svc := range g.Services {
-		for _, m := range svc.Methods {
+		for _, m := range includedMethods(svc) {
 			opType := operationType(m)
-			opField := operationFieldName(m.GoName)
+			opField := methodFieldName(m)
 			reqTypeName := inputTypeName(m.Input, msgInfo)
 			emptyReq := isEmptyMessage(m.Input)
 

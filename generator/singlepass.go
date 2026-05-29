@@ -245,6 +245,20 @@ func (g *Generator) runSinglePass(
 		}
 	}
 
+	// --- 7b. Copy graphqlopt if this is our own module. ---
+	// A proto that imports graphqlopt/graphql.proto produces pb .go files that
+	// import the graphqlopt Go package; for the tmp module to type-check we must
+	// vendor those sources too (same situation as graphqlpb).
+	graphqloptImport := "github.com/gopherex/protoc-gen-go-graphql/graphqlopt"
+	if strings.HasPrefix(graphqloptImport, modulePrefix) {
+		graphqloptRelDir := strings.TrimPrefix(graphqloptImport, modulePrefix)
+		graphqloptSrc := filepath.Join(goModDir, graphqloptRelDir)
+		graphqloptDst := filepath.Join(tmpRoot, graphqloptRelDir)
+		if err := copyDir(graphqloptSrc, graphqloptDst); err != nil {
+			return fmt.Errorf("single_pass: copy graphqlopt: %w", err)
+		}
+	}
+
 	preloadTargets := []string{pbImport}
 	if len(pbgqlFiles) > 0 {
 		preloadTargets = append(preloadTargets, pbgqlImport)

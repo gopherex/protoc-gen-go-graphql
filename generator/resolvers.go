@@ -54,7 +54,7 @@ func buildResolversGraph(g *graph, pkgName, pbImport, pbgqlImport, execImport, r
 		pbImports = append(pbImports, path)
 	}
 	for _, svc := range g.Services {
-		for _, m := range svc.Methods {
+		for _, m := range includedMethods(svc) {
 			addPbImport(m.Input.GoIdent.GoImportPath)
 			addPbImport(m.Output.GoIdent.GoImportPath)
 		}
@@ -301,7 +301,7 @@ func buildResolversGraph(g *graph, pkgName, pbImport, pbgqlImport, execImport, r
 	// Operation sub-resolver types: queryResolver, mutationResolver, etc.
 	opTypes := map[string]bool{}
 	for _, svc := range g.Services {
-		for _, m := range svc.Methods {
+		for _, m := range includedMethods(svc) {
 			op := operationType(m)
 			opTypes[strings.ToLower(op)] = true
 		}
@@ -435,10 +435,14 @@ func buildResolversGraph(g *graph, pkgName, pbImport, pbgqlImport, execImport, r
 
 	// Operation resolver methods.
 	for _, svc := range g.Services {
-		for _, m := range svc.Methods {
+		for _, m := range includedMethods(svc) {
 			op := operationType(m)
 			recvName := strings.ToLower(op) + "Resolver"
-			methodName := m.GoName
+			// methodName is the gqlgen-facing resolver method name (derived from
+			// the GraphQL field name, honoring operation_name overrides).
+			methodName := resolverMethodName(m)
+			// rpcName is the gRPC client method to call (always the proto name).
+			rpcName := m.GoName
 			inputGoName := m.Input.GoIdent.GoName
 			emptyReq := isEmptyMessage(m.Input)
 
@@ -449,18 +453,18 @@ func buildResolversGraph(g *graph, pkgName, pbImport, pbgqlImport, execImport, r
 					fmt.Fprintf(&sb, "func (r %s) %s(ctx context.Context) (*%s, error) {\n",
 						recvName, methodName, pbType(m.Output.GoIdent))
 					fmt.Fprintf(&sb, "\tresp, err := r.%s.%s(ctx, &%s{})\n",
-						svc.GoName, methodName, pbType(m.Input.GoIdent))
+						svc.GoName, rpcName, pbType(m.Input.GoIdent))
 				} else if inputOI, hasInputOneof := inputOneofsByMsg[messageKey(m.Input)]; hasInputOneof {
 					// Input has a oneof: the resolver receives the intermediate pbgql struct.
 					fmt.Fprintf(&sb, "func (r %s) %s(ctx context.Context, input pbgql.%s) (*%s, error) {\n",
 						recvName, methodName, inputOI.MsgInputGoName, pbType(m.Output.GoIdent))
 					fmt.Fprintf(&sb, "\tresp, err := r.%s.%s(ctx, pbgql.ToPb%s(&input))\n",
-						svc.GoName, methodName, inputGoName)
+						svc.GoName, rpcName, inputGoName)
 				} else {
 					// Normal input: bind directly to pb.
 					fmt.Fprintf(&sb, "func (r %s) %s(ctx context.Context, input %s) (*%s, error) {\n",
 						recvName, methodName, pbType(m.Input.GoIdent), pbType(m.Output.GoIdent))
-					fmt.Fprintf(&sb, "\tresp, err := r.%s.%s(ctx, &input)\n", svc.GoName, methodName)
+					fmt.Fprintf(&sb, "\tresp, err := r.%s.%s(ctx, &input)\n", svc.GoName, rpcName)
 				}
 				sb.WriteString("\tif err != nil {\n")
 				sb.WriteString("\t\treturn nil, graphqlpb.GraphQLError(ctx, err)\n")
@@ -478,13 +482,13 @@ func buildResolversGraph(g *graph, pkgName, pbImport, pbgqlImport, execImport, r
 						recvName, methodName, pbType(m.Output.GoIdent))
 					fmt.Fprintf(&sb, "\treturn graphqlpb.PumpServerStream[%s](ctx, func(ss *graphqlpb.StreamServer[%s]) error {\n",
 						pbType(m.Output.GoIdent), pbType(m.Output.GoIdent))
-					fmt.Fprintf(&sb, "\t\treturn r.%s.%s(&%s{}, ss)\n", svc.GoName, methodName, pbType(m.Input.GoIdent))
+					fmt.Fprintf(&sb, "\t\treturn r.%s.%s(&%s{}, ss)\n", svc.GoName, rpcName, pbType(m.Input.GoIdent))
 				} else {
 					fmt.Fprintf(&sb, "func (r %s) %s(ctx context.Context, input %s) (<-chan *%s, error) {\n",
 						recvName, methodName, pbType(m.Input.GoIdent), pbType(m.Output.GoIdent))
 					fmt.Fprintf(&sb, "\treturn graphqlpb.PumpServerStream[%s](ctx, func(ss *graphqlpb.StreamServer[%s]) error {\n",
 						pbType(m.Output.GoIdent), pbType(m.Output.GoIdent))
-					fmt.Fprintf(&sb, "\t\treturn r.%s.%s(&input, ss)\n", svc.GoName, methodName)
+					fmt.Fprintf(&sb, "\t\treturn r.%s.%s(&input, ss)\n", svc.GoName, rpcName)
 				}
 				sb.WriteString("\t}), nil\n")
 				sb.WriteString("}\n")
