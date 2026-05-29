@@ -208,6 +208,7 @@ type ComplexityRoot struct {
 		FetchScalars  func(childComplexity int, input gen.GetScalarsRequest) int
 		GetEverything func(childComplexity int, input gen.GetEverythingRequest) int
 		GetThing      func(childComplexity int, input gen.GetThingRequest) int
+		Lookup        func(childComplexity int, input pbgql.LookupRequestInput) int
 		Ping          func(childComplexity int) int
 		SearchBooks   func(childComplexity int, input pbgql.SearchRequestInput) int
 	}
@@ -343,6 +344,7 @@ type QueryResolver interface {
 	GetEverything(ctx context.Context, input gen.GetEverythingRequest) (*gen.GetEverythingResponse, error)
 	FetchScalars(ctx context.Context, input gen.GetScalarsRequest) (*gen.GetScalarsResponse, error)
 	SearchBooks(ctx context.Context, input pbgql.SearchRequestInput) (*gen.SearchResponse, error)
+	Lookup(ctx context.Context, input pbgql.LookupRequestInput) (*gen.SearchResponse, error)
 	Ping(ctx context.Context) (*gen.PingResponse, error)
 	GetThing(ctx context.Context, input gen.GetThingRequest) (*gen.GetThingResponse, error)
 }
@@ -889,6 +891,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.ComplexityRoot.Query.GetThing(childComplexity, args["input"].(gen.GetThingRequest)), true
 
+	case "Query.lookup":
+		if e.ComplexityRoot.Query.Lookup == nil {
+			break
+		}
+
+		args, err := ec.field_Query_lookup_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Query.Lookup(childComplexity, args["input"].(pbgql.LookupRequestInput)), true
 	case "Query.ping":
 		if e.ComplexityRoot.Query.Ping == nil {
 			break
@@ -1292,6 +1305,8 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputGetEverythingRequest,
 		ec.unmarshalInputGetScalarsRequest,
 		ec.unmarshalInputGetThingRequest,
+		ec.unmarshalInputLookupRequest,
+		ec.unmarshalInputLookupRequestKey,
 		ec.unmarshalInputSearchRequest,
 		ec.unmarshalInputSearchRequestQuery,
 		ec.unmarshalInputUpsertBookRequest,
@@ -1470,6 +1485,11 @@ input SearchRequestQuery @oneOf {
   text: String
   author: String
 }
+input LookupRequest { key: LookupRequestKey }
+input LookupRequestKey {
+  byId: String
+  byName: String
+}
 input GetThingRequest { id: String! }
 input EchoRequest {
   book: BookInput
@@ -1613,6 +1633,7 @@ type Query {
   getEverything(input: GetEverythingRequest!): GetEverythingResponse!
   fetchScalars(input: GetScalarsRequest!): GetScalarsResponse!
   searchBooks(input: SearchRequest!): SearchResponse!
+  lookup(input: LookupRequest!): SearchResponse!
   ping: PingResponse!
   getThing(input: GetThingRequest!): GetThingResponse!
 }
@@ -2191,6 +2212,20 @@ func (ec *executionContext) field_Query_getThing_args(ctx context.Context, rawAr
 	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input",
 		func(ctx context.Context, v any) (gen.GetThingRequest, error) {
 			return ec.unmarshalNGetThingRequest2githubᚗcomᚋgopherexᚋprotocᚑgenᚑgoᚑgraphqlᚋexampleᚋgenᚐGetThingRequest(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["input"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_lookup_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input",
+		func(ctx context.Context, v any) (pbgql.LookupRequestInput, error) {
+			return ec.unmarshalNLookupRequest2githubᚗcomᚋgopherexᚋprotocᚑgenᚑgoᚑgraphqlᚋexampleᚋgenᚋgqlapiᚋpbgqlᚐLookupRequestInput(ctx, v)
 		})
 	if err != nil {
 		return nil, err
@@ -4320,6 +4355,50 @@ func (ec *executionContext) fieldContext_Query_searchBooks(ctx context.Context, 
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Query_searchBooks_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_lookup(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Query_lookup(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Query().Lookup(ctx, fc.Args["input"].(pbgql.LookupRequestInput))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *gen.SearchResponse) graphql.Marshaler {
+			return ec.marshalNSearchResponse2ᚖgithubᚗcomᚋgopherexᚋprotocᚑgenᚑgoᚑgraphqlᚋexampleᚋgenᚐSearchResponse(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Query_lookup(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_SearchResponse(ctx, field)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_lookup_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -7247,6 +7326,73 @@ func (ec *executionContext) unmarshalInputGetThingRequest(ctx context.Context, o
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputLookupRequest(ctx context.Context, obj any) (pbgql.LookupRequestInput, error) {
+	var it pbgql.LookupRequestInput
+	if obj == nil {
+		return it, nil
+	}
+
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"key"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "key":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("key"))
+			data, err := ec.unmarshalOLookupRequestKey2ᚖgithubᚗcomᚋgopherexᚋprotocᚑgenᚑgoᚑgraphqlᚋexampleᚋgenᚋgqlapiᚋpbgqlᚐLookupRequestKey(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Key = data
+		}
+	}
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputLookupRequestKey(ctx context.Context, obj any) (pbgql.LookupRequestKey, error) {
+	var it pbgql.LookupRequestKey
+	if obj == nil {
+		return it, nil
+	}
+
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"byId", "byName"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "byId":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("byId"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ById = data
+		case "byName":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("byName"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ByName = data
+		}
+	}
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputSearchRequest(ctx context.Context, obj any) (pbgql.SearchRequestInput, error) {
 	var it pbgql.SearchRequestInput
 	if obj == nil {
@@ -9137,6 +9283,28 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "lookup":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_lookup(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
 		case "ping":
 			field := field
 
@@ -10836,6 +11004,11 @@ func (ec *executionContext) marshalNInt642ᚕint64ᚄ(ctx context.Context, sel a
 	return ret
 }
 
+func (ec *executionContext) unmarshalNLookupRequest2githubᚗcomᚋgopherexᚋprotocᚑgenᚑgoᚑgraphqlᚋexampleᚋgenᚋgqlapiᚋpbgqlᚐLookupRequestInput(ctx context.Context, v any) (pbgql.LookupRequestInput, error) {
+	res, err := ec.unmarshalInputLookupRequest(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
 func (ec *executionContext) marshalNPingResponse2githubᚗcomᚋgopherexᚋprotocᚑgenᚑgoᚑgraphqlᚋexampleᚋgenᚐPingResponse(ctx context.Context, sel ast.SelectionSet, v gen.PingResponse) graphql.Marshaler {
 	return ec._PingResponse(ctx, sel, &v)
 }
@@ -11525,6 +11698,14 @@ func (ec *executionContext) marshalOJSON2interface(ctx context.Context, sel ast.
 	_ = ctx
 	res := graphqlpb.MarshalJSON(v)
 	return res
+}
+
+func (ec *executionContext) unmarshalOLookupRequestKey2ᚖgithubᚗcomᚋgopherexᚋprotocᚑgenᚑgoᚑgraphqlᚋexampleᚋgenᚋgqlapiᚋpbgqlᚐLookupRequestKey(ctx context.Context, v any) (*pbgql.LookupRequestKey, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := ec.unmarshalInputLookupRequestKey(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
 func (ec *executionContext) marshalOMapMessage2ᚖgithubᚗcomᚋgopherexᚋprotocᚑgenᚑgoᚑgraphqlᚋexampleᚋgenᚐMapMessage(ctx context.Context, sel ast.SelectionSet, v *gen.MapMessage) graphql.Marshaler {

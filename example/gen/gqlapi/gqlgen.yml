@@ -43,6 +43,7 @@ models:
   NotFound:    { model: github.com/gopherex/protoc-gen-go-graphql/example/gen.NotFound }
   SearchResponse:    { model: github.com/gopherex/protoc-gen-go-graphql/example/gen.SearchResponse }
   SearchRequest:    { model: github.com/gopherex/protoc-gen-go-graphql/example/gen/gqlapi/pbgql.SearchRequestInput }
+  LookupRequest:    { model: github.com/gopherex/protoc-gen-go-graphql/example/gen/gqlapi/pbgql.LookupRequestInput }
   MultiOneof:    { model: github.com/gopherex/protoc-gen-go-graphql/example/gen.MultiOneof }
   TreeNode:    { model: github.com/gopherex/protoc-gen-go-graphql/example/gen.TreeNode }
   MutualA:    { model: github.com/gopherex/protoc-gen-go-graphql/example/gen.MutualA }
@@ -68,6 +69,7 @@ models:
   SearchResponseResultBook:    { model: github.com/gopherex/protoc-gen-go-graphql/example/gen/gqlapi/pbgql.SearchResponseResultBook }
   SearchResponseResultNotFound:    { model: github.com/gopherex/protoc-gen-go-graphql/example/gen/gqlapi/pbgql.SearchResponseResultNotFound }
   SearchRequestQuery:    { model: github.com/gopherex/protoc-gen-go-graphql/example/gen/gqlapi/pbgql.SearchRequestQuery }
+  LookupRequestKey:    { model: github.com/gopherex/protoc-gen-go-graphql/example/gen/gqlapi/pbgql.LookupRequestKey }
   MultiOneofChoice:    { model: github.com/gopherex/protoc-gen-go-graphql/example/gen/gqlapi/pbgql.MultiOneofChoice }
   MultiOneofChoiceChoiceString:    { model: github.com/gopherex/protoc-gen-go-graphql/example/gen/gqlapi/pbgql.MultiOneofChoiceChoiceString }
   MultiOneofChoiceChoiceInt64:    { model: github.com/gopherex/protoc-gen-go-graphql/example/gen/gqlapi/pbgql.MultiOneofChoiceChoiceInt64 }

@@ -80,6 +80,11 @@ input SearchRequestQuery @oneOf {
   text: String
   author: String
 }
+input LookupRequest { key: LookupRequestKey }
+input LookupRequestKey {
+  byId: String
+  byName: String
+}
 input GetThingRequest { id: String! }
 input EchoRequest {
   book: BookInput
@@ -223,6 +228,7 @@ type Query {
   getEverything(input: GetEverythingRequest!): GetEverythingResponse!
   fetchScalars(input: GetScalarsRequest!): GetScalarsResponse!
   searchBooks(input: SearchRequest!): SearchResponse!
+  lookup(input: LookupRequest!): SearchResponse!
   ping: PingResponse!
   getThing(input: GetThingRequest!): GetThingResponse!
 }

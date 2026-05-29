@@ -283,7 +283,23 @@ func (r queryResolver) FetchScalars(ctx context.Context, input pb.GetScalarsRequ
 }
 
 func (r queryResolver) SearchBooks(ctx context.Context, input pbgql.SearchRequestInput) (*pb.SearchResponse, error) {
-	resp, err := r.Library.SearchBooks(ctx, pbgql.ToPbSearchRequest(&input))
+	req, err := pbgql.ToPbSearchRequest(&input)
+	if err != nil {
+		return nil, graphqlpb.GraphQLError(ctx, err)
+	}
+	resp, err := r.Library.SearchBooks(ctx, req)
+	if err != nil {
+		return nil, graphqlpb.GraphQLError(ctx, err)
+	}
+	return resp, nil
+}
+
+func (r queryResolver) Lookup(ctx context.Context, input pbgql.LookupRequestInput) (*pb.SearchResponse, error) {
+	req, err := pbgql.ToPbLookupRequest(&input)
+	if err != nil {
+		return nil, graphqlpb.GraphQLError(ctx, err)
+	}
+	resp, err := r.Library.Lookup(ctx, req)
 	if err != nil {
 		return nil, graphqlpb.GraphQLError(ctx, err)
 	}

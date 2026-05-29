@@ -22,6 +22,7 @@ const (
 	Library_GetEverything_FullMethodName = "/golden.v1.Library/GetEverything"
 	Library_GetScalars_FullMethodName    = "/golden.v1.Library/GetScalars"
 	Library_SearchBooks_FullMethodName   = "/golden.v1.Library/SearchBooks"
+	Library_Lookup_FullMethodName        = "/golden.v1.Library/Lookup"
 	Library_Ping_FullMethodName          = "/golden.v1.Library/Ping"
 	Library_GetThing_FullMethodName      = "/golden.v1.Library/GetThing"
 	Library_EchoInput_FullMethodName     = "/golden.v1.Library/EchoInput"
@@ -40,6 +41,9 @@ type LibraryClient interface {
 	// operation_name override: the GraphQL field is renamed to "fetchScalars".
 	GetScalars(ctx context.Context, in *GetScalarsRequest, opts ...grpc.CallOption) (*GetScalarsResponse, error)
 	SearchBooks(ctx context.Context, in *SearchRequest, opts ...grpc.CallOption) (*SearchResponse, error)
+	// Lookup: input oneof in ALL_NULLABLE mode → plain input object (no @oneOf),
+	// exactly-one enforced at runtime in the ToPb shim. Reuses SearchResponse.
+	Lookup(ctx context.Context, in *LookupRequest, opts ...grpc.CallOption) (*SearchResponse, error)
 	// Empty request and response (fieldless messages).
 	Ping(ctx context.Context, in *PingRequest, opts ...grpc.CallOption) (*PingResponse, error)
 	// B1 option coverage: message rename + field rename + field exclude,
@@ -89,6 +93,16 @@ func (c *libraryClient) SearchBooks(ctx context.Context, in *SearchRequest, opts
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(SearchResponse)
 	err := c.cc.Invoke(ctx, Library_SearchBooks_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *libraryClient) Lookup(ctx context.Context, in *LookupRequest, opts ...grpc.CallOption) (*SearchResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(SearchResponse)
+	err := c.cc.Invoke(ctx, Library_Lookup_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -186,6 +200,9 @@ type LibraryServer interface {
 	// operation_name override: the GraphQL field is renamed to "fetchScalars".
 	GetScalars(context.Context, *GetScalarsRequest) (*GetScalarsResponse, error)
 	SearchBooks(context.Context, *SearchRequest) (*SearchResponse, error)
+	// Lookup: input oneof in ALL_NULLABLE mode → plain input object (no @oneOf),
+	// exactly-one enforced at runtime in the ToPb shim. Reuses SearchResponse.
+	Lookup(context.Context, *LookupRequest) (*SearchResponse, error)
 	// Empty request and response (fieldless messages).
 	Ping(context.Context, *PingRequest) (*PingResponse, error)
 	// B1 option coverage: message rename + field rename + field exclude,
@@ -219,6 +236,9 @@ func (UnimplementedLibraryServer) GetScalars(context.Context, *GetScalarsRequest
 }
 func (UnimplementedLibraryServer) SearchBooks(context.Context, *SearchRequest) (*SearchResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method SearchBooks not implemented")
+}
+func (UnimplementedLibraryServer) Lookup(context.Context, *LookupRequest) (*SearchResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method Lookup not implemented")
 }
 func (UnimplementedLibraryServer) Ping(context.Context, *PingRequest) (*PingResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method Ping not implemented")
@@ -312,6 +332,24 @@ func _Library_SearchBooks_Handler(srv interface{}, ctx context.Context, dec func
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(LibraryServer).SearchBooks(ctx, req.(*SearchRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Library_Lookup_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(LookupRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(LibraryServer).Lookup(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Library_Lookup_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(LibraryServer).Lookup(ctx, req.(*LookupRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -442,6 +480,10 @@ var Library_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "SearchBooks",
 			Handler:    _Library_SearchBooks_Handler,
+		},
+		{
+			MethodName: "Lookup",
+			Handler:    _Library_Lookup_Handler,
 		},
 		{
 			MethodName: "Ping",

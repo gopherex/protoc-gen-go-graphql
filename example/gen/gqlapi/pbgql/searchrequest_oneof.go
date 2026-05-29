@@ -21,9 +21,9 @@ type SearchRequestInput struct {
 }
 
 // ToPbSearchRequest converts a SearchRequestInput to a *pb.SearchRequest by mapping the @oneOf field.
-func ToPbSearchRequest(r *SearchRequestInput) *pb.SearchRequest {
+func ToPbSearchRequest(r *SearchRequestInput) (*pb.SearchRequest, error) {
 	if r == nil {
-		return &pb.SearchRequest{}
+		return &pb.SearchRequest{}, nil
 	}
 	req := &pb.SearchRequest{}
 	if r.Query != nil {
@@ -34,5 +34,5 @@ func ToPbSearchRequest(r *SearchRequestInput) *pb.SearchRequest {
 			req.Query = &pb.SearchRequest_Author{Author: *r.Query.Author}
 		}
 	}
-	return req
+	return req, nil
 }

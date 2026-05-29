@@ -30,6 +30,11 @@ service Library {
   rpc SearchBooks(SearchRequest) returns (SearchResponse) {
     option idempotency_level = NO_SIDE_EFFECTS;
   }
+  // Lookup: input oneof in ALL_NULLABLE mode → plain input object (no @oneOf),
+  // exactly-one enforced at runtime in the ToPb shim. Reuses SearchResponse.
+  rpc Lookup(LookupRequest) returns (SearchResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
   // Empty request and response (fieldless messages).
   rpc Ping(PingRequest) returns (PingResponse) {
     option idempotency_level = NO_SIDE_EFFECTS;
@@ -211,11 +216,21 @@ message SearchResponse {
   }
 }
 
-// SearchRequest: input oneof → @oneOf input type.
+// SearchRequest: input oneof → @oneOf input type (directive mode).
 message SearchRequest {
   oneof query {
     string text   = 1;
     string author = 2;
+  }
+}
+
+// LookupRequest: input oneof in ALL_NULLABLE mode → plain input object (no
+// @oneOf directive); exactly-one is enforced at runtime in the ToPb shim.
+message LookupRequest {
+  oneof key {
+    option (graphqlopt.oneof) = { input_mode: ALL_NULLABLE };
+    string by_id   = 1;
+    string by_name = 2;
   }
 }
 
