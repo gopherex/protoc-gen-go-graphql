@@ -1,0 +1,21 @@
+lint:
+  use:
+    - DEFAULT
+  enum_zero_value_suffix: NONE
+  service_suffix: API
+  ignore: []
+  except: []
+  allow_comment_ignores: false
+  ignore_only: {}
+deps:
+generate:
+  inputs:
+    - directory: graphqlopt
+  plugins:
+    - name: go
+      out: .
+      opts:
+        paths: source_relative
+breaking:
+  ignore: []
+  against_git_ref: master

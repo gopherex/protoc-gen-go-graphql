@@ -1,0 +1,65 @@
+syntax = "proto3";
+
+package graphqlopt;
+
+option go_package = "github.com/gopherex/protoc-gen-go-graphql/graphqlopt;graphqlopt";
+
+import "google/protobuf/descriptor.proto";
+
+extend google.protobuf.FileOptions    { FileOptions    file    = 79000; }
+extend google.protobuf.ServiceOptions { ServiceOptions service = 79000; }
+extend google.protobuf.MethodOptions  { MethodOptions  method  = 79000; }
+extend google.protobuf.MessageOptions { MessageOptions message = 79000; }
+extend google.protobuf.FieldOptions   { FieldOptions   field   = 79000; }
+extend google.protobuf.EnumOptions    { EnumOptions    enum    = 79000; }
+extend google.protobuf.OneofOptions   { OneofOptions   oneof   = 79000; }
+
+message FileOptions {
+  string pb_package = 2;             // import path for autobind (overrides go_package)
+  string schema_filename = 3;        // default schema.graphql
+  string gqlgen_config_filename = 4; // default gqlgen.yml
+  string exec_package = 5;
+  string exec_filename = 6;
+}
+
+enum Operation {
+  OPERATION_UNSPECIFIED = 0; // use idempotency_level
+  QUERY = 1;
+  MUTATION = 2;
+  SUBSCRIPTION = 3;
+}
+
+message ServiceOptions {
+  bool skip = 1;
+  string name_prefix = 2;
+}
+
+message MethodOptions {
+  bool skip = 1;             // omit this method from the GraphQL API
+  Operation operation = 2;   // override idempotency-based default
+  string operation_name = 3; // override the GraphQL field name
+}
+
+message MessageOptions {
+  string name = 1;
+  bool skip = 2;
+}
+
+enum OneofInputMode {
+  ONEOF_INPUT_UNSPECIFIED = 0;
+  ONEOF_DIRECTIVE = 1;
+  ALL_NULLABLE = 2;
+}
+
+message FieldOptions {
+  string name = 1;
+  bool exclude = 2;
+  string scalar = 3;
+}
+
+message EnumOptions { string name = 1; }
+
+message OneofOptions {
+  string union_name = 1;
+  OneofInputMode input_mode = 2;
+}

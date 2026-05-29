@@ -13,10 +13,11 @@ EXAMPLE_OUT_DIR := $(EXAMPLE_DIR)/gen
 # Override if your protoc bundles them elsewhere: make WKT_INC=/usr/local/include ...
 WKT_INC ?= /usr/include
 
-.PHONY: help build gen-test gen-test-singlepass test tidy release integration-test
+.PHONY: help build gen-opts gen-test gen-test-singlepass test tidy release integration-test
 
 help:
 	@echo "make build        - build bin/protoc-gen-go-graphql (+ protoc-gen-go, protoc-gen-go-grpc)"
+	@echo "make gen-opts     - regenerate graphqlopt/graphql.pb.go from graphqlopt/graphql.proto (easyp)"
 	@echo "make gen-test     - run the full two-phase pipeline against example/golden.proto"
 	@echo "make test         - gofmt check + go vet + go test (like CI)"
 	@echo "make tidy         - go mod tidy"
@@ -26,6 +27,11 @@ build:
 	go build -o $(CURDIR)/bin/protoc-gen-go-graphql ./
 	go build -o $(CURDIR)/bin/protoc-gen-go google.golang.org/protobuf/cmd/protoc-gen-go
 	go build -o $(CURDIR)/bin/protoc-gen-go-grpc google.golang.org/grpc/cmd/protoc-gen-go-grpc
+
+# Regenerate graphqlopt/graphql.pb.go from graphqlopt/graphql.proto using easyp.
+# Builds protoc-gen-go into bin/ first and prepends it to PATH so easyp can find it.
+gen-opts: build
+	PATH="$(CURDIR)/bin:$$PATH" easyp generate
 
 gen-test: build
 	rm -rf $(EXAMPLE_OUT_DIR)
