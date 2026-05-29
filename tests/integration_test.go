@@ -153,7 +153,7 @@ func TestIntegration_GetScalars(t *testing.T) {
 	defer ts.Close()
 
 	var data struct {
-		GetScalars struct {
+		FetchScalars struct {
 			Scalars struct {
 				FieldInt64  string `json:"fieldInt64"`
 				FieldBool   bool   `json:"fieldBool"`
@@ -161,11 +161,11 @@ func TestIntegration_GetScalars(t *testing.T) {
 				FieldBytes  string `json:"fieldBytes"` // Bytes scalar → base64 string
 				FieldInt32  int    `json:"fieldInt32"`
 			} `json:"scalars"`
-		} `json:"getScalars"`
+		} `json:"fetchScalars"`
 	}
 
 	gqlPost(t, ts.URL, `{
-		getScalars(input: {id: "test", genre: GENRE_UNSPECIFIED, tags: []}) {
+		fetchScalars(input: {id: "test", genre: GENRE_UNSPECIFIED, tags: []}) {
 			scalars {
 				fieldInt64
 				fieldBool
@@ -176,7 +176,7 @@ func TestIntegration_GetScalars(t *testing.T) {
 		}
 	}`, nil, &data)
 
-	scalars := data.GetScalars.Scalars
+	scalars := data.FetchScalars.Scalars
 
 	// 64-bit int must arrive as string (protojson wire form).
 	if scalars.FieldInt64 != "9007199254740993" {

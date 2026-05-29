@@ -11,6 +11,7 @@ import "google/protobuf/field_mask.proto";
 import "google/protobuf/struct.proto";
 import "google/protobuf/timestamp.proto";
 import "google/protobuf/wrappers.proto";
+import "graphqlopt/graphql.proto";
 
 // ──────────────────────────────────────────────────────────────────────────────
 // Service
@@ -21,8 +22,10 @@ service Library {
   rpc GetEverything(GetEverythingRequest) returns (GetEverythingResponse) {
     option idempotency_level = NO_SIDE_EFFECTS;
   }
+  // operation_name override: the GraphQL field is renamed to "fetchScalars".
   rpc GetScalars(GetScalarsRequest) returns (GetScalarsResponse) {
     option idempotency_level = NO_SIDE_EFFECTS;
+    option (graphqlopt.method) = { operation_name: "fetchScalars" };
   }
   rpc SearchBooks(SearchRequest) returns (SearchResponse) {
     option idempotency_level = NO_SIDE_EFFECTS;
@@ -42,6 +45,12 @@ service Library {
 
   // Subscription (server-streaming → Subscription root).
   rpc WatchItems(WatchRequest) returns (stream WatchEvent);
+
+  // Client-streaming rpc marked skip: unsupported shape, but skip suppresses
+  // the fail-fast so generation proceeds. ShipLogs is absent from the schema.
+  rpc ShipLogs(stream LogChunk) returns (ShipAck) {
+    option (graphqlopt.method) = { skip: true };
+  }
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -305,3 +314,7 @@ message UpsertBookResponse { Book book = 1; }
 // PingRequest / PingResponse — fieldless (empty) messages.
 message PingRequest {}
 message PingResponse {}
+
+// LogChunk / ShipAck — used only by the skipped client-streaming ShipLogs rpc.
+message LogChunk { bytes data = 1; }
+message ShipAck { bool ok = 1; }

@@ -27,6 +27,7 @@ const (
 	Library_AddBook_FullMethodName       = "/golden.v1.Library/AddBook"
 	Library_UpsertBook_FullMethodName    = "/golden.v1.Library/UpsertBook"
 	Library_WatchItems_FullMethodName    = "/golden.v1.Library/WatchItems"
+	Library_ShipLogs_FullMethodName      = "/golden.v1.Library/ShipLogs"
 )
 
 // LibraryClient is the client API for Library service.
@@ -35,6 +36,7 @@ const (
 type LibraryClient interface {
 	// Queries (NO_SIDE_EFFECTS → Query root).
 	GetEverything(ctx context.Context, in *GetEverythingRequest, opts ...grpc.CallOption) (*GetEverythingResponse, error)
+	// operation_name override: the GraphQL field is renamed to "fetchScalars".
 	GetScalars(ctx context.Context, in *GetScalarsRequest, opts ...grpc.CallOption) (*GetScalarsResponse, error)
 	SearchBooks(ctx context.Context, in *SearchRequest, opts ...grpc.CallOption) (*SearchResponse, error)
 	// Empty request and response (fieldless messages).
@@ -46,6 +48,9 @@ type LibraryClient interface {
 	UpsertBook(ctx context.Context, in *UpsertBookRequest, opts ...grpc.CallOption) (*UpsertBookResponse, error)
 	// Subscription (server-streaming → Subscription root).
 	WatchItems(ctx context.Context, in *WatchRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[WatchEvent], error)
+	// Client-streaming rpc marked skip: unsupported shape, but skip suppresses
+	// the fail-fast so generation proceeds. ShipLogs is absent from the schema.
+	ShipLogs(ctx context.Context, opts ...grpc.CallOption) (grpc.ClientStreamingClient[LogChunk, ShipAck], error)
 }
 
 type libraryClient struct {
@@ -145,12 +150,26 @@ func (c *libraryClient) WatchItems(ctx context.Context, in *WatchRequest, opts .
 // This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
 type Library_WatchItemsClient = grpc.ServerStreamingClient[WatchEvent]
 
+func (c *libraryClient) ShipLogs(ctx context.Context, opts ...grpc.CallOption) (grpc.ClientStreamingClient[LogChunk, ShipAck], error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	stream, err := c.cc.NewStream(ctx, &Library_ServiceDesc.Streams[1], Library_ShipLogs_FullMethodName, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &grpc.GenericClientStream[LogChunk, ShipAck]{ClientStream: stream}
+	return x, nil
+}
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type Library_ShipLogsClient = grpc.ClientStreamingClient[LogChunk, ShipAck]
+
 // LibraryServer is the server API for Library service.
 // All implementations must embed UnimplementedLibraryServer
 // for forward compatibility.
 type LibraryServer interface {
 	// Queries (NO_SIDE_EFFECTS → Query root).
 	GetEverything(context.Context, *GetEverythingRequest) (*GetEverythingResponse, error)
+	// operation_name override: the GraphQL field is renamed to "fetchScalars".
 	GetScalars(context.Context, *GetScalarsRequest) (*GetScalarsResponse, error)
 	SearchBooks(context.Context, *SearchRequest) (*SearchResponse, error)
 	// Empty request and response (fieldless messages).
@@ -162,6 +181,9 @@ type LibraryServer interface {
 	UpsertBook(context.Context, *UpsertBookRequest) (*UpsertBookResponse, error)
 	// Subscription (server-streaming → Subscription root).
 	WatchItems(*WatchRequest, grpc.ServerStreamingServer[WatchEvent]) error
+	// Client-streaming rpc marked skip: unsupported shape, but skip suppresses
+	// the fail-fast so generation proceeds. ShipLogs is absent from the schema.
+	ShipLogs(grpc.ClientStreamingServer[LogChunk, ShipAck]) error
 	mustEmbedUnimplementedLibraryServer()
 }
 
@@ -195,6 +217,9 @@ func (UnimplementedLibraryServer) UpsertBook(context.Context, *UpsertBookRequest
 }
 func (UnimplementedLibraryServer) WatchItems(*WatchRequest, grpc.ServerStreamingServer[WatchEvent]) error {
 	return status.Error(codes.Unimplemented, "method WatchItems not implemented")
+}
+func (UnimplementedLibraryServer) ShipLogs(grpc.ClientStreamingServer[LogChunk, ShipAck]) error {
+	return status.Error(codes.Unimplemented, "method ShipLogs not implemented")
 }
 func (UnimplementedLibraryServer) mustEmbedUnimplementedLibraryServer() {}
 func (UnimplementedLibraryServer) testEmbeddedByValue()                 {}
@@ -354,6 +379,13 @@ func _Library_WatchItems_Handler(srv interface{}, stream grpc.ServerStream) erro
 // This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
 type Library_WatchItemsServer = grpc.ServerStreamingServer[WatchEvent]
 
+func _Library_ShipLogs_Handler(srv interface{}, stream grpc.ServerStream) error {
+	return srv.(LibraryServer).ShipLogs(&grpc.GenericServerStream[LogChunk, ShipAck]{ServerStream: stream})
+}
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type Library_ShipLogsServer = grpc.ClientStreamingServer[LogChunk, ShipAck]
+
 // Library_ServiceDesc is the grpc.ServiceDesc for Library service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -395,6 +427,11 @@ var Library_ServiceDesc = grpc.ServiceDesc{
 			StreamName:    "WatchItems",
 			Handler:       _Library_WatchItems_Handler,
 			ServerStreams: true,
+		},
+		{
+			StreamName:    "ShipLogs",
+			Handler:       _Library_ShipLogs_Handler,
+			ClientStreams: true,
 		},
 	},
 	Metadata: "golden.proto",

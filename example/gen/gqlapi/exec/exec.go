@@ -201,8 +201,8 @@ type ComplexityRoot struct {
 	}
 
 	Query struct {
+		FetchScalars  func(childComplexity int, input gen.GetScalarsRequest) int
 		GetEverything func(childComplexity int, input gen.GetEverythingRequest) int
-		GetScalars    func(childComplexity int, input gen.GetScalarsRequest) int
 		Ping          func(childComplexity int) int
 		SearchBooks   func(childComplexity int, input pbgql.SearchRequestInput) int
 	}
@@ -332,7 +332,7 @@ type PingResponseResolver interface {
 }
 type QueryResolver interface {
 	GetEverything(ctx context.Context, input gen.GetEverythingRequest) (*gen.GetEverythingResponse, error)
-	GetScalars(ctx context.Context, input gen.GetScalarsRequest) (*gen.GetScalarsResponse, error)
+	FetchScalars(ctx context.Context, input gen.GetScalarsRequest) (*gen.GetScalarsResponse, error)
 	SearchBooks(ctx context.Context, input pbgql.SearchRequestInput) (*gen.SearchResponse, error)
 	Ping(ctx context.Context) (*gen.PingResponse, error)
 }
@@ -838,6 +838,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.ComplexityRoot.PingResponse.Ok(childComplexity), true
 
+	case "Query.fetchScalars":
+		if e.ComplexityRoot.Query.FetchScalars == nil {
+			break
+		}
+
+		args, err := ec.field_Query_fetchScalars_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Query.FetchScalars(childComplexity, args["input"].(gen.GetScalarsRequest)), true
 	case "Query.getEverything":
 		if e.ComplexityRoot.Query.GetEverything == nil {
 			break
@@ -849,17 +860,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Query.GetEverything(childComplexity, args["input"].(gen.GetEverythingRequest)), true
-	case "Query.getScalars":
-		if e.ComplexityRoot.Query.GetScalars == nil {
-			break
-		}
-
-		args, err := ec.field_Query_getScalars_args(ctx, rawArgs)
-		if err != nil {
-			return 0, false
-		}
-
-		return e.ComplexityRoot.Query.GetScalars(childComplexity, args["input"].(gen.GetScalarsRequest)), true
 
 	case "Query.ping":
 		if e.ComplexityRoot.Query.Ping == nil {
@@ -1572,7 +1572,7 @@ type PingResponse { ok: Boolean! @goField(forceResolver: true) }
 
 type Query {
   getEverything(input: GetEverythingRequest!): GetEverythingResponse!
-  getScalars(input: GetScalarsRequest!): GetScalarsResponse!
+  fetchScalars(input: GetScalarsRequest!): GetScalarsResponse!
   searchBooks(input: SearchRequest!): SearchResponse!
   ping: PingResponse!
 }
@@ -2101,12 +2101,12 @@ func (ec *executionContext) field_Query___type_args(ctx context.Context, rawArgs
 	return args, nil
 }
 
-func (ec *executionContext) field_Query_getEverything_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+func (ec *executionContext) field_Query_fetchScalars_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
 	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input",
-		func(ctx context.Context, v any) (gen.GetEverythingRequest, error) {
-			return ec.unmarshalNGetEverythingRequest2githubᚗcomᚋgopherexᚋprotocᚑgenᚑgoᚑgraphqlᚋexampleᚋgenᚐGetEverythingRequest(ctx, v)
+		func(ctx context.Context, v any) (gen.GetScalarsRequest, error) {
+			return ec.unmarshalNGetScalarsRequest2githubᚗcomᚋgopherexᚋprotocᚑgenᚑgoᚑgraphqlᚋexampleᚋgenᚐGetScalarsRequest(ctx, v)
 		})
 	if err != nil {
 		return nil, err
@@ -2115,12 +2115,12 @@ func (ec *executionContext) field_Query_getEverything_args(ctx context.Context, 
 	return args, nil
 }
 
-func (ec *executionContext) field_Query_getScalars_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+func (ec *executionContext) field_Query_getEverything_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
 	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input",
-		func(ctx context.Context, v any) (gen.GetScalarsRequest, error) {
-			return ec.unmarshalNGetScalarsRequest2githubᚗcomᚋgopherexᚋprotocᚑgenᚑgoᚑgraphqlᚋexampleᚋgenᚐGetScalarsRequest(ctx, v)
+		func(ctx context.Context, v any) (gen.GetEverythingRequest, error) {
+			return ec.unmarshalNGetEverythingRequest2githubᚗcomᚋgopherexᚋprotocᚑgenᚑgoᚑgraphqlᚋexampleᚋgenᚐGetEverythingRequest(ctx, v)
 		})
 	if err != nil {
 		return nil, err
@@ -4136,17 +4136,17 @@ func (ec *executionContext) fieldContext_Query_getEverything(ctx context.Context
 	return fc, nil
 }
 
-func (ec *executionContext) _Query_getScalars(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+func (ec *executionContext) _Query_fetchScalars(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
 		ec.OperationContext,
 		field,
 		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return ec.fieldContext_Query_getScalars(ctx, field)
+			return ec.fieldContext_Query_fetchScalars(ctx, field)
 		},
 		func(ctx context.Context) (any, error) {
 			fc := graphql.GetFieldContext(ctx)
-			return ec.Resolvers.Query().GetScalars(ctx, fc.Args["input"].(gen.GetScalarsRequest))
+			return ec.Resolvers.Query().FetchScalars(ctx, fc.Args["input"].(gen.GetScalarsRequest))
 		},
 		nil,
 		func(ctx context.Context, selections ast.SelectionSet, v *gen.GetScalarsResponse) graphql.Marshaler {
@@ -4156,7 +4156,7 @@ func (ec *executionContext) _Query_getScalars(ctx context.Context, field graphql
 		true,
 	)
 }
-func (ec *executionContext) fieldContext_Query_getScalars(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_Query_fetchScalars(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "Query",
 		Field:      field,
@@ -4173,7 +4173,7 @@ func (ec *executionContext) fieldContext_Query_getScalars(ctx context.Context, f
 		}
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
-	if fc.Args, err = ec.field_Query_getScalars_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+	if fc.Args, err = ec.field_Query_fetchScalars_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -8858,7 +8858,7 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
-		case "getScalars":
+		case "fetchScalars":
 			field := field
 
 			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
@@ -8867,7 +8867,7 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 						ec.Error(ctx, ec.Recover(ctx, r))
 					}
 				}()
-				res = ec._Query_getScalars(ctx, field)
+				res = ec._Query_fetchScalars(ctx, field)
 				if res == graphql.Null {
 					atomic.AddUint32(&fs.Invalids, 1)
 				}

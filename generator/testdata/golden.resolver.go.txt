@@ -270,7 +270,7 @@ func (r queryResolver) GetEverything(ctx context.Context, input pb.GetEverything
 	return resp, nil
 }
 
-func (r queryResolver) GetScalars(ctx context.Context, input pb.GetScalarsRequest) (*pb.GetScalarsResponse, error) {
+func (r queryResolver) FetchScalars(ctx context.Context, input pb.GetScalarsRequest) (*pb.GetScalarsResponse, error) {
 	resp, err := r.Library.GetScalars(ctx, &input)
 	if err != nil {
 		return nil, graphqlpb.GraphQLError(ctx, err)

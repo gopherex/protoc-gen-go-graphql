@@ -190,23 +190,23 @@ func TestWireRoundTrip_RepeatedScalar(t *testing.T) {
 	c := client.New(newTestServer(fake))
 
 	var resp struct {
-		GetScalars struct {
+		FetchScalars struct {
 			Repeateds struct {
 				FieldInt64  []string
 				FieldString []string
 			}
 		}
 	}
-	c.MustPost(`{ getScalars(input:{id:"x",genre:GENRE_UNSPECIFIED,tags:[]}) { repeateds { fieldInt64 fieldString } } }`, &resp)
+	c.MustPost(`{ fetchScalars(input:{id:"x",genre:GENRE_UNSPECIFIED,tags:[]}) { repeateds { fieldInt64 fieldString } } }`, &resp)
 
-	if len(resp.GetScalars.Repeateds.FieldInt64) != 2 {
-		t.Fatalf("fieldInt64 len = %d, want 2", len(resp.GetScalars.Repeateds.FieldInt64))
+	if len(resp.FetchScalars.Repeateds.FieldInt64) != 2 {
+		t.Fatalf("fieldInt64 len = %d, want 2", len(resp.FetchScalars.Repeateds.FieldInt64))
 	}
-	if resp.GetScalars.Repeateds.FieldInt64[1] != "9007199254740993" {
-		t.Fatalf("fieldInt64[1] = %q, want 9007199254740993", resp.GetScalars.Repeateds.FieldInt64[1])
+	if resp.FetchScalars.Repeateds.FieldInt64[1] != "9007199254740993" {
+		t.Fatalf("fieldInt64[1] = %q, want 9007199254740993", resp.FetchScalars.Repeateds.FieldInt64[1])
 	}
-	if len(resp.GetScalars.Repeateds.FieldString) != 2 {
-		t.Fatalf("fieldString len = %d, want 2", len(resp.GetScalars.Repeateds.FieldString))
+	if len(resp.FetchScalars.Repeateds.FieldString) != 2 {
+		t.Fatalf("fieldString len = %d, want 2", len(resp.FetchScalars.Repeateds.FieldString))
 	}
 }
 
@@ -224,20 +224,20 @@ func TestWireRoundTrip_OptionalScalar(t *testing.T) {
 	c := client.New(newTestServer(fake))
 
 	var resp struct {
-		GetScalars struct {
+		FetchScalars struct {
 			Optionals struct {
 				FieldString *string
 				FieldInt64  *string
 			}
 		}
 	}
-	c.MustPost(`{ getScalars(input:{id:"x",genre:GENRE_UNSPECIFIED,tags:[]}) { optionals { fieldString fieldInt64 } } }`, &resp)
+	c.MustPost(`{ fetchScalars(input:{id:"x",genre:GENRE_UNSPECIFIED,tags:[]}) { optionals { fieldString fieldInt64 } } }`, &resp)
 
-	if resp.GetScalars.Optionals.FieldString == nil || *resp.GetScalars.Optionals.FieldString != "hello" {
-		t.Fatalf("fieldString = %v, want hello", resp.GetScalars.Optionals.FieldString)
+	if resp.FetchScalars.Optionals.FieldString == nil || *resp.FetchScalars.Optionals.FieldString != "hello" {
+		t.Fatalf("fieldString = %v, want hello", resp.FetchScalars.Optionals.FieldString)
 	}
-	if resp.GetScalars.Optionals.FieldInt64 != nil {
-		t.Fatalf("fieldInt64 should be nil, got %v", *resp.GetScalars.Optionals.FieldInt64)
+	if resp.FetchScalars.Optionals.FieldInt64 != nil {
+		t.Fatalf("fieldInt64 should be nil, got %v", *resp.FetchScalars.Optionals.FieldInt64)
 	}
 }
 
