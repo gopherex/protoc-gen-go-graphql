@@ -214,6 +214,34 @@ gqlapi → pb
 | `map<K,V>` on input | Not supported in v1 (field omitted from input type) |
 | bidi-streaming rpc | Hard generation error |
 | client-streaming rpc | Hard generation error |
+| `FieldOptions.scalar` (custom scalar binding) | Intentionally unsupported (fail-fast) — see below |
 | TypeScript code generation | Out of scope; use standard graphql-code-generator |
+
+### `FieldOptions.scalar` is a documented non-goal
+
+The `graphqlopt.FieldOptions.scalar` option (which would bind a proto field to a
+user-named custom GraphQL scalar) is **intentionally not supported** and fails
+fast at generation time. A custom scalar requires a user-provided Go marshaler
+and an explicit `models:` binding in `gqlgen.yml`, which conflicts with this
+plugin's zero-config autobind model: the generator binds every GraphQL type to a
+pb Go type automatically and owns the generated `gqlgen.yml`. Supporting custom
+scalars would force users to hand-maintain marshalers and binding entries that
+the plugin regenerates. If you need a custom scalar, model the field as one of
+the supported types (or `JSON`) and convert in your service implementation.
+
+### `OneofOptions.input_mode`
+
+A proto input oneof maps to a GraphQL input. The mode controls enforcement:
+
+- `ONEOF_INPUT_UNSPECIFIED` (default) / `ONEOF_DIRECTIVE` — emit
+  `input X @oneOf { ... }`; the schema enforces "exactly one" and gqlgen
+  guarantees ≤1 variant is populated. The `ToPb<Msg>` shim picks the set variant.
+- `ALL_NULLABLE` — emit a **plain** input object (no `@oneOf`, all variant fields
+  nullable) and enforce "exactly one set" at **runtime** in the `ToPb<Msg>` shim
+  (it returns an error otherwise). This trades schema-level enforcement for broad
+  client/tooling compatibility (some clients and codegen do not support `@oneOf`).
+
+Both modes produce a `ToPb<Msg>(...) (*pb.<Msg>, error)` shim; the resolver
+wraps a non-nil error via `graphqlpb.GraphQLError`.
 
 See also `docs/oneof.md` for the detailed oneof handling patterns.
