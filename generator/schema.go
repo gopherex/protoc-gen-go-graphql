@@ -195,15 +195,16 @@ func buildSchemaGraph(g *graph) (string, error) {
 
 	// 1. Directive declarations (must be explicit per spike-findings §5).
 	sb.WriteString("directive @goField(forceResolver: Boolean, name: String) on FIELD_DEFINITION | INPUT_FIELD_DEFINITION\n")
-	// @oneOf is needed when any message has an input oneof.
-	hasInputOneof := false
+	// @oneOf is needed only when a DIRECTIVE-mode input oneof exists; ALL_NULLABLE
+	// inputs emit a plain input object and do not use the directive.
+	hasDirectiveOneof := false
 	for _, oi := range ois {
-		if oi.IsInput {
-			hasInputOneof = true
+		if oi.IsInput && !oi.isAllNullable() {
+			hasDirectiveOneof = true
 			break
 		}
 	}
-	if hasInputOneof {
+	if hasDirectiveOneof {
 		sb.WriteString("directive @oneOf on INPUT_OBJECT\n")
 	}
 	// @idempotent is needed when at least one IDEMPOTENT mutation exists.
@@ -760,12 +761,18 @@ func emitInputBlock(sb *strings.Builder, msg *protogen.Message, typeName string,
 // emitOneofInputBlock emits an `input @oneOf` block for a proto oneof field.
 // The @oneOf input has one nullable field per oneof variant.
 func emitOneofInputBlock(sb *strings.Builder, oi oneofInfo, msgInfo map[string]*messageInfo) {
+	// ALL_NULLABLE mode emits a plain input object (no @oneOf); "exactly one"
+	// is enforced at runtime in the ToPb shim. Other modes use schema @oneOf.
+	directive := " @oneOf"
+	if oi.isAllNullable() {
+		directive = ""
+	}
 	if len(oi.Variants) == 1 {
 		v := oi.Variants[0]
-		fmt.Fprintf(sb, "input %s @oneOf { %s: %s }\n", oi.InputGQLName, fieldName(v.ProtoFieldName), oneofInputVariantGQLType(v, msgInfo))
+		fmt.Fprintf(sb, "input %s%s { %s: %s }\n", oi.InputGQLName, directive, fieldName(v.ProtoFieldName), oneofInputVariantGQLType(v, msgInfo))
 		return
 	}
-	fmt.Fprintf(sb, "input %s @oneOf {\n", oi.InputGQLName)
+	fmt.Fprintf(sb, "input %s%s {\n", oi.InputGQLName, directive)
 	for _, v := range oi.Variants {
 		fmt.Fprintf(sb, "  %s: %s\n", fieldName(v.ProtoFieldName), oneofInputVariantGQLType(v, msgInfo))
 	}

@@ -205,6 +205,109 @@ func TestBuildSchema_IdempotentDirective(t *testing.T) {
 	}
 }
 
+// buildAllOneofAdapters builds the pbgql oneof adapter source for every message
+// in g that contains oneofs, concatenated. Used by the input_mode tests to
+// inspect the emitted ToPb shims without driving the full generate pipeline.
+func buildAllOneofAdapters(g *graph) string {
+	msgInfo := analyzeMessagesGraph(g)
+	ois := collectOneofsGraph(g, msgInfo)
+	byMsg := map[string][]oneofInfo{}
+	for _, oi := range ois {
+		byMsg[messageKey(oi.Msg)] = append(byMsg[messageKey(oi.Msg)], oi)
+	}
+	var out strings.Builder
+	for _, msg := range g.Messages {
+		if mo := byMsg[messageKey(msg)]; len(mo) > 0 {
+			out.WriteString(buildOneofAdapter(mo, string(msg.GoIdent.GoImportPath)))
+		}
+	}
+	return out.String()
+}
+
+// TestOneofInputMode_AllNullable asserts that an ALL_NULLABLE input oneof emits
+// a plain input object (no @oneOf) plus a ToPb shim with a runtime exactly-one
+// check, while UNSPECIFIED and DIRECTIVE modes both emit a schema @oneOf input
+// with a ToPb shim that has no runtime count check.
+func TestOneofInputMode_AllNullable(t *testing.T) {
+	src := `syntax = "proto3";
+package t.v1;
+option go_package = "example.com/t;t";
+import "graphqlopt/graphql.proto";
+service S {
+  rpc Default(DefaultReq) returns (Resp) { option idempotency_level = NO_SIDE_EFFECTS; }
+  rpc Directive(DirectiveReq) returns (Resp) { option idempotency_level = NO_SIDE_EFFECTS; }
+  rpc Nullable(NullableReq) returns (Resp) { option idempotency_level = NO_SIDE_EFFECTS; }
+}
+message DefaultReq {
+  oneof key { string a = 1; string b = 2; }
+}
+message DirectiveReq {
+  oneof key {
+    option (graphqlopt.oneof) = { input_mode: ONEOF_DIRECTIVE };
+    string a = 1;
+    string b = 2;
+  }
+}
+message NullableReq {
+  oneof key {
+    option (graphqlopt.oneof) = { input_mode: ALL_NULLABLE };
+    string a = 1;
+    string b = 2;
+  }
+}
+message Resp { string out = 1; }
+`
+	f := loadProtoFile(t, src)
+	g := graphFromFile(f)
+
+	schema, err := buildSchema(f)
+	if err != nil {
+		t.Fatalf("buildSchema: %v", err)
+	}
+
+	// DIRECTIVE + UNSPECIFIED → @oneOf; ALL_NULLABLE → plain input.
+	if !strings.Contains(schema, "input DefaultReqKey @oneOf {") {
+		t.Errorf("UNSPECIFIED mode should emit @oneOf input; got:\n%s", schema)
+	}
+	if !strings.Contains(schema, "input DirectiveReqKey @oneOf {") {
+		t.Errorf("DIRECTIVE mode should emit @oneOf input; got:\n%s", schema)
+	}
+	if !strings.Contains(schema, "input NullableReqKey {") {
+		t.Errorf("ALL_NULLABLE mode should emit a plain input; got:\n%s", schema)
+	}
+	if strings.Contains(schema, "input NullableReqKey @oneOf") {
+		t.Errorf("ALL_NULLABLE mode must NOT carry @oneOf; got:\n%s", schema)
+	}
+
+	// ToPb shims: signature returns (*pb.X, error) in all modes; only
+	// ALL_NULLABLE has the runtime exactly-one count check.
+	adapters := buildAllOneofAdapters(g)
+	for _, sig := range []string{
+		"func ToPbDefaultReq(r *DefaultReqInput) (*pb.DefaultReq, error) {",
+		"func ToPbDirectiveReq(r *DirectiveReqInput) (*pb.DirectiveReq, error) {",
+		"func ToPbNullableReq(r *NullableReqInput) (*pb.NullableReq, error) {",
+	} {
+		if !strings.Contains(adapters, sig) {
+			t.Errorf("missing ToPb signature %q\ngot:\n%s", sig, adapters)
+		}
+	}
+	// The ALL_NULLABLE shim must enforce exactly-one at runtime.
+	if !strings.Contains(adapters, "if set != 1 {") ||
+		!strings.Contains(adapters, "must be set for NullableReqKey") {
+		t.Errorf("ALL_NULLABLE ToPb missing runtime exactly-one check\ngot:\n%s", adapters)
+	}
+	// DIRECTIVE/UNSPECIFIED shims must NOT carry the runtime count check.
+	for _, msg := range []string{"DefaultReq", "DirectiveReq"} {
+		fn := "func ToPb" + msg + "("
+		idx := strings.Index(adapters, fn)
+		end := strings.Index(adapters[idx:], "\n}\n")
+		body := adapters[idx : idx+end]
+		if strings.Contains(body, "if set != 1") {
+			t.Errorf("%s mode ToPb should not have a runtime count check\nbody:\n%s", msg, body)
+		}
+	}
+}
+
 func TestBuildSchema_Golden(t *testing.T) {
 	goldenFile := loadGoldenProtoFile(t)
 

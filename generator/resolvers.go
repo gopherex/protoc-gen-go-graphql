@@ -461,11 +461,16 @@ func buildResolversGraph(g *graph, pkgName, pbImport, pbgqlImport, execImport, r
 					fmt.Fprintf(&sb, "\tresp, err := r.%s.%s(ctx, &%s{})\n",
 						svc.GoName, rpcName, pbType(m.Input.GoIdent))
 				} else if inputOI, hasInputOneof := inputOneofsByMsg[messageKey(m.Input)]; hasInputOneof {
-					// Input has a oneof: the resolver receives the intermediate pbgql struct.
+					// Input has a oneof: the resolver receives the intermediate pbgql
+					// struct and converts it via ToPb (which may return an error,
+					// e.g. ALL_NULLABLE mode's runtime exactly-one enforcement).
 					fmt.Fprintf(&sb, "func (r %s) %s(ctx context.Context, input pbgql.%s) (*%s, error) {\n",
 						recvName, methodName, inputOI.MsgInputGoName, pbType(m.Output.GoIdent))
-					fmt.Fprintf(&sb, "\tresp, err := r.%s.%s(ctx, pbgql.ToPb%s(&input))\n",
-						svc.GoName, rpcName, inputGoName)
+					fmt.Fprintf(&sb, "\treq, err := pbgql.ToPb%s(&input)\n", inputGoName)
+					sb.WriteString("\tif err != nil {\n")
+					sb.WriteString("\t\treturn nil, graphqlpb.GraphQLError(ctx, err)\n")
+					sb.WriteString("\t}\n")
+					fmt.Fprintf(&sb, "\tresp, err := r.%s.%s(ctx, req)\n", svc.GoName, rpcName)
 				} else {
 					// Normal input: bind directly to pb.
 					fmt.Fprintf(&sb, "func (r %s) %s(ctx context.Context, input %s) (*%s, error) {\n",

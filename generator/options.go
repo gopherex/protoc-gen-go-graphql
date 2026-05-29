@@ -230,26 +230,15 @@ func validateOperationOverrides(g *graph) error {
 // graphqlopt surface but not yet wired is set to a non-zero value. These are
 // implemented in a later chunk; silently ignoring them would surprise users.
 func validateUnsupportedOptions(g *graph) error {
-	notImpl := func(name string) error {
-		return fmt.Errorf("graphqlopt: %s is not yet implemented", name)
-	}
-
-	// FileOptions, ServiceOptions.name_prefix, MessageOptions.name,
-	// FieldOptions.name/exclude, EnumOptions.name, and OneofOptions.union_name
-	// are all wired. Only FieldOptions.scalar and OneofOptions.input_mode remain
-	// unimplemented (a separate later chunk) and still fail fast.
+	// All graphqlopt options are now wired EXCEPT FieldOptions.scalar, which is a
+	// documented non-goal: a custom scalar requires a user-provided Go marshaler
+	// and gqlgen.yml binding, which conflicts with this plugin's zero-config
+	// autobind model. It still fails fast so a set value is never silently ignored.
 	for _, msg := range g.Messages {
 		for _, field := range msg.Fields {
 			if o := fieldOpts(field); o != nil {
 				if o.GetScalar() != "" {
-					return notImpl("FieldOptions.scalar")
-				}
-			}
-		}
-		for _, oo := range msg.Oneofs {
-			if o := oneofOpts(oo); o != nil {
-				if o.GetInputMode() != graphqlopt.OneofInputMode_ONEOF_INPUT_UNSPECIFIED {
-					return notImpl("OneofOptions.input_mode")
+					return fmt.Errorf("graphqlopt: FieldOptions.scalar is not supported — a custom scalar requires a user-provided Go marshaler and gqlgen.yml binding, which conflicts with this plugin's zero-config autobind model")
 				}
 			}
 		}

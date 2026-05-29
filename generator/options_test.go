@@ -132,8 +132,8 @@ message Resp { string out = 1; }
 	}
 }
 
-// TestUnsupportedOptionErrors asserts that a set-but-unimplemented option
-// (FieldOptions.exclude here) produces a clear "not yet implemented" error.
+// TestUnsupportedOptionErrors asserts that FieldOptions.scalar (a documented
+// non-goal) fails fast with a clear "not supported" error.
 func TestUnsupportedOptionErrors(t *testing.T) {
 	src := `syntax = "proto3";
 package t.v1;
@@ -151,7 +151,7 @@ message Resp { string out = 1; }
 	if err == nil {
 		t.Fatal("expected error for set-but-unimplemented FieldOptions.scalar, got nil")
 	}
-	if !strings.Contains(err.Error(), "not yet implemented") || !strings.Contains(err.Error(), "FieldOptions.scalar") {
+	if !strings.Contains(err.Error(), "not supported") || !strings.Contains(err.Error(), "FieldOptions.scalar") {
 		t.Errorf("unexpected error: %v", err)
 	}
 }
