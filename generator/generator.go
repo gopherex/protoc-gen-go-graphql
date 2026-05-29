@@ -98,6 +98,30 @@ func (g *Generator) generateFiles(files []*protogen.File) error {
 		pbImport = pbImport[:idx]
 	}
 
+	// FileOptions overrides. Defaults are preserved when unset so option-free
+	// protos remain byte-identical.
+	schemaFilename := "schema.graphql"
+	gqlgenConfigFilename := "gqlgen.yml"
+	execPackage := "exec"
+	execFilename := "exec/exec.go"
+	if o := fileOpts(f); o != nil {
+		if v := o.GetPbPackage(); v != "" {
+			pbImport = v
+		}
+		if v := o.GetSchemaFilename(); v != "" {
+			schemaFilename = v
+		}
+		if v := o.GetGqlgenConfigFilename(); v != "" {
+			gqlgenConfigFilename = v
+		}
+		if v := o.GetExecPackage(); v != "" {
+			execPackage = v
+		}
+		if v := o.GetExecFilename(); v != "" {
+			execFilename = v
+		}
+	}
+
 	// OutDir is the configurable sub-package name (default: "gqlapi").
 	outDir := g.Settings.OutDir
 
@@ -122,12 +146,12 @@ func (g *Generator) generateFiles(files []*protogen.File) error {
 	if err != nil {
 		return err
 	}
-	schemaFile := g.Plugin.NewGeneratedFile(gqlapiDir+"/schema.graphql", "")
+	schemaFile := g.Plugin.NewGeneratedFile(gqlapiDir+"/"+schemaFilename, "")
 	schemaFile.P(schemaContent)
 
 	// 2. gqlgen.yml (non-Go, write raw).
-	ymlContent := buildGqlgenYmlGraph(graph, pbImport, pbgqlImport)
-	ymlFile := g.Plugin.NewGeneratedFile(gqlapiDir+"/gqlgen.yml", "")
+	ymlContent := buildGqlgenYmlGraph(graph, pbImport, pbgqlImport, schemaFilename, execPackage, execFilename)
+	ymlFile := g.Plugin.NewGeneratedFile(gqlapiDir+"/"+gqlgenConfigFilename, "")
 	ymlFile.P(ymlContent)
 
 	// 3. generate.go (Go source — //go:generate directive).

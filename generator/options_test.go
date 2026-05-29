@@ -142,16 +142,16 @@ import "graphqlopt/graphql.proto";
 service S {
   rpc Q(Req) returns (Resp) { option idempotency_level = NO_SIDE_EFFECTS; }
 }
-message Req { string id = 1 [(graphqlopt.field) = { exclude: true }]; }
+message Req { string id = 1 [(graphqlopt.field) = { scalar: "MyScalar" }]; }
 message Resp { string out = 1; }
 `
 	f := loadProtoFile(t, src)
 	g := graphFromFile(f)
 	err := validateUnsupportedOptions(g)
 	if err == nil {
-		t.Fatal("expected error for set-but-unimplemented FieldOptions.exclude, got nil")
+		t.Fatal("expected error for set-but-unimplemented FieldOptions.scalar, got nil")
 	}
-	if !strings.Contains(err.Error(), "not yet implemented") || !strings.Contains(err.Error(), "FieldOptions.exclude") {
+	if !strings.Contains(err.Error(), "not yet implemented") || !strings.Contains(err.Error(), "FieldOptions.scalar") {
 		t.Errorf("unexpected error: %v", err)
 	}
 }

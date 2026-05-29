@@ -80,6 +80,7 @@ input SearchRequestQuery @oneOf {
   text: String
   author: String
 }
+input GetThingRequest { id: String! }
 input EchoRequest {
   book: BookInput
   genre: Genre!
@@ -215,12 +216,15 @@ type WatchEvent {
 }
 type UpsertBookResponse { book: Book }
 type PingResponse { ok: Boolean! @goField(forceResolver: true) }
+type RenamedThing { renamedKeep: String! @goField(name: "Keep") }
+type GetThingResponse { thing: RenamedThing }
 
 type Query {
   getEverything(input: GetEverythingRequest!): GetEverythingResponse!
   fetchScalars(input: GetScalarsRequest!): GetScalarsResponse!
   searchBooks(input: SearchRequest!): SearchResponse!
   ping: PingResponse!
+  getThing(input: GetThingRequest!): GetThingResponse!
 }
 type Mutation {
   echoInput(input: EchoRequest!): EchoResponse!

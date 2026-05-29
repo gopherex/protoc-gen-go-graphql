@@ -194,8 +194,11 @@ func buildResolversGraph(g *graph, pkgName, pbImport, pbgqlImport, execImport, r
 			continue
 		}
 		for _, field := range msg.Fields {
+			if fieldExcluded(field) {
+				continue
+			}
 			if field.Desc.IsMap() {
-				camel := fieldName(string(field.Desc.Name()))
+				camel := gqlFieldName(field)
 				getter := "Get" + string(field.GoName)
 				mapResolvers = append(mapResolvers, mapFieldResolver{
 					ownerType:   msg.GoIdent.GoName,
@@ -205,7 +208,7 @@ func buildResolversGraph(g *graph, pkgName, pbImport, pbgqlImport, execImport, r
 					mapGetter:   getter,
 				})
 			} else if needsForceResolver(field) {
-				camel := fieldName(string(field.Desc.Name()))
+				camel := gqlFieldName(field)
 				getter := "Get" + string(field.GoName)
 				isWKTJSON := false
 				wktPb := ""
@@ -246,8 +249,11 @@ func buildResolversGraph(g *graph, pkgName, pbImport, pbgqlImport, execImport, r
 				continue
 			}
 			for _, field := range v.Msg.Fields {
+				if fieldExcluded(field) {
+					continue
+				}
 				if field.Desc.IsMap() {
-					camel := fieldName(string(field.Desc.Name()))
+					camel := gqlFieldName(field)
 					getter := "Get" + string(field.GoName)
 					// The receiver is the wrapper type (in pbgql), not the pb type.
 					mapResolvers = append(mapResolvers, mapFieldResolver{
@@ -259,7 +265,7 @@ func buildResolversGraph(g *graph, pkgName, pbImport, pbgqlImport, execImport, r
 						embeddedField: "", // Go finds GetTags via embedding
 					})
 				} else if needsForceResolver(field) {
-					camel := fieldName(string(field.Desc.Name()))
+					camel := gqlFieldName(field)
 					getter := "Get" + string(field.GoName)
 					retType := coerceReturnType(field)
 					pbElem := pbElemType(field)

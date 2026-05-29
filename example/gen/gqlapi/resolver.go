@@ -298,6 +298,14 @@ func (r queryResolver) Ping(ctx context.Context) (*pb.PingResponse, error) {
 	return resp, nil
 }
 
+func (r queryResolver) GetThing(ctx context.Context, input pb.GetThingRequest) (*pb.GetThingResponse, error) {
+	resp, err := r.Library.GetThing(ctx, &input)
+	if err != nil {
+		return nil, graphqlpb.GraphQLError(ctx, err)
+	}
+	return resp, nil
+}
+
 func (r mutationResolver) EchoInput(ctx context.Context, input pb.EchoRequest) (*pb.EchoResponse, error) {
 	resp, err := r.Library.EchoInput(ctx, &input)
 	if err != nil {

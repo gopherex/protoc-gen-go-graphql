@@ -71,6 +71,54 @@ func oneofOpts(o *protogen.Oneof) *graphqlopt.OneofOptions {
 	return proto.GetExtension(opts, graphqlopt.E_Oneof).(*graphqlopt.OneofOptions)
 }
 
+// gqlTypeName returns the GraphQL type name for a message: the
+// MessageOptions.name override if set, else the Go struct name. Used everywhere
+// a message's GraphQL type name is emitted (output type decl, input name base,
+// field type references, union member references, gqlgen.yml binding KEY). The
+// Go model binding stays keyed by msg.GoIdent.GoName — only the GraphQL-side
+// name/key changes.
+func gqlTypeName(msg *protogen.Message) string {
+	if o := messageOpts(msg); o != nil && o.GetName() != "" {
+		return o.GetName()
+	}
+	return msg.GoIdent.GoName
+}
+
+// gqlEnumName returns the GraphQL enum name: the EnumOptions.name override if
+// set, else the Go name. The pbgql adapter file + Marshal/Unmarshal funcs stay
+// keyed by e.GoIdent.GoName (gqlgen resolves the adapter by the MODEL Go type).
+func gqlEnumName(e *protogen.Enum) string {
+	if o := enumOpts(e); o != nil && o.GetName() != "" {
+		return o.GetName()
+	}
+	return e.GoIdent.GoName
+}
+
+// gqlFieldName returns the GraphQL field name: the FieldOptions.name override if
+// set, else the camelCase form of the proto field name.
+func gqlFieldName(field *protogen.Field) string {
+	if o := fieldOpts(field); o != nil && o.GetName() != "" {
+		return o.GetName()
+	}
+	return fieldName(string(field.Desc.Name()))
+}
+
+// fieldExcluded reports whether a field is omitted from the GraphQL surface
+// (FieldOptions.exclude).
+func fieldExcluded(field *protogen.Field) bool {
+	o := fieldOpts(field)
+	return o != nil && o.GetExclude()
+}
+
+// servicePrefix returns the operation-field name prefix for a service
+// (ServiceOptions.name_prefix), or "" when unset.
+func servicePrefix(s *protogen.Service) string {
+	if o := serviceOpts(s); o != nil {
+		return o.GetNamePrefix()
+	}
+	return ""
+}
+
 // methodSkipped reports whether the method is marked skip.
 func methodSkipped(m *protogen.Method) bool {
 	o := methodOpts(m)
@@ -186,48 +234,13 @@ func validateUnsupportedOptions(g *graph) error {
 		return fmt.Errorf("graphqlopt: %s is not yet implemented", name)
 	}
 
-	for _, f := range g.Files {
-		if o := fileOpts(f); o != nil {
-			if o.GetPbPackage() != "" {
-				return notImpl("FileOptions.pb_package")
-			}
-			if o.GetSchemaFilename() != "" {
-				return notImpl("FileOptions.schema_filename")
-			}
-			if o.GetGqlgenConfigFilename() != "" {
-				return notImpl("FileOptions.gqlgen_config_filename")
-			}
-			if o.GetExecPackage() != "" {
-				return notImpl("FileOptions.exec_package")
-			}
-			if o.GetExecFilename() != "" {
-				return notImpl("FileOptions.exec_filename")
-			}
-		}
-	}
-
-	for _, svc := range g.Services {
-		if o := serviceOpts(svc); o != nil {
-			if o.GetNamePrefix() != "" {
-				return notImpl("ServiceOptions.name_prefix")
-			}
-		}
-	}
-
+	// FileOptions, ServiceOptions.name_prefix, MessageOptions.name,
+	// FieldOptions.name/exclude, EnumOptions.name, and OneofOptions.union_name
+	// are all wired. Only FieldOptions.scalar and OneofOptions.input_mode remain
+	// unimplemented (a separate later chunk) and still fail fast.
 	for _, msg := range g.Messages {
-		if o := messageOpts(msg); o != nil {
-			if o.GetName() != "" {
-				return notImpl("MessageOptions.name")
-			}
-		}
 		for _, field := range msg.Fields {
 			if o := fieldOpts(field); o != nil {
-				if o.GetName() != "" {
-					return notImpl("FieldOptions.name")
-				}
-				if o.GetExclude() {
-					return notImpl("FieldOptions.exclude")
-				}
 				if o.GetScalar() != "" {
 					return notImpl("FieldOptions.scalar")
 				}
@@ -235,20 +248,9 @@ func validateUnsupportedOptions(g *graph) error {
 		}
 		for _, oo := range msg.Oneofs {
 			if o := oneofOpts(oo); o != nil {
-				if o.GetUnionName() != "" {
-					return notImpl("OneofOptions.union_name")
-				}
 				if o.GetInputMode() != graphqlopt.OneofInputMode_ONEOF_INPUT_UNSPECIFIED {
 					return notImpl("OneofOptions.input_mode")
 				}
-			}
-		}
-	}
-
-	for _, e := range g.Enums {
-		if o := enumOpts(e); o != nil {
-			if o.GetName() != "" {
-				return notImpl("EnumOptions.name")
 			}
 		}
 	}

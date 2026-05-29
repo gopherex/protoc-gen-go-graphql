@@ -87,7 +87,15 @@ func collectOneofsGraph(g *graph, msgInfo map[string]*messageInfo) []oneofInfo {
 			protoName := string(oo.Desc.Name())
 			ooGoName := oo.GoName            // exported, e.g. "Result"
 			gqlField := fieldName(protoName) // camelCase, e.g. "result"
-			unionName := name + ooGoName     // e.g. "SearchResponseResult"
+			// Go-derived base used for wrapper type names, the pbgql interface,
+			// and pb wrapper struct fields — these stay keyed by Go names.
+			unionName := name + ooGoName // e.g. "SearchResponseResult"
+			// The GraphQL union name honors an OneofOptions.union_name override;
+			// only the schema union name + its gqlgen.yml binding key change.
+			unionGQLName := unionName
+			if o := oneofOpts(oo); o != nil && o.GetUnionName() != "" {
+				unionGQLName = o.GetUnionName()
+			}
 
 			var variants []oneofVariant
 			for _, field := range oo.Fields {
@@ -141,7 +149,7 @@ func collectOneofsGraph(g *graph, msgInfo map[string]*messageInfo) []oneofInfo {
 				OneofGoName:     ooGoName,
 				ProtoName:       protoName,
 				GQLFieldName:    gqlField,
-				UnionGQLName:    unionName,
+				UnionGQLName:    unionGQLName,
 				InterfaceGoName: unionName,
 				Variants:        variants,
 				PbMsgGoName:     name,
@@ -156,9 +164,10 @@ func collectOneofsGraph(g *graph, msgInfo map[string]*messageInfo) []oneofInfo {
 			}
 			// Input @oneOf names. GraphQL has one global namespace for object,
 			// union, and input names, so an input oneof that is also an output
-			// union must use a distinct name.
-			oi.InputGQLName = name + ooGoName // e.g. "SearchRequestQuery"
-			oi.InputGoName = name + ooGoName  // same as Go struct name in pbgql
+			// union must use a distinct name. The GraphQL-side name honors the
+			// union_name override; the pbgql Go struct name stays Go-derived.
+			oi.InputGQLName = unionGQLName   // e.g. "SearchRequestQuery"
+			oi.InputGoName = name + ooGoName // Go struct name in pbgql
 			if oi.IsInput && oi.IsOutput {
 				oi.InputGQLName += "Input"
 				oi.InputGoName += "Input"

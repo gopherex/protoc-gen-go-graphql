@@ -34,6 +34,11 @@ service Library {
   rpc Ping(PingRequest) returns (PingResponse) {
     option idempotency_level = NO_SIDE_EFFECTS;
   }
+  // B1 option coverage: message rename + field rename + field exclude,
+  // exercised end-to-end through gqlgen.
+  rpc GetThing(GetThingRequest) returns (GetThingResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
 
   // Mutations (default → Mutation root).
   rpc EchoInput(EchoRequest) returns (EchoResponse);
@@ -318,3 +323,14 @@ message PingResponse {}
 // LogChunk / ShipAck — used only by the skipped client-streaming ShipLogs rpc.
 message LogChunk { bytes data = 1; }
 message ShipAck { bool ok = 1; }
+
+// B1 option coverage: GetThing returns a renamed message (RenamedThing) with a
+// renamed field (renamedKeep) and an excluded field (drop), proven end-to-end
+// through gqlgen by `make gen-test`.
+message GetThingRequest { string id = 1; }
+message Thing {
+  option (graphqlopt.message) = { name: "RenamedThing" };
+  string keep = 1 [(graphqlopt.field) = { name: "renamedKeep" }];
+  string drop = 2 [(graphqlopt.field) = { exclude: true }];
+}
+message GetThingResponse { Thing thing = 1; }

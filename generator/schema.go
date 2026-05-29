@@ -11,13 +11,20 @@ import (
 	"github.com/gopherex/protoc-gen-go-graphql/graphqlopt"
 )
 
-// isEmptyMessage returns true if msg is a non-map-entry proto message with zero fields.
-// Such messages are "empty" and require special handling in schema/resolver generation.
+// isEmptyMessage returns true if msg is a non-map-entry proto message with no
+// GraphQL-visible fields. Fields marked exclude do not count, so excluding all
+// of a message's fields makes it "empty" and routes it through the same
+// empty-message handling (no-arg request / `ok` placeholder output).
 func isEmptyMessage(msg *protogen.Message) bool {
 	if msg == nil || msg.Desc.IsMapEntry() {
 		return false
 	}
-	return len(msg.Fields) == 0
+	for _, field := range msg.Fields {
+		if !fieldExcluded(field) {
+			return false
+		}
+	}
+	return true
 }
 
 // wellKnownGQLType maps a fully qualified WKT message name to its GraphQL scalar name.
@@ -61,7 +68,7 @@ type messageInfo struct {
 }
 
 func inputTypeName(msg *protogen.Message, msgInfo map[string]*messageInfo) string {
-	name := msg.GoIdent.GoName
+	name := gqlTypeName(msg)
 	mi := msgInfo[messageKey(msg)]
 	if mi != nil && mi.isRequest && mi.role.has(roleOutput) {
 		return name + "Input"
@@ -254,7 +261,7 @@ func buildSchemaGraph(g *graph) (string, error) {
 		if mi == nil {
 			continue
 		}
-		if mi.role.has(roleOutput) && mi.role.has(roleInput) && (!mi.isRequest || inputTypeName(msg, msgInfo) != msg.GoIdent.GoName) {
+		if mi.role.has(roleOutput) && mi.role.has(roleInput) && (!mi.isRequest || inputTypeName(msg, msgInfo) != gqlTypeName(msg)) {
 			emitOutputType(&sb, msg, oneofsByMsg)
 			sb.WriteString("\n") // blank line after each domain type
 		}
@@ -295,6 +302,9 @@ func collectUsedScalarsGraph(g *graph) map[string]bool {
 	used := map[string]bool{}
 	for _, msg := range g.Messages {
 		for _, field := range msg.Fields {
+			if fieldExcluded(field) {
+				continue
+			}
 			sc := fieldGQLScalar(field)
 			if sc != "" {
 				switch sc {
@@ -378,9 +388,9 @@ func fieldGQLBaseType(field *protogen.Field) string {
 		if sc, ok := wellKnownGQLType[fqn]; ok {
 			return sc
 		}
-		return string(field.Message.GoIdent.GoName)
+		return gqlTypeName(field.Message)
 	case protoreflect.EnumKind:
-		return string(field.Enum.GoIdent.GoName)
+		return gqlEnumName(field.Enum)
 	default:
 		return scalarForKind(field.Desc.Kind())
 	}
@@ -407,6 +417,9 @@ func outputFields(msg *protogen.Message, oneofsByMsg map[string][]oneofInfo) []s
 	emittedOneofs := map[string]bool{}
 
 	for _, field := range msg.Fields {
+		if fieldExcluded(field) {
+			continue
+		}
 		protoName := string(field.Desc.Name())
 
 		// Check if this field is part of an output oneof.
@@ -424,28 +437,47 @@ func outputFields(msg *protogen.Message, oneofsByMsg map[string][]oneofInfo) []s
 			continue
 		}
 
+		gqlName := gqlFieldName(field)
+		// A renamed field needs @goField(name: "<GoName>") so gqlgen maps the
+		// renamed GraphQL field back to the pb Go struct field.
+		renamed := gqlName != fieldName(protoName)
 		var line string
 		if field.Desc.IsMap() {
-			gqlType := "JSON"
-			goFieldName := fieldName(protoName)
-			line = fmt.Sprintf("%s: %s @goField(forceResolver: true)", goFieldName, gqlType)
+			line = fmt.Sprintf("%s: %s%s", gqlName, "JSON", goFieldDirective(field, renamed, true))
 		} else if needsForceResolver(field) {
-			goFieldName := fieldName(protoName)
 			gqlType := fieldGQLType(field)
-			line = fmt.Sprintf("%s: %s @goField(forceResolver: true)", goFieldName, gqlType)
+			line = fmt.Sprintf("%s: %s%s", gqlName, gqlType, goFieldDirective(field, renamed, true))
 		} else {
-			goFieldName := fieldName(protoName)
 			gqlType := fieldGQLType(field)
-			line = fmt.Sprintf("%s: %s", goFieldName, gqlType)
+			line = fmt.Sprintf("%s: %s%s", gqlName, gqlType, goFieldDirective(field, renamed, false))
 		}
 		lines = append(lines, line)
 	}
 	return lines
 }
 
+// goFieldDirective builds the trailing " @goField(...)" annotation for a field.
+// renamed → emit name:"<GoName>" so gqlgen maps the renamed GraphQL field back
+// to the pb Go struct field. forceResolver → emit forceResolver:true. When both
+// apply they are combined into a single @goField directive. Returns "" when
+// neither applies.
+func goFieldDirective(field *protogen.Field, renamed, forceResolver bool) string {
+	if !renamed && !forceResolver {
+		return ""
+	}
+	var args []string
+	if renamed {
+		args = append(args, fmt.Sprintf("name: %q", string(field.GoName)))
+	}
+	if forceResolver {
+		args = append(args, "forceResolver: true")
+	}
+	return " @goField(" + strings.Join(args, ", ") + ")"
+}
+
 // emitEnum emits an enum type declaration (with trailing blank line).
 func emitEnum(sb *strings.Builder, e *protogen.Enum) {
-	fmt.Fprintf(sb, "enum %s {", e.GoIdent.GoName)
+	fmt.Fprintf(sb, "enum %s {", gqlEnumName(e))
 	for _, v := range e.Values {
 		fmt.Fprintf(sb, " %s", v.Desc.Name())
 	}
@@ -459,18 +491,19 @@ func emitOutputType(sb *strings.Builder, msg *protogen.Message, oneofsByMsg map[
 	if msg.Desc.IsMapEntry() {
 		return
 	}
+	typeName := gqlTypeName(msg)
 	fields := outputFields(msg, oneofsByMsg)
 	if len(fields) == 0 {
 		// Empty message: emit a placeholder field to satisfy GraphQL (no blank field names).
-		fmt.Fprintf(sb, "type %s { ok: Boolean! @goField(forceResolver: true) }\n", msg.GoIdent.GoName)
+		fmt.Fprintf(sb, "type %s { ok: Boolean! @goField(forceResolver: true) }\n", typeName)
 		return
 	}
 	if len(fields) == 1 {
 		// Inline format.
-		fmt.Fprintf(sb, "type %s { %s }\n", msg.GoIdent.GoName, fields[0])
+		fmt.Fprintf(sb, "type %s { %s }\n", typeName, fields[0])
 	} else {
 		// Multi-line format.
-		fmt.Fprintf(sb, "type %s {\n", msg.GoIdent.GoName)
+		fmt.Fprintf(sb, "type %s {\n", typeName)
 		for _, f := range fields {
 			sb.WriteString("  ")
 			sb.WriteString(f)
@@ -552,7 +585,7 @@ func inputGQLBaseType(field *protogen.Field, msgInfo map[string]*messageInfo) st
 		if sc, ok := wellKnownGQLType[fqn]; ok {
 			return sc
 		}
-		msgName := field.Message.GoIdent.GoName
+		msgName := gqlTypeName(field.Message)
 		mi, ok := msgInfo[messageKey(field.Message)]
 		if ok {
 			if mi.isRequest {
@@ -563,7 +596,7 @@ func inputGQLBaseType(field *protogen.Field, msgInfo map[string]*messageInfo) st
 		}
 		return msgName
 	case protoreflect.EnumKind:
-		return string(field.Enum.GoIdent.GoName)
+		return gqlEnumName(field.Enum)
 	default:
 		return scalarForKind(field.Desc.Kind())
 	}
@@ -592,6 +625,9 @@ func inputFields(msg *protogen.Message, msgInfo map[string]*messageInfo, oneofsB
 		if field.Desc.IsMap() {
 			continue
 		}
+		if fieldExcluded(field) {
+			continue
+		}
 		protoName := string(field.Desc.Name())
 
 		// Check if this field belongs to an input oneof.
@@ -611,8 +647,9 @@ func inputFields(msg *protogen.Message, msgInfo map[string]*messageInfo, oneofsB
 		if t == "" {
 			continue
 		}
-		goFieldName := fieldName(protoName)
-		lines = append(lines, fmt.Sprintf("%s: %s", goFieldName, t))
+		gqlName := gqlFieldName(field)
+		renamed := gqlName != fieldName(protoName)
+		lines = append(lines, fmt.Sprintf("%s: %s%s", gqlName, t, goFieldDirective(field, renamed, false)))
 	}
 	return lines
 }
@@ -674,7 +711,7 @@ func emitNestedInputs(sb *strings.Builder, msg *protogen.Message, msgInfo map[st
 		if _, wkt := wellKnownGQLType[fqn]; wkt {
 			continue
 		}
-		childName := field.Message.GoIdent.GoName
+		childName := gqlTypeName(field.Message)
 		mi, ok := msgInfo[messageKey(field.Message)]
 		if !ok || !mi.role.has(roleInput) || mi.isRequest {
 			continue
@@ -746,7 +783,7 @@ func oneofInputVariantGQLType(v oneofVariant, msgInfo map[string]*messageInfo) s
 	if mi.isRequest {
 		return inputTypeName(v.Msg, msgInfo)
 	}
-	return v.Msg.GoIdent.GoName + "Input"
+	return gqlTypeName(v.Msg) + "Input"
 }
 
 // operationType determines whether a method maps to Query, Mutation, or
@@ -778,12 +815,20 @@ func operationType(m *protogen.Method) string {
 }
 
 // methodFieldName returns the GraphQL operation field name for a method,
-// honoring a graphqlopt.method.operation_name override.
+// honoring a graphqlopt.method.operation_name override and the owning service's
+// ServiceOptions.name_prefix. The prefix is applied as prefix + Capitalize(base)
+// (e.g. prefix "admin" + "getBook" → "adminGetBook").
 func methodFieldName(m *protogen.Method) string {
+	base := operationFieldName(m.GoName)
 	if o := methodOpts(m); o != nil && o.GetOperationName() != "" {
-		return o.GetOperationName()
+		base = o.GetOperationName()
 	}
-	return operationFieldName(m.GoName)
+	if m.Parent != nil {
+		if prefix := servicePrefix(m.Parent); prefix != "" && base != "" {
+			return prefix + strings.ToUpper(base[:1]) + base[1:]
+		}
+	}
+	return base
 }
 
 // resolverMethodName returns the Go method name gqlgen will generate for this
@@ -839,7 +884,7 @@ func emitOperationRootsGraph(sb *strings.Builder, g *graph) {
 
 			switch opType {
 			case "Query":
-				retType := m.Output.GoIdent.GoName
+				retType := gqlTypeName(m.Output)
 				var f string
 				if emptyReq {
 					f = fmt.Sprintf("%s: %s!", opField, retType)
@@ -848,7 +893,7 @@ func emitOperationRootsGraph(sb *strings.Builder, g *graph) {
 				}
 				queryFields = append(queryFields, f)
 			case "Mutation":
-				retType := m.Output.GoIdent.GoName
+				retType := gqlTypeName(m.Output)
 				var field string
 				if emptyReq {
 					field = fmt.Sprintf("%s: %s!", opField, retType)
@@ -860,7 +905,7 @@ func emitOperationRootsGraph(sb *strings.Builder, g *graph) {
 				}
 				mutationFields = append(mutationFields, field)
 			case "Subscription":
-				streamType := m.Output.GoIdent.GoName
+				streamType := gqlTypeName(m.Output)
 				var f string
 				if emptyReq {
 					f = fmt.Sprintf("%s: %s!", opField, streamType)

@@ -13,21 +13,21 @@ import (
 // pbgqlImport is the Go import path of the pbgql sub-package
 // (e.g. "github.com/gopherex/protoc-gen-go-graphql/example/gen/gqlapi/pbgql").
 func buildGqlgenYml(f *protogen.File, pbImport, pbgqlImport string) string {
-	return buildGqlgenYmlGraph(graphFromFile(f), pbImport, pbgqlImport)
+	return buildGqlgenYmlGraph(graphFromFile(f), pbImport, pbgqlImport, "schema.graphql", "exec", "exec/exec.go")
 }
 
-func buildGqlgenYmlGraph(g *graph, pbImport, pbgqlImport string) string {
+func buildGqlgenYmlGraph(g *graph, pbImport, pbgqlImport, schemaFilename, execPackage, execFilename string) string {
 	var sb strings.Builder
 
 	// Schema section.
 	sb.WriteString("schema:\n")
-	sb.WriteString("  - schema.graphql\n")
+	fmt.Fprintf(&sb, "  - %s\n", schemaFilename)
 	sb.WriteString("\n")
 
 	// Exec section: relative to the gqlapi dir, exec is in exec/ subdirectory.
 	sb.WriteString("exec:\n")
-	sb.WriteString("  package: exec\n")
-	sb.WriteString("  filename: exec/exec.go\n")
+	fmt.Fprintf(&sb, "  package: %s\n", execPackage)
+	fmt.Fprintf(&sb, "  filename: %s\n", execFilename)
 	sb.WriteString("\n")
 
 	// Autobind: bind pb package's types.
@@ -73,9 +73,11 @@ func buildGqlgenYmlGraph(g *graph, pbImport, pbgqlImport string) string {
 		}
 	}
 
-	// Enum bindings → pbgql package.
+	// Enum bindings → pbgql package. The KEY is the GraphQL enum name (override
+	// honored); the model stays keyed by the Go name so gqlgen resolves the
+	// pbgql adapter Marshal/Unmarshal funcs by that Go type.
 	for _, e := range g.Enums {
-		fmt.Fprintf(&sb, "  %s:        { model: %s.%s }\n", e.GoIdent.GoName, pbgqlImport, e.GoIdent.GoName)
+		fmt.Fprintf(&sb, "  %s:        { model: %s.%s }\n", gqlEnumName(e), pbgqlImport, e.GoIdent.GoName)
 	}
 
 	// Collect oneof info for binding decisions.
@@ -111,7 +113,11 @@ func buildGqlgenYmlGraph(g *graph, pbImport, pbgqlImport string) string {
 
 	// Collect all messages (including nested — they become flat Go types).
 	for _, msg := range g.Messages {
-		name := msg.GoIdent.GoName
+		// goName is the Go model type; gqlName is the GraphQL type name (the
+		// MessageOptions.name override when set). Binding KEYS use gqlName;
+		// models always reference the Go name.
+		goName := msg.GoIdent.GoName
+		gqlName := gqlTypeName(msg)
 		mi := msgInfo[messageKey(msg)]
 		if mi == nil {
 			continue
@@ -119,7 +125,7 @@ func buildGqlgenYmlGraph(g *graph, pbImport, pbgqlImport string) string {
 
 		// Emit output binding if used as output.
 		if mi.role.has(roleOutput) {
-			fmt.Fprintf(&sb, "  %s:    { model: %s.%s }\n", name, string(msg.GoIdent.GoImportPath), name)
+			fmt.Fprintf(&sb, "  %s:    { model: %s.%s }\n", gqlName, string(msg.GoIdent.GoImportPath), goName)
 		}
 
 		// Emit input binding: top-level requests keep their name; nested get Input suffix.
@@ -133,14 +139,14 @@ func buildGqlgenYmlGraph(g *graph, pbImport, pbgqlImport string) string {
 					if oi, hasInputOneof := inputOneofMsgs[messageKey(msg)]; hasInputOneof {
 						// Request with input oneof: bind to intermediate pbgql struct.
 						fmt.Fprintf(&sb, "  %s:    { model: %s.%s }\n", inputName, pbgqlImport, oi.MsgInputGoName)
-					} else if !mi.role.has(roleOutput) || inputName != name {
+					} else if !mi.role.has(roleOutput) || inputName != gqlName {
 						// Normal request without oneof: bind to pb directly.
-						fmt.Fprintf(&sb, "  %s:    { model: %s.%s }\n", inputName, string(msg.GoIdent.GoImportPath), name)
+						fmt.Fprintf(&sb, "  %s:    { model: %s.%s }\n", inputName, string(msg.GoIdent.GoImportPath), goName)
 					}
 				}
 			} else {
 				// Nested input: emit with Input suffix binding to same Go type.
-				fmt.Fprintf(&sb, "  %s:    { model: %s.%s }\n", name+"Input", string(msg.GoIdent.GoImportPath), name)
+				fmt.Fprintf(&sb, "  %s:    { model: %s.%s }\n", gqlName+"Input", string(msg.GoIdent.GoImportPath), goName)
 			}
 		}
 	}

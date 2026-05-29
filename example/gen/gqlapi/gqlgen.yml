@@ -61,6 +61,9 @@ models:
   UpsertBookRequest:    { model: github.com/gopherex/protoc-gen-go-graphql/example/gen.UpsertBookRequest }
   UpsertBookResponse:    { model: github.com/gopherex/protoc-gen-go-graphql/example/gen.UpsertBookResponse }
   PingResponse:    { model: github.com/gopherex/protoc-gen-go-graphql/example/gen.PingResponse }
+  GetThingRequest:    { model: github.com/gopherex/protoc-gen-go-graphql/example/gen.GetThingRequest }
+  RenamedThing:    { model: github.com/gopherex/protoc-gen-go-graphql/example/gen.Thing }
+  GetThingResponse:    { model: github.com/gopherex/protoc-gen-go-graphql/example/gen.GetThingResponse }
   SearchResponseResult:    { model: github.com/gopherex/protoc-gen-go-graphql/example/gen/gqlapi/pbgql.SearchResponseResult }
   SearchResponseResultBook:    { model: github.com/gopherex/protoc-gen-go-graphql/example/gen/gqlapi/pbgql.SearchResponseResultBook }
   SearchResponseResultNotFound:    { model: github.com/gopherex/protoc-gen-go-graphql/example/gen/gqlapi/pbgql.SearchResponseResultNotFound }

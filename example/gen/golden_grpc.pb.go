@@ -23,6 +23,7 @@ const (
 	Library_GetScalars_FullMethodName    = "/golden.v1.Library/GetScalars"
 	Library_SearchBooks_FullMethodName   = "/golden.v1.Library/SearchBooks"
 	Library_Ping_FullMethodName          = "/golden.v1.Library/Ping"
+	Library_GetThing_FullMethodName      = "/golden.v1.Library/GetThing"
 	Library_EchoInput_FullMethodName     = "/golden.v1.Library/EchoInput"
 	Library_AddBook_FullMethodName       = "/golden.v1.Library/AddBook"
 	Library_UpsertBook_FullMethodName    = "/golden.v1.Library/UpsertBook"
@@ -41,6 +42,9 @@ type LibraryClient interface {
 	SearchBooks(ctx context.Context, in *SearchRequest, opts ...grpc.CallOption) (*SearchResponse, error)
 	// Empty request and response (fieldless messages).
 	Ping(ctx context.Context, in *PingRequest, opts ...grpc.CallOption) (*PingResponse, error)
+	// B1 option coverage: message rename + field rename + field exclude,
+	// exercised end-to-end through gqlgen.
+	GetThing(ctx context.Context, in *GetThingRequest, opts ...grpc.CallOption) (*GetThingResponse, error)
 	// Mutations (default → Mutation root).
 	EchoInput(ctx context.Context, in *EchoRequest, opts ...grpc.CallOption) (*EchoResponse, error)
 	AddBook(ctx context.Context, in *AddBookRequest, opts ...grpc.CallOption) (*AddBookResponse, error)
@@ -95,6 +99,16 @@ func (c *libraryClient) Ping(ctx context.Context, in *PingRequest, opts ...grpc.
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(PingResponse)
 	err := c.cc.Invoke(ctx, Library_Ping_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *libraryClient) GetThing(ctx context.Context, in *GetThingRequest, opts ...grpc.CallOption) (*GetThingResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetThingResponse)
+	err := c.cc.Invoke(ctx, Library_GetThing_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -174,6 +188,9 @@ type LibraryServer interface {
 	SearchBooks(context.Context, *SearchRequest) (*SearchResponse, error)
 	// Empty request and response (fieldless messages).
 	Ping(context.Context, *PingRequest) (*PingResponse, error)
+	// B1 option coverage: message rename + field rename + field exclude,
+	// exercised end-to-end through gqlgen.
+	GetThing(context.Context, *GetThingRequest) (*GetThingResponse, error)
 	// Mutations (default → Mutation root).
 	EchoInput(context.Context, *EchoRequest) (*EchoResponse, error)
 	AddBook(context.Context, *AddBookRequest) (*AddBookResponse, error)
@@ -205,6 +222,9 @@ func (UnimplementedLibraryServer) SearchBooks(context.Context, *SearchRequest) (
 }
 func (UnimplementedLibraryServer) Ping(context.Context, *PingRequest) (*PingResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method Ping not implemented")
+}
+func (UnimplementedLibraryServer) GetThing(context.Context, *GetThingRequest) (*GetThingResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetThing not implemented")
 }
 func (UnimplementedLibraryServer) EchoInput(context.Context, *EchoRequest) (*EchoResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method EchoInput not implemented")
@@ -314,6 +334,24 @@ func _Library_Ping_Handler(srv interface{}, ctx context.Context, dec func(interf
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Library_GetThing_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetThingRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(LibraryServer).GetThing(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Library_GetThing_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(LibraryServer).GetThing(ctx, req.(*GetThingRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _Library_EchoInput_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(EchoRequest)
 	if err := dec(in); err != nil {
@@ -408,6 +446,10 @@ var Library_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Ping",
 			Handler:    _Library_Ping_Handler,
+		},
+		{
+			MethodName: "GetThing",
+			Handler:    _Library_GetThing_Handler,
 		},
 		{
 			MethodName: "EchoInput",

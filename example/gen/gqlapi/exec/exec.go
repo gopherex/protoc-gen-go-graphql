@@ -110,6 +110,10 @@ type ComplexityRoot struct {
 		Scalars   func(childComplexity int) int
 	}
 
+	GetThingResponse struct {
+		Thing func(childComplexity int) int
+	}
+
 	MapMessage struct {
 		BoolMap   func(childComplexity int) int
 		EnumMap   func(childComplexity int) int
@@ -203,8 +207,13 @@ type ComplexityRoot struct {
 	Query struct {
 		FetchScalars  func(childComplexity int, input gen.GetScalarsRequest) int
 		GetEverything func(childComplexity int, input gen.GetEverythingRequest) int
+		GetThing      func(childComplexity int, input gen.GetThingRequest) int
 		Ping          func(childComplexity int) int
 		SearchBooks   func(childComplexity int, input pbgql.SearchRequestInput) int
+	}
+
+	RenamedThing struct {
+		Keep func(childComplexity int) int
 	}
 
 	RepeatedScalars struct {
@@ -335,6 +344,7 @@ type QueryResolver interface {
 	FetchScalars(ctx context.Context, input gen.GetScalarsRequest) (*gen.GetScalarsResponse, error)
 	SearchBooks(ctx context.Context, input pbgql.SearchRequestInput) (*gen.SearchResponse, error)
 	Ping(ctx context.Context) (*gen.PingResponse, error)
+	GetThing(ctx context.Context, input gen.GetThingRequest) (*gen.GetThingResponse, error)
 }
 type RepeatedScalarsResolver interface {
 	FieldFloat(ctx context.Context, obj *gen.RepeatedScalars) ([]float64, error)
@@ -554,6 +564,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.GetScalarsResponse.Scalars(childComplexity), true
+
+	case "GetThingResponse.thing":
+		if e.ComplexityRoot.GetThingResponse.Thing == nil {
+			break
+		}
+
+		return e.ComplexityRoot.GetThingResponse.Thing(childComplexity), true
 
 	case "MapMessage.boolMap":
 		if e.ComplexityRoot.MapMessage.BoolMap == nil {
@@ -860,6 +877,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Query.GetEverything(childComplexity, args["input"].(gen.GetEverythingRequest)), true
+	case "Query.getThing":
+		if e.ComplexityRoot.Query.GetThing == nil {
+			break
+		}
+
+		args, err := ec.field_Query_getThing_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Query.GetThing(childComplexity, args["input"].(gen.GetThingRequest)), true
 
 	case "Query.ping":
 		if e.ComplexityRoot.Query.Ping == nil {
@@ -878,6 +906,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Query.SearchBooks(childComplexity, args["input"].(pbgql.SearchRequestInput)), true
+
+	case "RenamedThing.renamedKeep":
+		if e.ComplexityRoot.RenamedThing.Keep == nil {
+			break
+		}
+
+		return e.ComplexityRoot.RenamedThing.Keep(childComplexity), true
 
 	case "RepeatedScalars.fieldBool":
 		if e.ComplexityRoot.RepeatedScalars.FieldBool == nil {
@@ -1256,6 +1291,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputEchoRequest,
 		ec.unmarshalInputGetEverythingRequest,
 		ec.unmarshalInputGetScalarsRequest,
+		ec.unmarshalInputGetThingRequest,
 		ec.unmarshalInputSearchRequest,
 		ec.unmarshalInputSearchRequestQuery,
 		ec.unmarshalInputUpsertBookRequest,
@@ -1434,6 +1470,7 @@ input SearchRequestQuery @oneOf {
   text: String
   author: String
 }
+input GetThingRequest { id: String! }
 input EchoRequest {
   book: BookInput
   genre: Genre!
@@ -1569,12 +1606,15 @@ type WatchEvent {
 }
 type UpsertBookResponse { book: Book }
 type PingResponse { ok: Boolean! @goField(forceResolver: true) }
+type RenamedThing { renamedKeep: String! @goField(name: "Keep") }
+type GetThingResponse { thing: RenamedThing }
 
 type Query {
   getEverything(input: GetEverythingRequest!): GetEverythingResponse!
   fetchScalars(input: GetScalarsRequest!): GetScalarsResponse!
   searchBooks(input: SearchRequest!): SearchResponse!
   ping: PingResponse!
+  getThing(input: GetThingRequest!): GetThingResponse!
 }
 type Mutation {
   echoInput(input: EchoRequest!): EchoResponse!
@@ -1685,6 +1725,14 @@ func (ec *executionContext) childFields_GetScalarsResponse(ctx context.Context, 
 	return nil, fmt.Errorf("no field named %q was found under type GetScalarsResponse", field.Name)
 }
 
+func (ec *executionContext) childFields_GetThingResponse(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+	switch field.Name {
+	case "thing":
+		return ec.fieldContext_GetThingResponse_thing(ctx, field)
+	}
+	return nil, fmt.Errorf("no field named %q was found under type GetThingResponse", field.Name)
+}
+
 func (ec *executionContext) childFields_MapMessage(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 	switch field.Name {
 	case "stringMap":
@@ -1789,6 +1837,14 @@ func (ec *executionContext) childFields_PingResponse(ctx context.Context, field 
 		return ec.fieldContext_PingResponse_ok(ctx, field)
 	}
 	return nil, fmt.Errorf("no field named %q was found under type PingResponse", field.Name)
+}
+
+func (ec *executionContext) childFields_RenamedThing(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+	switch field.Name {
+	case "renamedKeep":
+		return ec.fieldContext_RenamedThing_renamedKeep(ctx, field)
+	}
+	return nil, fmt.Errorf("no field named %q was found under type RenamedThing", field.Name)
 }
 
 func (ec *executionContext) childFields_RepeatedScalars(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
@@ -2121,6 +2177,20 @@ func (ec *executionContext) field_Query_getEverything_args(ctx context.Context, 
 	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input",
 		func(ctx context.Context, v any) (gen.GetEverythingRequest, error) {
 			return ec.unmarshalNGetEverythingRequest2githubᚗcomᚋgopherexᚋprotocᚑgenᚑgoᚑgraphqlᚋexampleᚋgenᚐGetEverythingRequest(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["input"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_getThing_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input",
+		func(ctx context.Context, v any) (gen.GetThingRequest, error) {
+			return ec.unmarshalNGetThingRequest2githubᚗcomᚋgopherexᚋprotocᚑgenᚑgoᚑgraphqlᚋexampleᚋgenᚐGetThingRequest(ctx, v)
 		})
 	if err != nil {
 		return nil, err
@@ -3013,6 +3083,38 @@ func (ec *executionContext) fieldContext_GetScalarsResponse_repeateds(_ context.
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return ec.childFields_RepeatedScalars(ctx, field)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _GetThingResponse_thing(ctx context.Context, field graphql.CollectedField, obj *gen.GetThingResponse) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_GetThingResponse_thing(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Thing, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *gen.Thing) graphql.Marshaler {
+			return ec.marshalORenamedThing2ᚖgithubᚗcomᚋgopherexᚋprotocᚑgenᚑgoᚑgraphqlᚋexampleᚋgenᚐThing(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_GetThingResponse_thing(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "GetThingResponse",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_RenamedThing(ctx, field)
 		},
 	}
 	return fc, nil
@@ -4256,6 +4358,50 @@ func (ec *executionContext) fieldContext_Query_ping(_ context.Context, field gra
 	return fc, nil
 }
 
+func (ec *executionContext) _Query_getThing(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Query_getThing(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Query().GetThing(ctx, fc.Args["input"].(gen.GetThingRequest))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *gen.GetThingResponse) graphql.Marshaler {
+			return ec.marshalNGetThingResponse2ᚖgithubᚗcomᚋgopherexᚋprotocᚑgenᚑgoᚑgraphqlᚋexampleᚋgenᚐGetThingResponse(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Query_getThing(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_GetThingResponse(ctx, field)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_getThing_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Query___type(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -4330,6 +4476,29 @@ func (ec *executionContext) fieldContext_Query___schema(_ context.Context, field
 		},
 	}
 	return fc, nil
+}
+
+func (ec *executionContext) _RenamedThing_renamedKeep(ctx context.Context, field graphql.CollectedField, obj *gen.Thing) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_RenamedThing_renamedKeep(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Keep, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_RenamedThing_renamedKeep(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("RenamedThing", field, false, false, errors.New("field of type String does not have child fields"))
 }
 
 func (ec *executionContext) _RepeatedScalars_fieldDouble(ctx context.Context, field graphql.CollectedField, obj *gen.RepeatedScalars) (ret graphql.Marshaler) {
@@ -7048,6 +7217,36 @@ func (ec *executionContext) unmarshalInputGetScalarsRequest(ctx context.Context,
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputGetThingRequest(ctx context.Context, obj any) (gen.GetThingRequest, error) {
+	var it gen.GetThingRequest
+	if obj == nil {
+		return it, nil
+	}
+
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"id"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "id":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("id"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Id = data
+		}
+	}
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputSearchRequest(ctx context.Context, obj any) (pbgql.SearchRequestInput, error) {
 	var it pbgql.SearchRequestInput
 	if obj == nil {
@@ -7726,6 +7925,42 @@ func (ec *executionContext) _GetScalarsResponse(ctx context.Context, sel ast.Sel
 			out.Values[i] = ec._GetScalarsResponse_optionals(ctx, field, obj)
 		case "repeateds":
 			out.Values[i] = ec._GetScalarsResponse_repeateds(ctx, field, obj)
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(min(len(deferred), math.MaxInt32)))
+
+	for label, dfs := range deferred {
+		ec.ProcessDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var getThingResponseImplementors = []string{"GetThingResponse"}
+
+func (ec *executionContext) _GetThingResponse(ctx context.Context, sel ast.SelectionSet, obj *gen.GetThingResponse) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, getThingResponseImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("GetThingResponse")
+		case "thing":
+			out.Values[i] = ec._GetThingResponse_thing(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -8924,6 +9159,28 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "getThing":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_getThing(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
 		case "__type":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Query___type(ctx, field)
@@ -8932,6 +9189,45 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Query___schema(ctx, field)
 			})
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(min(len(deferred), math.MaxInt32)))
+
+	for label, dfs := range deferred {
+		ec.ProcessDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var renamedThingImplementors = []string{"RenamedThing"}
+
+func (ec *executionContext) _RenamedThing(ctx context.Context, sel ast.SelectionSet, obj *gen.Thing) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, renamedThingImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("RenamedThing")
+		case "renamedKeep":
+			out.Values[i] = ec._RenamedThing_renamedKeep(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -10413,6 +10709,25 @@ func (ec *executionContext) marshalNGetScalarsResponse2ᚖgithubᚗcomᚋgophere
 	return ec._GetScalarsResponse(ctx, sel, v)
 }
 
+func (ec *executionContext) unmarshalNGetThingRequest2githubᚗcomᚋgopherexᚋprotocᚑgenᚑgoᚑgraphqlᚋexampleᚋgenᚐGetThingRequest(ctx context.Context, v any) (gen.GetThingRequest, error) {
+	res, err := ec.unmarshalInputGetThingRequest(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNGetThingResponse2githubᚗcomᚋgopherexᚋprotocᚑgenᚑgoᚑgraphqlᚋexampleᚋgenᚐGetThingResponse(ctx context.Context, sel ast.SelectionSet, v gen.GetThingResponse) graphql.Marshaler {
+	return ec._GetThingResponse(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNGetThingResponse2ᚖgithubᚗcomᚋgopherexᚋprotocᚑgenᚑgoᚑgraphqlᚋexampleᚋgenᚐGetThingResponse(ctx context.Context, sel ast.SelectionSet, v *gen.GetThingResponse) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._GetThingResponse(ctx, sel, v)
+}
+
 func (ec *executionContext) unmarshalNInt2int(ctx context.Context, v any) (int, error) {
 	res, err := graphql.UnmarshalInt(v)
 	return res, graphql.ErrorOnPath(ctx, err)
@@ -11280,6 +11595,13 @@ func (ec *executionContext) marshalOOuter_Inner_DeepInner2ᚖgithubᚗcomᚋgoph
 		return graphql.Null
 	}
 	return ec._Outer_Inner_DeepInner(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalORenamedThing2ᚖgithubᚗcomᚋgopherexᚋprotocᚑgenᚑgoᚑgraphqlᚋexampleᚋgenᚐThing(ctx context.Context, sel ast.SelectionSet, v *gen.Thing) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._RenamedThing(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalORepeatedScalars2ᚖgithubᚗcomᚋgopherexᚋprotocᚑgenᚑgoᚑgraphqlᚋexampleᚋgenᚐRepeatedScalars(ctx context.Context, sel ast.SelectionSet, v *gen.RepeatedScalars) graphql.Marshaler {
