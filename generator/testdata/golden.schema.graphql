@@ -90,6 +90,7 @@ input EchoRequest {
   book: BookInput
   genre: Genre!
   note: String
+  settings: Container_SettingsInput
 }
 input BookInput {
   id: String!
@@ -101,6 +102,7 @@ input BookInput {
   author: AuthorInput
 }
 input AuthorInput { name: String! }
+input Container_SettingsInput { _empty: Boolean @goField(forceResolver: true) }
 input AddBookRequest { book: BookInput }
 input UpsertBookRequest { book: BookInput }
 input WatchRequest { genre: Genre! }

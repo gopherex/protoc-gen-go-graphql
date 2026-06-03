@@ -49,6 +49,7 @@ type ResolverRoot interface {
 	SearchResponseResultBook() SearchResponseResultBookResolver
 	Subscription() SubscriptionResolver
 	WKTMessage() WKTMessageResolver
+	Container_SettingsInput() Container_SettingsInputResolver
 }
 
 type DirectiveRoot struct {
@@ -374,6 +375,10 @@ type WKTMessageResolver interface {
 	Struct(ctx context.Context, obj *gen.WKTMessage) (any, error)
 	Value(ctx context.Context, obj *gen.WKTMessage) (any, error)
 	ListValue(ctx context.Context, obj *gen.WKTMessage) (any, error)
+}
+
+type Container_SettingsInputResolver interface {
+	Empty(ctx context.Context, obj *gen.Container_Settings, data *bool) error
 }
 
 type executableSchema graphql.ExecutableSchemaState[ResolverRoot, DirectiveRoot, ComplexityRoot]
@@ -1301,6 +1306,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputAddBookRequest,
 		ec.unmarshalInputAuthorInput,
 		ec.unmarshalInputBookInput,
+		ec.unmarshalInputContainer_SettingsInput,
 		ec.unmarshalInputEchoRequest,
 		ec.unmarshalInputGetEverythingRequest,
 		ec.unmarshalInputGetScalarsRequest,
@@ -1495,6 +1501,7 @@ input EchoRequest {
   book: BookInput
   genre: Genre!
   note: String
+  settings: Container_SettingsInput
 }
 input BookInput {
   id: String!
@@ -1506,6 +1513,7 @@ input BookInput {
   author: AuthorInput
 }
 input AuthorInput { name: String! }
+input Container_SettingsInput { _empty: Boolean @goField(forceResolver: true) }
 input AddBookRequest { book: BookInput }
 input UpsertBookRequest { book: BookInput }
 input WatchRequest { genre: Genre! }
@@ -7171,6 +7179,38 @@ func (ec *executionContext) unmarshalInputBookInput(ctx context.Context, obj any
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputContainer_SettingsInput(ctx context.Context, obj any) (gen.Container_Settings, error) {
+	var it gen.Container_Settings
+	if obj == nil {
+		return it, nil
+	}
+
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"_empty"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "_empty":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("_empty"))
+			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			if err = ec.Resolvers.Container_SettingsInput().Empty(ctx, &it, data); err != nil {
+				return it, err
+			}
+		}
+	}
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputEchoRequest(ctx context.Context, obj any) (gen.EchoRequest, error) {
 	var it gen.EchoRequest
 	if obj == nil {
@@ -7182,7 +7222,7 @@ func (ec *executionContext) unmarshalInputEchoRequest(ctx context.Context, obj a
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"book", "genre", "note"}
+	fieldsInOrder := [...]string{"book", "genre", "note", "settings"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -7210,6 +7250,13 @@ func (ec *executionContext) unmarshalInputEchoRequest(ctx context.Context, obj a
 				return it, err
 			}
 			it.Note = data
+		case "settings":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("settings"))
+			data, err := ec.unmarshalOContainer_SettingsInput2ᚖgithubᚗcomᚋgopherexᚋprotocᚑgenᚑgoᚑgraphqlᚋexampleᚋgenᚐContainer_Settings(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Settings = data
 		}
 	}
 	return it, nil
@@ -11487,6 +11534,14 @@ func (ec *executionContext) marshalOBytesValue2ᚖgoogleᚗgolangᚗorgᚋprotob
 	_ = ctx
 	res := pbgql.MarshalBytesValue(v)
 	return res
+}
+
+func (ec *executionContext) unmarshalOContainer_SettingsInput2ᚖgithubᚗcomᚋgopherexᚋprotocᚑgenᚑgoᚑgraphqlᚋexampleᚋgenᚐContainer_Settings(ctx context.Context, v any) (*gen.Container_Settings, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := ec.unmarshalInputContainer_SettingsInput(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
 func (ec *executionContext) unmarshalODoubleValue2ᚖgoogleᚗgolangᚗorgᚋprotobufᚋtypesᚋknownᚋwrapperspbᚐDoubleValue(ctx context.Context, v any) (*wrapperspb.DoubleValue, error) {

@@ -313,6 +313,12 @@ message EchoRequest {
   Book           book   = 1;
   Genre          genre  = 2;
   optional string note  = 3;
+  Container.Settings settings = 4;
+}
+
+// Container.Settings: empty nested message used as a nested GraphQL input.
+message Container {
+  message Settings {}
 }
 message EchoResponse { Book book = 1; }
 

@@ -71,6 +71,17 @@ func (m *mockLibrary) AddBook(_ context.Context, req *pb.AddBookRequest) (*pb.Ad
 	return &pb.AddBookResponse{Book: req.Book}, nil
 }
 
+func (m *mockLibrary) EchoInput(_ context.Context, req *pb.EchoRequest) (*pb.EchoResponse, error) {
+	// Report whether the empty nested input (Container.Settings) round-tripped to a
+	// non-nil pb message. Encodes presence into the response Book title so the test
+	// can assert it without extra response fields.
+	title := "settings-nil"
+	if req.GetSettings() != nil {
+		title = "settings-set"
+	}
+	return &pb.EchoResponse{Book: &pb.Book{Title: title}}, nil
+}
+
 func (m *mockLibrary) WatchItems(req *pb.WatchRequest, srv pb.Library_WatchItemsServer) error {
 	events := []*pb.WatchEvent{
 		{Book: &pb.Book{Id: "w1", Title: "Event One"}, At: timestamppb.New(time.Unix(1700000001, 0).UTC())},
@@ -324,6 +335,32 @@ func TestIntegration_AddBook(t *testing.T) {
 	}
 	if b.Genre != "NONFICTION" {
 		t.Errorf("genre = %q, want NONFICTION", b.Genre)
+	}
+}
+
+// TestIntegration_EmptyNestedInput sends an empty nested input object
+// (Container.Settings has no fields) and asserts it round-trips to a non-nil pb
+// message via the no-op placeholder resolver.
+func TestIntegration_EmptyNestedInput(t *testing.T) {
+	ts := httptest.NewServer(newIntegrationServer())
+	defer ts.Close()
+
+	var data struct {
+		EchoInput struct {
+			Book struct {
+				Title string `json:"title"`
+			} `json:"book"`
+		} `json:"echoInput"`
+	}
+
+	gqlPost(t, ts.URL, `mutation {
+		echoInput(input: {genre: GENRE_UNSPECIFIED, settings: {}}) {
+			book { title }
+		}
+	}`, nil, &data)
+
+	if got := data.EchoInput.Book.Title; got != "settings-set" {
+		t.Errorf("title = %q, want settings-set (empty nested input should round-trip to non-nil pb)", got)
 	}
 }
 

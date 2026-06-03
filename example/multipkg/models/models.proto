@@ -1,0 +1,9 @@
+syntax = "proto3";
+package multipkg.models.v1;
+option go_package = "github.com/gopherex/protoc-gen-go-graphql/example/multipkg/models;models";
+
+// Message-only package (no services). Imported by the API package below.
+message Widget {
+  string id = 1;
+  string name = 2;
+}

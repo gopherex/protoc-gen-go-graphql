@@ -1,0 +1,12 @@
+directive @goField(forceResolver: Boolean, name: String) on FIELD_DEFINITION | INPUT_FIELD_DEFINITION
+
+input GetWidgetRequest { id: String! }
+
+type GetWidgetResponse { widget: Widget }
+type Widget {
+  id: String!
+  name: String!
+}
+
+type Query { getWidget(input: GetWidgetRequest!): GetWidgetResponse! }
+

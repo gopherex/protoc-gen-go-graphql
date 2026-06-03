@@ -1,0 +1,15 @@
+syntax = "proto3";
+package multipkg.api.v1;
+option go_package = "github.com/gopherex/protoc-gen-go-graphql/example/multipkg/api;api";
+
+import "graphqlopt/graphql.proto";
+import "multipkg/models/models.proto";
+
+service WidgetService {
+  rpc GetWidget(GetWidgetRequest) returns (GetWidgetResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+}
+
+message GetWidgetRequest { string id = 1; }
+message GetWidgetResponse { multipkg.models.v1.Widget widget = 1; }

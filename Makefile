@@ -70,6 +70,37 @@ gen-test-singlepass: build
 		--go-graphql_opt=paths=source_relative \
 		--go-graphql_opt=single_pass=true \
 		$(EXAMPLE_DIR)/golden.proto
+	# Cross-package single_pass: an API package whose messages import a SEPARATE,
+	# pre-existing in-module pb package (multipkg/models). Exercises that single_pass
+	# copies local imported pb packages into its throwaway module (else `go list`
+	# fails), and that a message-only package (no services) is skipped.
+	# 1. Generate the message-only dep pb to disk first (the "already existing" pkg).
+	protoc \
+		-I $(EXAMPLE_DIR) \
+		-I $(CURDIR) \
+		-I $(WKT_INC) \
+		--plugin=protoc-gen-go=$(CURDIR)/bin/protoc-gen-go \
+		--plugin=protoc-gen-go-graphql=$(CURDIR)/bin/protoc-gen-go-graphql \
+		--go_out=$(EXAMPLE_DIR) \
+		--go_opt=paths=source_relative \
+		--go-graphql_out=$(EXAMPLE_DIR) \
+		--go-graphql_opt=paths=source_relative \
+		$(EXAMPLE_DIR)/multipkg/models/models.proto
+	# 2. Generate the API package in single_pass mode (imports multipkg/models).
+	protoc \
+		-I $(EXAMPLE_DIR) \
+		-I $(CURDIR) \
+		-I $(WKT_INC) \
+		--plugin=protoc-gen-go=$(CURDIR)/bin/protoc-gen-go \
+		--plugin=protoc-gen-go-grpc=$(CURDIR)/bin/protoc-gen-go-grpc \
+		--plugin=protoc-gen-go-graphql=$(CURDIR)/bin/protoc-gen-go-graphql \
+		--go_out=$(EXAMPLE_DIR) \
+		--go_opt=paths=source_relative \
+		--go-grpc_out=$(EXAMPLE_DIR) \
+		--go-grpc_opt=paths=source_relative \
+		--go-graphql_out=$(EXAMPLE_DIR) \
+		--go-graphql_opt=paths=source_relative,single_pass=true \
+		$(EXAMPLE_DIR)/multipkg/api/api.proto
 
 test:
 	out=$$(gofmt -l .)

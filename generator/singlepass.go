@@ -202,6 +202,42 @@ func (g *Generator) runSinglePass(
 		}
 	}
 
+	// --- 5b. Copy pre-existing in-module pb packages that the generated code imports. ---
+	// The freshly generated pb (the proto files in THIS protoc request) is written
+	// above. But those packages typically import other pb packages from the SAME
+	// module that are NOT part of this request — e.g. an API proto whose messages
+	// reference internal/proto/.../{monitor,deployment,models}. Those packages
+	// already exist on disk in the user's module; the throwaway tmp module does not
+	// have them, so `go list`/gqlgen would fail to resolve them. Copy their source
+	// dirs over. protoc always includes the full transitive import closure in the
+	// request, so g.Plugin.Files holds every imported (non-generated) proto file.
+	copiedRelDirs := map[string]bool{pbRelDir: true} // pbRelDir is generated, not copied
+	for _, pluginFile := range g.Plugin.Files {
+		if pluginFile.Generate {
+			continue
+		}
+		importPath := string(pluginFile.GoImportPath)
+		// Only in-module packages live on the user's disk; WKT and other external
+		// deps are resolved from the module cache via go.mod.
+		if importPath == "" || !strings.HasPrefix(importPath, modulePrefix) {
+			continue
+		}
+		relDir := strings.TrimPrefix(importPath, modulePrefix)
+		if copiedRelDirs[relDir] {
+			continue
+		}
+		copiedRelDirs[relDir] = true
+		src := filepath.Join(goModDir, filepath.FromSlash(relDir))
+		if fi, statErr := os.Stat(src); statErr != nil || !fi.IsDir() {
+			// Not on disk (e.g. a dependency that has never been generated). Let the
+			// subsequent `go list` surface a precise, actionable error.
+			continue
+		}
+		if err := copyDir(src, filepath.Join(tmpRoot, filepath.FromSlash(relDir))); err != nil {
+			return fmt.Errorf("single_pass: copy in-module pb package %s: %w", relDir, err)
+		}
+	}
+
 	// --- 6. Write gqlapi artifacts into tmp. ---
 	// gqlapi dir: tmp/<pbRelDir>/gqlapi/
 	outDir := g.Settings.OutDir

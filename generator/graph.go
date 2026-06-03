@@ -112,6 +112,17 @@ func graphFromFiles(files []*protogen.File) *graph {
 	return g
 }
 
+// graphHasOperations reports whether the graph has at least one non-skipped
+// service method, i.e. at least one GraphQL Query/Mutation/Subscription root field.
+func graphHasOperations(g *graph) bool {
+	for _, svc := range g.Services {
+		if len(includedMethods(svc)) > 0 {
+			return true
+		}
+	}
+	return false
+}
+
 // includedMethods returns the methods of a service that are not skipped.
 func includedMethods(svc *protogen.Service) []*protogen.Method {
 	var out []*protogen.Method

@@ -90,6 +90,17 @@ func (g *Generator) generateFiles(files []*protogen.File) error {
 		return err
 	}
 
+	// Skip packages with no enabled GraphQL operations. A proto that defines only
+	// messages (no services), or whose every service/method is skipped via
+	// graphqlopt.service.skip / graphqlopt.method.skip, has no Query/Mutation/
+	// Subscription root — there is nothing to serve. Emitting a gqlapi for it would
+	// produce a rootless schema that gqlgen rejects (and, in single_pass mode, a
+	// pointless `go list` over imported pb packages). Such message-only packages
+	// are still imported and bound by the API packages that DO have services.
+	if !graphHasOperations(graph) {
+		return nil
+	}
+
 	// Derive import paths from the file descriptor.
 	// f.GoImportPath is the pb package import path (e.g. "github.com/.../example/gen").
 	pbImport := string(f.GoImportPath)

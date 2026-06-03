@@ -19,7 +19,10 @@ type Resolver struct {
 	Library pb.LibraryServer
 }
 
-func (r *Resolver) Book() exec.BookResolver             { return bookResolver{r} }
+func (r *Resolver) Book() exec.BookResolver { return bookResolver{r} }
+func (r *Resolver) Container_SettingsInput() exec.Container_SettingsInputResolver {
+	return container_SettingsInputResolver{r}
+}
 func (r *Resolver) Everything() exec.EverythingResolver { return everythingResolver{r} }
 func (r *Resolver) MapMessage() exec.MapMessageResolver { return mapMessageResolver{r} }
 func (r *Resolver) MultiOneof() exec.MultiOneofResolver { return multiOneofResolver{r} }
@@ -40,6 +43,7 @@ func (r *Resolver) Mutation() exec.MutationResolver         { return mutationRes
 func (r *Resolver) Subscription() exec.SubscriptionResolver { return subscriptionResolver{r} }
 
 type bookResolver struct{ *Resolver }
+type container_SettingsInputResolver struct{ *Resolver }
 type everythingResolver struct{ *Resolver }
 type mapMessageResolver struct{ *Resolver }
 type multiOneofResolver struct{ *Resolver }
@@ -240,6 +244,11 @@ func (r wKTMessageResolver) ListValue(ctx context.Context, obj *pb.WKTMessage) (
 // Ok is the placeholder field resolver for the empty message PingResponse.
 func (r pingResponseResolver) Ok(ctx context.Context, obj *pb.PingResponse) (bool, error) {
 	return true, nil
+}
+
+// Empty is the no-op placeholder resolver for the empty input Container_SettingsInput.
+func (r container_SettingsInputResolver) Empty(ctx context.Context, obj *pb.Container_Settings, data *bool) error {
+	return nil
 }
 
 // Result resolves the oneof field "result" as a SearchResponseResult union.

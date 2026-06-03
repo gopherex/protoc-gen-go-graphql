@@ -13,6 +13,8 @@ layout.
 | file | `schema.graphql` + `gqlgen.yml` | one set of artifacts per processed file |
 | message (response) | output `type` | bound directly to `*pb.Msg` via gqlgen autobind |
 | message (request) | `input` type | same `*pb.Msg` Go type reused; request and response bind to the same struct |
+| empty message (output / nested) | `type X { ok: Boolean! }` / `input XInput { _empty: Boolean }` | GraphQL forbids fieldless types, so a placeholder field is emitted (`@goField(forceResolver:true)`) with a no-op resolver; empty top-level requests instead drop the input arg entirely |
+| message-only / all-skipped package | _no `gqlapi` emitted_ | a file with no enabled service method has no Query/Mutation/Subscription root; it is skipped (still importable/bindable by API packages that reference it) |
 | enum | `enum` (member names = proto value names) | e.g. `FICTION`, `GENRE_UNSPECIFIED`; marshal/unmarshal adapters in `pbgql` |
 | unary rpc, `NO_SIDE_EFFECTS` | `Query` field | default from builtin `idempotency_level` |
 | unary rpc, `IDEMPOTENT` or `IDEMPOTENCY_UNKNOWN` | `Mutation` field | derived from builtin `idempotency_level` |
@@ -115,6 +117,14 @@ invocation (multiple flags use multiple `--go-graphql_opt=` arguments).
 | `paths` | _(empty)_ | Path mode; set to `source_relative` for source-relative output paths |
 | `out_dir` | `gqlapi` | Subpackage directory name and Go package name for generated GraphQL code. Override to rename the `gqlapi/` subdirectory and package. |
 | `runner` | `github.com/gopherex/protoc-gen-go-graphql/cmd/gqlgenrun` | Import path of the `go:generate` runner binary. Override for forks or vendored copies. |
+| `single_pass` | `false` | Run gqlgen inside the plugin (no separate `go generate` step); emits `exec/exec.go` + `models_gen.go` directly. Requires `protoc-gen-go` on `PATH`. |
+
+`single_pass` runs gqlgen against a throwaway module assembled from the user's
+`go.mod`. It regenerates the pb for the proto files in the current protoc request
+and **copies any other in-module pb packages those messages import** (e.g. shared
+`models`/`deployment` packages) from the user's source tree, so they must already
+be generated on disk. Packages whose every service is skipped (or that define only
+messages) are skipped entirely — no `go list`/gqlgen runs for them.
 
 Example — rename the output package to `graphql`:
 

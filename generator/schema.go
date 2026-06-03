@@ -721,11 +721,11 @@ func emitNestedInputs(sb *strings.Builder, msg *protogen.Message, msgInfo map[st
 			continue
 		}
 		emitted[childName] = true
-		// Fail-fast: empty nested inputs are not supported (they would produce
-		// an invalid GraphQL input type and cannot be used as operation arguments).
-		if isEmptyMessage(field.Message) {
-			return fmt.Errorf("message %s is empty and used as a nested GraphQL input; empty nested inputs are not supported", childName)
-		}
+		// Empty nested inputs are supported via a placeholder field: emitInputBlock
+		// emits `input X { _empty: Boolean @goField(forceResolver: true) }` for a
+		// fieldless input. GraphQL requires every input object to have at least one
+		// field; the placeholder is a no-op resolver (see buildResolvers) and is
+		// dropped on the way to the empty pb message.
 		emitInputBlock(sb, field.Message, childName+"Input", msgInfo, oneofsByMsg)
 		// Recurse into nested types.
 		if err := emitNestedInputs(sb, field.Message, msgInfo, oneofsByMsg, emitted); err != nil {
@@ -740,7 +740,11 @@ func emitNestedInputs(sb *strings.Builder, msg *protogen.Message, msgInfo map[st
 func emitInputBlock(sb *strings.Builder, msg *protogen.Message, typeName string, msgInfo map[string]*messageInfo, oneofsByMsg map[string][]oneofInfo) {
 	fields := inputFields(msg, msgInfo, oneofsByMsg)
 	if len(fields) == 0 {
-		fmt.Fprintf(sb, "input %s { _: Boolean }\n", typeName)
+		// Fieldless input: GraphQL requires every input object to have at least one
+		// field, so emit a placeholder. `forceResolver` makes gqlgen route it through
+		// a resolver method (a no-op generated in buildResolvers) instead of trying to
+		// bind it to a (nonexistent) field on the empty pb message.
+		fmt.Fprintf(sb, "input %s { _empty: Boolean @goField(forceResolver: true) }\n", typeName)
 		return
 	}
 	if len(fields) == 1 {

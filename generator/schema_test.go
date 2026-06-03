@@ -182,6 +182,33 @@ func TestBuildSchema_EmptyMessages(t *testing.T) {
 	if strings.Contains(schema, "input PingRequest") {
 		t.Errorf("schema must not emit an input type for empty PingRequest\ngot:\n%s", schema)
 	}
+
+	// Empty NESTED input (Container.Settings, used by EchoRequest.settings): must
+	// emit a placeholder input object with a forceResolver field (not fail-fast).
+	emptyNestedInput := "input Container_SettingsInput { _empty: Boolean @goField(forceResolver: true) }"
+	if !strings.Contains(schema, emptyNestedInput) {
+		t.Errorf("schema missing empty nested input placeholder %q\ngot:\n%s", emptyNestedInput, schema)
+	}
+}
+
+// TestBuildResolvers_EmptyNestedInput asserts that an empty nested input message
+// gets a no-op placeholder resolver satisfying the gqlgen input resolver interface.
+func TestBuildResolvers_EmptyNestedInput(t *testing.T) {
+	goldenFile := loadGoldenProtoFile(t)
+	pbImport := "github.com/gopherex/protoc-gen-go-graphql/example/gen"
+	resolvers := buildResolvers(goldenFile, "gqlapi",
+		pbImport, pbImport+"/gqlapi/pbgql",
+		pbImport+"/gqlapi/exec", "github.com/gopherex/protoc-gen-go-graphql/graphqlpb")
+
+	for _, want := range []string{
+		"func (r *Resolver) Container_SettingsInput() exec.Container_SettingsInputResolver",
+		"type container_SettingsInputResolver struct{ *Resolver }",
+		"func (r container_SettingsInputResolver) Empty(ctx context.Context, obj *pb.Container_Settings, data *bool) error {",
+	} {
+		if !strings.Contains(resolvers, want) {
+			t.Errorf("resolvers missing %q\ngot:\n%s", want, resolvers)
+		}
+	}
 }
 
 // TestBuildSchema_IdempotentDirective asserts that the schema contains the

@@ -54,6 +54,7 @@ models:
   GetScalarsRequest:    { model: github.com/gopherex/protoc-gen-go-graphql/example/gen.GetScalarsRequest }
   GetScalarsResponse:    { model: github.com/gopherex/protoc-gen-go-graphql/example/gen.GetScalarsResponse }
   EchoRequest:    { model: github.com/gopherex/protoc-gen-go-graphql/example/gen.EchoRequest }
+  Container_SettingsInput:    { model: github.com/gopherex/protoc-gen-go-graphql/example/gen.Container_Settings }
   EchoResponse:    { model: github.com/gopherex/protoc-gen-go-graphql/example/gen.EchoResponse }
   AddBookRequest:    { model: github.com/gopherex/protoc-gen-go-graphql/example/gen.AddBookRequest }
   AddBookResponse:    { model: github.com/gopherex/protoc-gen-go-graphql/example/gen.AddBookResponse }
