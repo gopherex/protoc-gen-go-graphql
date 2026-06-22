@@ -5,6 +5,7 @@ go 1.25.0
 require (
 	github.com/99designs/gqlgen v0.17.90
 	github.com/gorilla/websocket v1.5.0
+	github.com/graphql-go/graphql v0.8.1
 	github.com/vektah/gqlparser/v2 v2.5.33
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20260226221140-a57be14db171
 	google.golang.org/grpc v1.81.1
