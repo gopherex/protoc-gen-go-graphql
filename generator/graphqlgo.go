@@ -15,15 +15,15 @@ import (
 // set. This is the graphql-go backend (single protoc pass, no gqlgen).
 func buildGraphQLGoGraph(g *graph, outPkg, pbImport, runtimeImport string) (string, error) {
 	e := &gqlEmitter{
-		g:           g,
-		runtime:     "graphqlrt",
-		msgInfo:     analyzeMessagesGraph(g),
-		pbAliases:   map[string]string{pbImport: "pb"},
-		pbImport:    pbImport,
-		typeVars:    map[string]string{},
-		scalarVar:   map[string]string{},
-		wrapperBox:  map[string]scalarWrapperBox{},
-		neededImps:  map[string]bool{},
+		g:          g,
+		runtime:    "graphqlrt",
+		msgInfo:    analyzeMessagesGraph(g),
+		pbAliases:  map[string]string{pbImport: "pb"},
+		pbImport:   pbImport,
+		typeVars:   map[string]string{},
+		scalarVar:  map[string]string{},
+		wrapperBox: map[string]scalarWrapperBox{},
+		neededImps: map[string]bool{},
 	}
 	e.ois = collectOneofsGraph(g, e.msgInfo)
 	e.oneofsByMsg = map[string][]oneofInfo{}
@@ -34,25 +34,25 @@ func buildGraphQLGoGraph(g *graph, outPkg, pbImport, runtimeImport string) (stri
 }
 
 type scalarWrapperBox struct {
-	goType   string // the Go struct name emitted for this scalar union variant wrapper
-	valGo    string // Go type of the Value field, e.g. "string"
-	objVar   string // graphql object var
-	gqlName  string
+	goType  string // the Go struct name emitted for this scalar union variant wrapper
+	valGo   string // Go type of the Value field, e.g. "string"
+	objVar  string // graphql object var
+	gqlName string
 }
 
 type gqlEmitter struct {
-	g          *graph
-	runtime    string
-	msgInfo    map[string]*messageInfo
-	ois        []oneofInfo
-	oneofsByMsg map[string][]oneofInfo
-	pbImport   string
-	pbAliases  map[string]string
-	extraImps  []string
-	typeVars   map[string]string // gqlName → object/enum/union var
-	scalarVar  map[string]string // input object var by gqlName
-	wrapperBox map[string]scalarWrapperBox // WrapperGoName → box
-	neededImps map[string]bool
+	g            *graph
+	runtime      string
+	msgInfo      map[string]*messageInfo
+	ois          []oneofInfo
+	oneofsByMsg  map[string][]oneofInfo
+	pbImport     string
+	pbAliases    map[string]string
+	extraImps    []string
+	typeVars     map[string]string           // gqlName → object/enum/union var
+	scalarVar    map[string]string           // input object var by gqlName
+	wrapperBox   map[string]scalarWrapperBox // WrapperGoName → box
+	neededImps   map[string]bool
 	declaredVars []string // all declared graphql type vars (for cfg.Types registration)
 }
 
@@ -85,10 +85,10 @@ func (e *gqlEmitter) qual(id protogen.GoIdent) string {
 }
 
 // objVar/enumVar/unionVar/inputVar return deterministic Go var names.
-func objVar(gql string) string    { return "o_" + sanitizeIdent(gql) }
-func enumVar(gql string) string   { return "e_" + sanitizeIdent(gql) }
-func unionVar(gql string) string  { return "u_" + sanitizeIdent(gql) }
-func inputVar(gql string) string  { return "i_" + sanitizeIdent(gql) }
+func objVar(gql string) string   { return "o_" + sanitizeIdent(gql) }
+func enumVar(gql string) string  { return "e_" + sanitizeIdent(gql) }
+func unionVar(gql string) string { return "u_" + sanitizeIdent(gql) }
+func inputVar(gql string) string { return "i_" + sanitizeIdent(gql) }
 
 func sanitizeIdent(s string) string {
 	var b strings.Builder
