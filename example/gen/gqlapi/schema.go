@@ -4,9 +4,9 @@ package gqlapi
 import (
 	"context"
 
-	"github.com/graphql-go/graphql"
-	graphqlrt "github.com/gopherex/protoc-gen-go-graphql/graphqlrt"
 	pb "github.com/gopherex/protoc-gen-go-graphql/example/gen"
+	graphqlrt "github.com/gopherex/protoc-gen-go-graphql/graphqlrt"
+	"github.com/graphql-go/graphql"
 	pb1 "google.golang.org/protobuf/types/known/timestamppb"
 )
 

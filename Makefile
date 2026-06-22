@@ -13,15 +13,15 @@ EXAMPLE_OUT_DIR := $(EXAMPLE_DIR)/gen
 # Override if your protoc bundles them elsewhere: make WKT_INC=/usr/local/include ...
 WKT_INC ?= /usr/include
 
-.PHONY: help build gen-opts gen-test gen-test-singlepass test tidy release integration-test
+.PHONY: help build gen-opts gen-test test tidy release
 
 help:
-	@echo "make build        - build bin/protoc-gen-go-graphql (+ protoc-gen-go, protoc-gen-go-grpc)"
-	@echo "make gen-opts     - regenerate graphqlopt/graphql.pb.go from graphqlopt/graphql.proto (easyp)"
-	@echo "make gen-test     - run the full two-phase pipeline against example/golden.proto"
-	@echo "make test         - gofmt check + go vet + go test (like CI)"
-	@echo "make tidy         - go mod tidy"
-	@echo "make release      - interactive tag + push (vX.Y.Z); triggers the Release workflow"
+	@echo "make build     - build bin/protoc-gen-go-graphql (+ protoc-gen-go, protoc-gen-go-grpc)"
+	@echo "make gen-opts  - regenerate graphqlopt/graphql.pb.go from graphqlopt/graphql.proto (easyp)"
+	@echo "make gen-test  - regenerate the example schemas with the single-pass backend"
+	@echo "make test      - gofmt check + go vet + go test (like CI)"
+	@echo "make tidy      - go mod tidy"
+	@echo "make release   - interactive tag + push (vX.Y.Z); triggers the Release workflow"
 
 build:
 	go build -o $(CURDIR)/bin/protoc-gen-go-graphql ./
@@ -29,87 +29,38 @@ build:
 	go build -o $(CURDIR)/bin/protoc-gen-go-grpc google.golang.org/grpc/cmd/protoc-gen-go-grpc
 
 # Regenerate graphqlopt/graphql.pb.go from graphqlopt/graphql.proto using easyp.
-# Builds protoc-gen-go into bin/ first and prepends it to PATH so easyp can find it.
 gen-opts: build
 	PATH="$(CURDIR)/bin:$$PATH" easyp generate
 
-gen-test: build
-	rm -rf $(EXAMPLE_OUT_DIR)
-	mkdir -p $(EXAMPLE_OUT_DIR)
-	protoc \
-		-I $(EXAMPLE_DIR) \
-		-I $(CURDIR) \
-		-I $(WKT_INC) \
-		--plugin=protoc-gen-go=$(CURDIR)/bin/protoc-gen-go \
-		--plugin=protoc-gen-go-grpc=$(CURDIR)/bin/protoc-gen-go-grpc \
-		--plugin=protoc-gen-go-graphql=$(CURDIR)/bin/protoc-gen-go-graphql \
-		--go_out=$(EXAMPLE_OUT_DIR) \
-		--go_opt=paths=source_relative \
-		--go-grpc_out=$(EXAMPLE_OUT_DIR) \
-		--go-grpc_opt=paths=source_relative \
-		--go-graphql_out=$(EXAMPLE_OUT_DIR) \
-		--go-graphql_opt=paths=source_relative \
-		$(EXAMPLE_DIR)/golden.proto
-	cd $(EXAMPLE_OUT_DIR) && go generate ./...
+# Single protoc pass (no gqlgen, no go:generate): the graphql-go backend emits one
+# schema.go per package building an executable *graphql.Schema.
+GO_PLUGINS := \
+	--plugin=protoc-gen-go=$(CURDIR)/bin/protoc-gen-go \
+	--plugin=protoc-gen-go-grpc=$(CURDIR)/bin/protoc-gen-go-grpc \
+	--plugin=protoc-gen-go-graphql=$(CURDIR)/bin/protoc-gen-go-graphql
 
-gen-test-singlepass: build
-	rm -rf $(EXAMPLE_OUT_DIR)
+gen-test: build
+	rm -rf $(EXAMPLE_OUT_DIR) $(EXAMPLE_DIR)/multipkg/api/gqlapi
 	mkdir -p $(EXAMPLE_OUT_DIR)
-	protoc \
-		-I $(EXAMPLE_DIR) \
-		-I $(CURDIR) \
-		-I $(WKT_INC) \
-		--plugin=protoc-gen-go=$(CURDIR)/bin/protoc-gen-go \
-		--plugin=protoc-gen-go-grpc=$(CURDIR)/bin/protoc-gen-go-grpc \
-		--plugin=protoc-gen-go-graphql=$(CURDIR)/bin/protoc-gen-go-graphql \
-		--go_out=$(EXAMPLE_OUT_DIR) \
-		--go_opt=paths=source_relative \
-		--go-grpc_out=$(EXAMPLE_OUT_DIR) \
-		--go-grpc_opt=paths=source_relative \
-		--go-graphql_out=$(EXAMPLE_OUT_DIR) \
-		--go-graphql_opt=paths=source_relative \
-		--go-graphql_opt=single_pass=true \
+	# golden: full surface (oneof unions, @oneOf inputs, subscriptions, scalars, WKT).
+	protoc -I $(EXAMPLE_DIR) -I $(CURDIR) -I $(WKT_INC) $(GO_PLUGINS) \
+		--go_out=$(EXAMPLE_OUT_DIR)         --go_opt=paths=source_relative \
+		--go-grpc_out=$(EXAMPLE_OUT_DIR)    --go-grpc_opt=paths=source_relative \
+		--go-graphql_out=$(EXAMPLE_OUT_DIR) --go-graphql_opt=paths=source_relative \
 		$(EXAMPLE_DIR)/golden.proto
-	# Cross-package single_pass: an API package whose messages import a SEPARATE,
-	# pre-existing in-module pb package (multipkg/models). Exercises that single_pass
-	# copies local imported pb packages into its throwaway module (else `go list`
-	# fails), and that a message-only package (no services) is skipped.
-	# 1. Generate the message-only dep pb to disk first (the "already existing" pkg).
-	protoc \
-		-I $(EXAMPLE_DIR) \
-		-I $(CURDIR) \
-		-I $(WKT_INC) \
-		--plugin=protoc-gen-go=$(CURDIR)/bin/protoc-gen-go \
-		--plugin=protoc-gen-go-graphql=$(CURDIR)/bin/protoc-gen-go-graphql \
-		--go_out=$(EXAMPLE_DIR) \
-		--go_opt=paths=source_relative \
-		--go-graphql_out=$(EXAMPLE_DIR) \
-		--go-graphql_opt=paths=source_relative \
-		$(EXAMPLE_DIR)/multipkg/models/models.proto
-	# 2. Generate the API package in single_pass mode (imports multipkg/models).
-	protoc \
-		-I $(EXAMPLE_DIR) \
-		-I $(CURDIR) \
-		-I $(WKT_INC) \
-		--plugin=protoc-gen-go=$(CURDIR)/bin/protoc-gen-go \
-		--plugin=protoc-gen-go-grpc=$(CURDIR)/bin/protoc-gen-go-grpc \
-		--plugin=protoc-gen-go-graphql=$(CURDIR)/bin/protoc-gen-go-graphql \
-		--go_out=$(EXAMPLE_DIR) \
-		--go_opt=paths=source_relative \
-		--go-grpc_out=$(EXAMPLE_DIR) \
-		--go-grpc_opt=paths=source_relative \
-		--go-graphql_out=$(EXAMPLE_DIR) \
-		--go-graphql_opt=paths=source_relative,single_pass=true \
-		$(EXAMPLE_DIR)/multipkg/api/api.proto
+	# multipkg: an API package whose response messages live in a SEPARATE in-module
+	# pb package (multipkg/models) — exercises cross-package type qualification.
+	protoc -I $(EXAMPLE_DIR) -I $(CURDIR) -I $(WKT_INC) $(GO_PLUGINS) \
+		--go_out=$(EXAMPLE_DIR)         --go_opt=paths=source_relative \
+		--go-grpc_out=$(EXAMPLE_DIR)    --go-grpc_opt=paths=source_relative \
+		--go-graphql_out=$(EXAMPLE_DIR) --go-graphql_opt=paths=source_relative \
+		$(EXAMPLE_DIR)/multipkg/models/models.proto $(EXAMPLE_DIR)/multipkg/api/api.proto
 
 test:
 	out=$$(gofmt -l .)
 	if [ -n "$$out" ]; then echo "gofmt needed:"; echo "$$out"; exit 1; fi
-	go vet ./generator/ ./graphqlpb/
-	go test ./generator/ ./graphqlpb/ ./example/...
-
-integration-test: gen-test
-	go test ./tests/...
+	go vet ./generator/ ./graphqlrt/
+	go test ./generator/ ./graphqlrt/ ./example/...
 
 tidy:
 	go mod tidy

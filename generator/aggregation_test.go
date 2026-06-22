@@ -109,7 +109,7 @@ service BetaAPI {
 	}
 }
 
-func TestBuildResolversQualifiesCrossPackageRPCMessages(t *testing.T) {
+func TestSchemaQualifiesCrossPackageRPCMessages(t *testing.T) {
 	plugin := loadProtoPlugin(t, map[string]string{
 		"common/common.proto": `syntax = "proto3";
 package test.common;
@@ -137,25 +137,26 @@ service CrossAPI {
 		t.Fatal("api/api.proto not found")
 	}
 
-	graph := graphFromFiles([]*protogen.File{apiFile})
-	resolvers := buildResolversGraph(
-		graph,
+	schema, err := buildGraphQLGoGraph(
+		graphFromFiles([]*protogen.File{apiFile}),
 		"gqlapi",
 		"example.test/gen/api",
-		"example.test/gen/api/gqlapi/pbgql",
-		"example.test/gen/api/gqlapi/exec",
-		"github.com/gopherex/protoc-gen-go-graphql/graphqlpb",
+		"github.com/gopherex/protoc-gen-go-graphql/graphqlrt",
 	)
-	if !strings.Contains(resolvers, `pb1 "example.test/gen/common"`) {
-		t.Fatalf("resolver missing external pb import:\n%s", resolvers)
+	if err != nil {
+		t.Fatalf("buildGraphQLGoGraph: %v", err)
 	}
-	if !strings.Contains(resolvers, "input pb1.ExternalRequest") ||
-		!strings.Contains(resolvers, "(*pb1.ExternalResponse, error)") {
-		t.Fatalf("resolver did not qualify cross-package RPC types:\n%s", resolvers)
+	// The cross-package response message gets its own aliased pb import and is
+	// qualified by it, not by the api package's "pb" alias.
+	if !strings.Contains(schema, `pb1 "example.test/gen/common"`) {
+		t.Fatalf("schema missing external pb import:\n%s", schema)
+	}
+	if !strings.Contains(schema, "*pb1.ExternalResponse") {
+		t.Fatalf("schema did not qualify cross-package RPC type:\n%s", schema)
 	}
 }
 
-func TestBuildSchemaEmptyInputUsesValidPlaceholder(t *testing.T) {
+func TestSchemaEmptyMessages(t *testing.T) {
 	plugin := loadProtoPlugin(t, map[string]string{
 		"api/empty.proto": `syntax = "proto3";
 package test.api;
@@ -178,20 +179,17 @@ service EmptyAPI {
 		t.Fatal("api/empty.proto not found")
 	}
 
-	schema, err := buildSchema(file)
+	schema, err := buildGraphQLGoGraph(graphFromFile(file), "gqlapi", "example.test/gen/api",
+		"github.com/gopherex/protoc-gen-go-graphql/graphqlrt")
 	if err != nil {
-		t.Fatalf("buildSchema: %v", err)
+		t.Fatalf("buildGraphQLGoGraph: %v", err)
 	}
-	// Empty request messages must NOT emit an input type (operation has no input arg).
-	if strings.Contains(schema, "input EmptyRequest") {
-		t.Fatalf("empty request should not emit an input type:\n%s", schema)
+	// Empty request: the operation constructs the request inline (no decode/args).
+	if !strings.Contains(schema, "&pb.EmptyRequest{}") {
+		t.Fatalf("empty request should be constructed inline:\n%s", schema)
 	}
-	// The operation field must have no input argument.
-	if !strings.Contains(schema, "get: EmptyResponse!") {
-		t.Fatalf("empty request operation should have no input arg:\n%s", schema)
-	}
-	// Empty output messages must emit ok: Boolean! @goField(forceResolver: true).
-	if !strings.Contains(schema, "type EmptyResponse { ok: Boolean! @goField(forceResolver: true) }") {
-		t.Fatalf("empty output does not use valid placeholder:\n%s", schema)
+	// Empty output: placeholder `ok` field returning true.
+	if !strings.Contains(schema, `"ok"`) {
+		t.Fatalf("empty output should emit an ok placeholder field:\n%s", schema)
 	}
 }

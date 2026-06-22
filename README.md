@@ -1,54 +1,42 @@
 # protoc-gen-go-graphql
 
-A `protoc` plugin that generates a GraphQL API over an existing gRPC service.
-Browser clients get a typed, subscription-capable API powered by
-[gqlgen](https://github.com/99designs/gqlgen) with zero hand-written transport
-code. The proto types (`*pb.*`) are the single source of truth: generated GraphQL
-types bind directly to the `protoc-gen-go` structs via gqlgen `autobind` — there
-is no second model set and no proto-to-model converter layer. Subscriptions work
-over WebSocket using the `graphql-transport-ws` protocol (compatible with Apollo
-Client and urql).
+A `protoc` plugin that generates a GraphQL API over an existing gRPC service in a
+**single protoc pass**. It emits one self-contained `schema.go` per package that
+builds an executable [`*graphql.Schema`](https://github.com/graphql-go/graphql)
+whose field resolvers delegate **directly to your `pb.*ServiceServer`
+implementations** — no second model set, no hand-written transport, no codegen
+second phase.
+
+Every GraphQL field gets an explicitly generated resolver, so there is no
+autobind and no resolver/schema drift: the proto types (`*pb.*`) are the single
+source of truth, and the generated resolvers call the same gRPC method
+implementations your gRPC/Connect handlers already use.
 
 ---
 
 ## Install
 
-The plugin and its two companions are declared as Go tool dependencies in
-`go.mod`:
-
-```go
-tool (
-    github.com/gopherex/protoc-gen-go-graphql
-    google.golang.org/grpc/cmd/protoc-gen-go-grpc
-    google.golang.org/protobuf/cmd/protoc-gen-go
-)
-```
-
-Build the plugin binaries:
-
-```sh
-go build -o bin/protoc-gen-go-graphql github.com/gopherex/protoc-gen-go-graphql
-go build -o bin/protoc-gen-go         google.golang.org/protobuf/cmd/protoc-gen-go
-go build -o bin/protoc-gen-go-grpc    google.golang.org/grpc/cmd/protoc-gen-go-grpc
-```
-
-Or use the repo's `Makefile`:
-
 ```sh
 make build
+# builds bin/protoc-gen-go-graphql (+ protoc-gen-go, protoc-gen-go-grpc)
 ```
+
+Or install the plugin by pinned version:
+
+```sh
+go install github.com/gopherex/protoc-gen-go-graphql@latest
+```
+
+The generated code depends on the small runtime package
+`github.com/gopherex/protoc-gen-go-graphql/graphqlrt` (custom scalars,
+subscription stream pump, gRPC-status → GraphQL error mapping) and on
+`github.com/graphql-go/graphql`.
 
 ---
 
 ## Generation
 
-Generation happens in two phases. Run them in order.
-
-### Phase A — protoc
-
-Run `protoc` with all three plugins. This produces the pb types, gRPC stubs, the
-GraphQL schema, gqlgen config, and a delegating resolver. The canonical example
-is the `gen-test` Makefile target:
+One `protoc` invocation — no `go generate`, no second phase:
 
 ```sh
 protoc -I example/ -I . -I /usr/include \
@@ -61,81 +49,56 @@ protoc -I example/ -I . -I /usr/include \
     example/golden.proto
 ```
 
-The `-I /usr/include` flag (controlled by `WKT_INC` in the Makefile) points to
-the directory containing the well-known-type `.proto` files
-(`google/protobuf/*.proto`). Override if your protoc installation places them
-elsewhere:
+`-I /usr/include` (`WKT_INC` in the Makefile) points at the well-known-type
+`.proto` files. The canonical example is `make gen-test`.
 
-```sh
-make gen-test WKT_INC=/usr/local/include
-```
+Files in the same Go package aggregate into one `gqlapi/schema.go`.
 
 ### Plugin flags
 
-Pass plugin flags via `--go-graphql_opt=<flag>=<value>`:
+Pass via `--go-graphql_opt=<flag>=<value>`:
 
 | Flag | Default | Description |
 |---|---|---|
 | `paths` | _(empty)_ | Set to `source_relative` for source-relative output paths. |
-| `out_dir` | `gqlapi` | Subpackage directory name and Go package name for generated GraphQL code. |
-| `runner` | `github.com/gopherex/protoc-gen-go-graphql/cmd/gqlgenrun` | Import path of the `go:generate` runner (override for forks or vendoring). |
-
-See `docs/mapping.md` for details.
-
-### Phase B — gqlgen
-
-After the protoc run, run `go generate` to let gqlgen load the now-on-disk pb
-package, autobind types, and emit the execution engine:
-
-```sh
-cd example/gen && go generate ./...
-# or from the repo root:
-make gen-test   # runs both phases
-```
-
-This invokes `cmd/gqlgenrun` (via the `//go:generate` directive in
-`gqlapi/generate.go`), which calls `config.LoadConfig("gqlgen.yml")` then
-`api.Generate(cfg)` in-process. The result is `gqlapi/exec/exec.go` — the
-gqlgen execution engine with `NewExecutableSchema` and all resolver interfaces.
-
-> **Why two phases?** gqlgen's binder must type-check the pb package to emit
-> field-access code. The pb package does not exist on disk until protoc finishes,
-> so gqlgen cannot run during the protoc pass. See `docs/mapping.md` for details.
+| `out_dir` | `gqlapi` | Subpackage directory + Go package name for the generated code. |
 
 ---
 
-## Wiring the generated server
+## Wiring
 
-After generation, wire the execution engine to your gRPC implementation and an
-HTTP handler. The pattern mirrors `example/server_test.go`:
+Build the schema with a `Server` bound to your gRPC implementations and serve it
+with any GraphQL HTTP handler:
 
 ```go
 import (
-    "github.com/99designs/gqlgen/graphql/handler"
-    "github.com/99designs/gqlgen/graphql/handler/transport"
+    graphqlhandler "github.com/graphql-go/handler"
     "yourmodule/gen/gqlapi"
-    "yourmodule/gen/gqlapi/exec"
 )
 
-// yourImpl implements the generated pb.YourServiceServer interface.
-schema := exec.NewExecutableSchema(exec.Config{
-    Resolvers: &gqlapi.Resolver{YourService: yourImpl},
+schema, err := gqlapi.NewSchema(&gqlapi.Server{
+    YourService: yourImpl, // implements pb.YourServiceServer
+    // ... one field per service ...
+
+    // Optional: enforce per-method authz on the in-process GraphQL path. Called
+    // before each operation delegates; return the (identity-enriched) context.
+    Authorize: func(ctx context.Context, procedure string, req interface{}) (context.Context, error) {
+        return ctx, nil
+    },
 })
 
-srv := handler.New(schema)
-srv.AddTransport(transport.POST{})       // standard HTTP POST for queries/mutations
-srv.AddTransport(transport.Websocket{})  // graphql-transport-ws for subscriptions
-
-http.Handle("/graphql", srv)
+http.Handle("/graphql", graphqlhandler.New(&graphqlhandler.Config{Schema: &schema}))
 ```
 
-For queries and mutations without subscriptions, `handler.NewDefaultServer` is
-sufficient (it sets up POST + GET transports). Add `transport.Websocket{}` only
-when you need subscriptions.
+`Server` holds one field per gRPC service, typed as the generated
+`pb.XxxServiceServer` interface — assign your implementation directly; the
+generated resolvers delegate to it with no conversion. Because resolvers run the
+gRPC method **in-process** (no transport), apply authn/authz via the `Authorize`
+hook (bridge the credential into `ctx` before execution).
 
-The `Resolver` struct holds one field per gRPC service, typed as the generated
-`pb.XxxServer` interface. Assign your implementation directly — the generated
-resolvers delegate to it with no conversion.
+Subscriptions (server-streaming RPCs) are exposed as `graphql.Field.Subscribe`
+returning a channel (`graphqlrt.PumpServerStream`); serve them with a websocket
+transport of your choice.
 
 ---
 
@@ -145,37 +108,21 @@ resolvers delegate to it with no conversion.
 |---|---|
 | Unary rpc `NO_SIDE_EFFECTS` → Query | Supported |
 | Unary rpc `IDEMPOTENT` / `IDEMPOTENCY_UNKNOWN` → Mutation | Supported |
-| Server-streaming rpc → Subscription | Supported |
+| Server-streaming rpc → Subscription | Supported (`Field.Subscribe` channel) |
 | Output oneof → GraphQL union | Supported |
-| Input oneof → `@oneOf` input | Supported |
-| `map<K,V>` on output fields | Supported (JSON scalar) |
-| `map<K,V>` on input fields | Not supported in v1 (field omitted) |
-| **bidi-streaming rpc** | **Hard generation error** |
-| **client-streaming rpc** | **Hard generation error** |
-
-Bidi-streaming and client-streaming RPCs are intentionally unsupported: GraphQL
-subscriptions are server-to-client only, and bridging full-duplex streams would
-require a custom WebSocket transport outside the scope of this plugin (v1).
-
----
-
-## `go vet` and copylocks warnings
-
-Because gqlgen passes proto request messages by value (input args), `go vet ./...`
-reports `copylocks` warnings (`proto.MessageState` embeds a zero-size lock
-marker). `go build` and `go test ./...` are unaffected — the vet warning does not
-block compilation or tests, and the runtime is safe (zero-size lock). Do not use
-`go vet ./...` as a generation gate.
+| Input oneof → `@oneOf`-style input | Supported |
+| `map<K,V>`, `Struct`/`Value`/`Any` → JSON scalar | Supported |
+| 64-bit ints, bytes, Timestamp, Duration → custom scalars | Supported (protojson-aligned) |
+| `(graphqlopt.service\|method).skip` | Supported (omits from the GraphQL surface) |
+| **bidi-streaming / client-streaming rpc** | **Hard generation error** (skip them) |
 
 ---
 
 ## References
 
-- `example/` — worked example: `golden.proto` (Library service with query,
-  mutation, subscription, oneof, map, WKT) + `server_test.go` (full round-trip
-  tests including `TestWireRoundTrip`, `TestSubscription`, and all four oneof
-  tests).
-- `docs/mapping.md` — full proto→GraphQL mapping table, two-phase model,
-  command sequence, output layout.
-- `docs/oneof.md` — detailed oneof patterns (output union wrapper types, input
-  `@oneOf` intermediate struct, `ToPb*` shim).
+- `example/` — `golden.proto` (Library service: query, mutation, subscription,
+  oneof, map, WKT, optional, ALL_NULLABLE) + `gen/gqlapi/schema_manual_test.go`
+  (round-trip query + subscription against a fake server); `multipkg/`
+  (cross-package response types).
+- `docs/mapping.md` — proto → GraphQL mapping reference.
+- `docs/oneof.md` — oneof (union / `@oneOf` input) handling.

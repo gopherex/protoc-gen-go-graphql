@@ -1,3 +1,9 @@
+> **Backend note:** the plugin now emits a single-pass **graphql-go** schema
+> (one `schema.go` building a `*graphql.Schema`); the proto → GraphQL *type*
+> mapping below still applies, but the gqlgen-specific mechanics (two-phase
+> generation, `gqlgen.yml`, `exec/`, pbgql wrapper structs, `autobind`) no longer
+> apply — resolvers are generated explicitly and delegate to `pb.*ServiceServer`.
+
 # Proto → GraphQL Mapping Reference
 
 This document describes how `protoc-gen-go-graphql` maps proto constructs to
