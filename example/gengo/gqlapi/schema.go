@@ -2,6 +2,8 @@
 package gqlapi
 
 import (
+	"context"
+
 	"github.com/graphql-go/graphql"
 	graphqlrt "github.com/gopherex/protoc-gen-go-graphql/graphqlrt"
 	pb "github.com/gopherex/protoc-gen-go-graphql/example/gen"
@@ -11,6 +13,11 @@ import (
 // Server holds the gRPC service implementations the schema delegates to.
 type Server struct {
 	Library pb.LibraryServer
+	// Authorize, when set, runs before each operation delegates to its gRPC
+	// method, receiving the gRPC procedure name and decoded request, to enforce
+	// the same per-method authn+authz as the connect/gRPC interceptors. It
+	// returns the (identity-enriched) context to delegate with.
+	Authorize func(ctx context.Context, procedure string, req interface{}) (context.Context, error)
 }
 
 type MultiOneofChoiceChoiceString struct{ Value string }
@@ -1289,9 +1296,17 @@ func NewSchema(srv *Server) (graphql.Schema, error) {
 			"id": &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
 		}, Resolve: func(p graphql.ResolveParams) (interface{}, error) {
 			req := decode_GetEverythingRequest(p.Args)
-			resp, err := srv.Library.GetEverything(p.Context, req)
+			ctx := p.Context
+			if srv.Authorize != nil {
+				var aerr error
+				ctx, aerr = srv.Authorize(ctx, "/golden.v1.Library/GetEverything", req)
+				if aerr != nil {
+					return nil, graphqlrt.GraphQLError(ctx, aerr)
+				}
+			}
+			resp, err := srv.Library.GetEverything(ctx, req)
 			if err != nil {
-				return nil, graphqlrt.GraphQLError(p.Context, err)
+				return nil, graphqlrt.GraphQLError(ctx, err)
 			}
 			return resp, nil
 		}},
@@ -1302,9 +1317,17 @@ func NewSchema(srv *Server) (graphql.Schema, error) {
 			"genre": &graphql.ArgumentConfig{Type: graphql.NewNonNull(e_Genre)},
 		}, Resolve: func(p graphql.ResolveParams) (interface{}, error) {
 			req := decode_GetScalarsRequest(p.Args)
-			resp, err := srv.Library.GetScalars(p.Context, req)
+			ctx := p.Context
+			if srv.Authorize != nil {
+				var aerr error
+				ctx, aerr = srv.Authorize(ctx, "/golden.v1.Library/GetScalars", req)
+				if aerr != nil {
+					return nil, graphqlrt.GraphQLError(ctx, aerr)
+				}
+			}
+			resp, err := srv.Library.GetScalars(ctx, req)
 			if err != nil {
-				return nil, graphqlrt.GraphQLError(p.Context, err)
+				return nil, graphqlrt.GraphQLError(ctx, err)
 			}
 			return resp, nil
 		}},
@@ -1312,9 +1335,17 @@ func NewSchema(srv *Server) (graphql.Schema, error) {
 			"query": &graphql.ArgumentConfig{Type: i_SearchRequestQuery},
 		}, Resolve: func(p graphql.ResolveParams) (interface{}, error) {
 			req := decode_SearchRequest(p.Args)
-			resp, err := srv.Library.SearchBooks(p.Context, req)
+			ctx := p.Context
+			if srv.Authorize != nil {
+				var aerr error
+				ctx, aerr = srv.Authorize(ctx, "/golden.v1.Library/SearchBooks", req)
+				if aerr != nil {
+					return nil, graphqlrt.GraphQLError(ctx, aerr)
+				}
+			}
+			resp, err := srv.Library.SearchBooks(ctx, req)
 			if err != nil {
-				return nil, graphqlrt.GraphQLError(p.Context, err)
+				return nil, graphqlrt.GraphQLError(ctx, err)
 			}
 			return resp, nil
 		}},
@@ -1322,17 +1353,33 @@ func NewSchema(srv *Server) (graphql.Schema, error) {
 			"key": &graphql.ArgumentConfig{Type: i_LookupRequestKey},
 		}, Resolve: func(p graphql.ResolveParams) (interface{}, error) {
 			req := decode_LookupRequest(p.Args)
-			resp, err := srv.Library.Lookup(p.Context, req)
+			ctx := p.Context
+			if srv.Authorize != nil {
+				var aerr error
+				ctx, aerr = srv.Authorize(ctx, "/golden.v1.Library/Lookup", req)
+				if aerr != nil {
+					return nil, graphqlrt.GraphQLError(ctx, aerr)
+				}
+			}
+			resp, err := srv.Library.Lookup(ctx, req)
 			if err != nil {
-				return nil, graphqlrt.GraphQLError(p.Context, err)
+				return nil, graphqlrt.GraphQLError(ctx, err)
 			}
 			return resp, nil
 		}},
 		"ping": &graphql.Field{Type: o_PingResponse, Resolve: func(p graphql.ResolveParams) (interface{}, error) {
 			req := &pb.PingRequest{}
-			resp, err := srv.Library.Ping(p.Context, req)
+			ctx := p.Context
+			if srv.Authorize != nil {
+				var aerr error
+				ctx, aerr = srv.Authorize(ctx, "/golden.v1.Library/Ping", req)
+				if aerr != nil {
+					return nil, graphqlrt.GraphQLError(ctx, aerr)
+				}
+			}
+			resp, err := srv.Library.Ping(ctx, req)
 			if err != nil {
-				return nil, graphqlrt.GraphQLError(p.Context, err)
+				return nil, graphqlrt.GraphQLError(ctx, err)
 			}
 			return resp, nil
 		}},
@@ -1340,9 +1387,17 @@ func NewSchema(srv *Server) (graphql.Schema, error) {
 			"id": &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
 		}, Resolve: func(p graphql.ResolveParams) (interface{}, error) {
 			req := decode_GetThingRequest(p.Args)
-			resp, err := srv.Library.GetThing(p.Context, req)
+			ctx := p.Context
+			if srv.Authorize != nil {
+				var aerr error
+				ctx, aerr = srv.Authorize(ctx, "/golden.v1.Library/GetThing", req)
+				if aerr != nil {
+					return nil, graphqlrt.GraphQLError(ctx, aerr)
+				}
+			}
+			resp, err := srv.Library.GetThing(ctx, req)
 			if err != nil {
-				return nil, graphqlrt.GraphQLError(p.Context, err)
+				return nil, graphqlrt.GraphQLError(ctx, err)
 			}
 			return resp, nil
 		}},
@@ -1355,9 +1410,17 @@ func NewSchema(srv *Server) (graphql.Schema, error) {
 			"settings": &graphql.ArgumentConfig{Type: i_Container_SettingsInput},
 		}, Resolve: func(p graphql.ResolveParams) (interface{}, error) {
 			req := decode_EchoRequest(p.Args)
-			resp, err := srv.Library.EchoInput(p.Context, req)
+			ctx := p.Context
+			if srv.Authorize != nil {
+				var aerr error
+				ctx, aerr = srv.Authorize(ctx, "/golden.v1.Library/EchoInput", req)
+				if aerr != nil {
+					return nil, graphqlrt.GraphQLError(ctx, aerr)
+				}
+			}
+			resp, err := srv.Library.EchoInput(ctx, req)
 			if err != nil {
-				return nil, graphqlrt.GraphQLError(p.Context, err)
+				return nil, graphqlrt.GraphQLError(ctx, err)
 			}
 			return resp, nil
 		}},
@@ -1365,9 +1428,17 @@ func NewSchema(srv *Server) (graphql.Schema, error) {
 			"book": &graphql.ArgumentConfig{Type: i_BookInput},
 		}, Resolve: func(p graphql.ResolveParams) (interface{}, error) {
 			req := decode_AddBookRequest(p.Args)
-			resp, err := srv.Library.AddBook(p.Context, req)
+			ctx := p.Context
+			if srv.Authorize != nil {
+				var aerr error
+				ctx, aerr = srv.Authorize(ctx, "/golden.v1.Library/AddBook", req)
+				if aerr != nil {
+					return nil, graphqlrt.GraphQLError(ctx, aerr)
+				}
+			}
+			resp, err := srv.Library.AddBook(ctx, req)
 			if err != nil {
-				return nil, graphqlrt.GraphQLError(p.Context, err)
+				return nil, graphqlrt.GraphQLError(ctx, err)
 			}
 			return resp, nil
 		}},
@@ -1375,9 +1446,17 @@ func NewSchema(srv *Server) (graphql.Schema, error) {
 			"book": &graphql.ArgumentConfig{Type: i_BookInput},
 		}, Resolve: func(p graphql.ResolveParams) (interface{}, error) {
 			req := decode_UpsertBookRequest(p.Args)
-			resp, err := srv.Library.UpsertBook(p.Context, req)
+			ctx := p.Context
+			if srv.Authorize != nil {
+				var aerr error
+				ctx, aerr = srv.Authorize(ctx, "/golden.v1.Library/UpsertBook", req)
+				if aerr != nil {
+					return nil, graphqlrt.GraphQLError(ctx, aerr)
+				}
+			}
+			resp, err := srv.Library.UpsertBook(ctx, req)
 			if err != nil {
-				return nil, graphqlrt.GraphQLError(p.Context, err)
+				return nil, graphqlrt.GraphQLError(ctx, err)
 			}
 			return resp, nil
 		}},
@@ -1388,7 +1467,15 @@ func NewSchema(srv *Server) (graphql.Schema, error) {
 		}, Resolve: func(p graphql.ResolveParams) (interface{}, error) { return p.Source, nil },
 			Subscribe: func(p graphql.ResolveParams) (interface{}, error) {
 				req := decode_WatchRequest(p.Args)
-				return graphqlrt.PumpServerStream[pb.WatchEvent](p.Context, func(ss *graphqlrt.StreamServer[pb.WatchEvent]) error {
+				ctx := p.Context
+				if srv.Authorize != nil {
+					var aerr error
+					ctx, aerr = srv.Authorize(ctx, "/golden.v1.Library/WatchItems", req)
+					if aerr != nil {
+						return nil, graphqlrt.GraphQLError(ctx, aerr)
+					}
+				}
+				return graphqlrt.PumpServerStream[pb.WatchEvent](ctx, func(ss *graphqlrt.StreamServer[pb.WatchEvent]) error {
 					return srv.Library.WatchItems(req, ss)
 				}), nil
 			}},
