@@ -109,149 +109,34 @@ func (g *Generator) generateFiles(files []*protogen.File) error {
 		pbImport = pbImport[:idx]
 	}
 
-	// FileOptions overrides. Defaults are preserved when unset so option-free
-	// protos remain byte-identical.
-	schemaFilename := "schema.graphql"
-	gqlgenConfigFilename := "gqlgen.yml"
-	execPackage := "exec"
-	execFilename := "exec/exec.go"
+	// FileOptions: pb_package override only (the graphql-go backend has no
+	// gqlgen.yml / exec package to configure).
 	if o := fileOpts(f); o != nil {
 		if v := o.GetPbPackage(); v != "" {
 			pbImport = v
 		}
-		if v := o.GetSchemaFilename(); v != "" {
-			schemaFilename = v
-		}
-		if v := o.GetGqlgenConfigFilename(); v != "" {
-			gqlgenConfigFilename = v
-		}
-		if v := o.GetExecPackage(); v != "" {
-			execPackage = v
-		}
-		if v := o.GetExecFilename(); v != "" {
-			execFilename = v
-		}
 	}
 
-	// OutDir is the configurable sub-package name (default: "gqlapi").
+	// OutDir is the configurable sub-package name + package name (default: "gqlapi").
 	outDir := g.Settings.OutDir
-
-	// gqlapi lives as a sub-package next to the pb package dir.
 	gqlapiImport := pbImport + "/" + outDir
-	pbgqlImport := gqlapiImport + "/pbgql"
-	execImport := gqlapiImport + "/exec"
-	runtimeImport := "github.com/gopherex/protoc-gen-go-graphql/graphqlpb"
+	runtimeImport := "github.com/gopherex/protoc-gen-go-graphql/graphqlrt"
 
-	// Base output directory for gqlapi files: source_relative means the proto
-	// file's directory is used. The plugin writes files relative to the output root.
-	// f.GeneratedFilenamePrefix gives the proto source path without extension,
-	// e.g. "golden". We derive the gqlapi dir from it.
+	// source_relative output dir derived from the proto file's directory.
 	protoDir := path.Dir(f.GeneratedFilenamePrefix)
 	if protoDir == "." {
 		protoDir = ""
 	}
 	gqlapiDir := joinPath(protoDir, outDir)
 
-	// 1. schema.graphql (non-Go, write raw).
-	schemaContent, err := buildSchemaGraph(graph)
+	// One self-contained schema.go: builds the executable graphql.Schema whose
+	// field resolvers delegate to the user's pb.*ServiceServer implementations.
+	schemaContent, err := buildGraphQLGoGraph(graph, outDir, pbImport, runtimeImport)
 	if err != nil {
 		return err
 	}
-	schemaFile := g.Plugin.NewGeneratedFile(gqlapiDir+"/"+schemaFilename, "")
+	schemaFile := g.Plugin.NewGeneratedFile(gqlapiDir+"/schema.go", protogen.GoImportPath(gqlapiImport))
 	schemaFile.P(schemaContent)
-
-	// 2. gqlgen.yml (non-Go, write raw).
-	ymlContent := buildGqlgenYmlGraph(graph, pbImport, pbgqlImport, schemaFilename, execPackage, execFilename)
-	ymlFile := g.Plugin.NewGeneratedFile(gqlapiDir+"/"+gqlgenConfigFilename, "")
-	ymlFile.P(ymlContent)
-
-	// 3. generate.go (Go source — //go:generate directive).
-	// In single_pass mode we skip this file (gqlgen runs inside the plugin).
-	if !g.Settings.SinglePass {
-		genContent := buildGoGenerate(g.Settings.RunnerPkg, outDir)
-		genFile := g.Plugin.NewGeneratedFile(gqlapiDir+"/generate.go", protogen.GoImportPath(gqlapiImport))
-		genFile.P(genContent)
-	}
-
-	// 4. pbgql/<enum_lower>.go — enum adapters (including nested enums).
-	// In single_pass mode we also collect the content for the tmp module.
-	pbgqlFiles := map[string]string{} // filename → content (used by runSinglePass)
-	for _, e := range graph.Enums {
-		adapterContent := buildEnumAdapter(e, string(e.GoIdent.GoImportPath))
-		enumFileName := strings.ToLower(e.GoIdent.GoName) + ".go"
-		adapterFile := g.Plugin.NewGeneratedFile(
-			gqlapiDir+"/pbgql/"+enumFileName,
-			protogen.GoImportPath(pbgqlImport),
-		)
-		adapterFile.P(adapterContent)
-		if g.Settings.SinglePass {
-			pbgqlFiles[enumFileName] = adapterContent
-		}
-	}
-
-	// 4b. pbgql/wkt_adapters.go — wrapper type scalar adapters.
-	usedScalars := collectUsedScalars(f)
-	wktContent := buildWKTAdapters(usedScalars)
-	if wktContent != "" {
-		wktFile := g.Plugin.NewGeneratedFile(
-			gqlapiDir+"/pbgql/wkt_adapters.go",
-			protogen.GoImportPath(pbgqlImport),
-		)
-		wktFile.P(wktContent)
-		if g.Settings.SinglePass {
-			pbgqlFiles["wkt_adapters.go"] = wktContent
-		}
-	}
-
-	// 4c. pbgql/<msg_lower>_oneof.go — oneof adapters (union wrappers + @oneOf input structs).
-	msgInfo := analyzeMessagesGraph(graph)
-	ois := collectOneofsGraph(graph, msgInfo)
-	// Group oneofs by message so we emit one file per message.
-	oneofsByMsg := map[string][]oneofInfo{}
-	for _, oi := range ois {
-		key := messageKey(oi.Msg)
-		oneofsByMsg[key] = append(oneofsByMsg[key], oi)
-	}
-	// Walk messages in DFS order to emit deterministically (incl. nested).
-	for _, msg := range graph.Messages {
-		msgOis, ok := oneofsByMsg[messageKey(msg)]
-		if !ok {
-			continue
-		}
-		adapterContent := buildOneofAdapter(msgOis, string(msg.GoIdent.GoImportPath))
-		if adapterContent == "" {
-			continue
-		}
-		adapterFileName := strings.ToLower(msg.GoIdent.GoName) + "_oneof.go"
-		adapterFile := g.Plugin.NewGeneratedFile(
-			gqlapiDir+"/pbgql/"+adapterFileName,
-			protogen.GoImportPath(pbgqlImport),
-		)
-		adapterFile.P(adapterContent)
-		if g.Settings.SinglePass {
-			pbgqlFiles[adapterFileName] = adapterContent
-		}
-	}
-
-	// 5. resolver.go.
-	resolverContent := buildResolversGraph(graph, outDir, pbImport, pbgqlImport, execImport, runtimeImport)
-	resolverFile := g.Plugin.NewGeneratedFile(gqlapiDir+"/resolver.go", protogen.GoImportPath(gqlapiImport))
-	resolverFile.P(resolverContent)
-
-	// 6. Single-pass: run gqlgen inside the plugin and emit exec + models_gen.
-	if g.Settings.SinglePass {
-		if err := g.runSinglePass(
-			gqlapiDir,
-			pbImport,
-			pbgqlImport,
-			schemaContent,
-			ymlContent,
-			pbgqlFiles,
-			resolverContent,
-		); err != nil {
-			return err
-		}
-	}
 
 	return nil
 }

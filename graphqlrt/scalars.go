@@ -10,12 +10,14 @@ package graphqlrt
 
 import (
 	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"strconv"
 
 	"github.com/graphql-go/graphql"
 	"github.com/graphql-go/graphql/language/ast"
 	"google.golang.org/protobuf/encoding/protojson"
+	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/durationpb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
@@ -266,10 +268,115 @@ func trimJSONString(b []byte) string {
 	return s
 }
 
+// ToJSON converts a proto message (typically a WKT Struct/Value/Any/ListValue)
+// to a plain Go value (map/slice/scalar) via protojson, for the JSON scalar.
+// Returns nil for a nil/invalid message or on marshal error.
+func ToJSON(m proto.Message) interface{} {
+	if m == nil || !m.ProtoReflect().IsValid() {
+		return nil
+	}
+	b, err := protojson.Marshal(m)
+	if err != nil {
+		return nil
+	}
+	var v interface{}
+	if err := json.Unmarshal(b, &v); err != nil {
+		return nil
+	}
+	return v
+}
+
+// ToJSONList converts a repeated WKT-JSON field ([]*Struct etc.) to []interface{}.
+func ToJSONList[T proto.Message](items []T) []interface{} {
+	out := make([]interface{}, 0, len(items))
+	for _, it := range items {
+		out = append(out, ToJSON(it))
+	}
+	return out
+}
+
 // MustString is a small helper for resolvers that need to assert a string arg.
 func MustString(v interface{}) (string, error) {
 	if s, ok := v.(string); ok {
 		return s, nil
 	}
 	return "", fmt.Errorf("expected string, got %T", v)
+}
+
+// The As* helpers coerce a graphql-go-decoded input value (from p.Args) into the
+// concrete Go type of a pb scalar field. graphql-go yields int for Int, float64
+// for Float, string for String, bool for Boolean, and the custom-scalar
+// ParseValue result for Int64/Uint64/Bytes/Timestamp/Duration. These tolerate
+// the common numeric representations and return the zero value on mismatch.
+
+func asInt64Any(v interface{}) int64 {
+	switch n := v.(type) {
+	case int:
+		return int64(n)
+	case int32:
+		return int64(n)
+	case int64:
+		return n
+	case uint:
+		return int64(n)
+	case uint32:
+		return int64(n)
+	case uint64:
+		return int64(n)
+	case float64:
+		return int64(n)
+	case float32:
+		return int64(n)
+	default:
+		return 0
+	}
+}
+
+func AsInt32(v interface{}) int32   { return int32(asInt64Any(v)) }
+func AsUint32(v interface{}) uint32 { return uint32(asInt64Any(v)) }
+func AsInt64(v interface{}) int64   { return asInt64Any(v) }
+func AsUint64(v interface{}) uint64 { return uint64(asInt64Any(v)) }
+
+func AsFloat64(v interface{}) float64 {
+	switch n := v.(type) {
+	case float64:
+		return n
+	case float32:
+		return float64(n)
+	case int:
+		return float64(n)
+	case int64:
+		return float64(n)
+	default:
+		return 0
+	}
+}
+
+func AsFloat32(v interface{}) float32 { return float32(AsFloat64(v)) }
+
+func AsString(v interface{}) string {
+	if s, ok := v.(string); ok {
+		return s
+	}
+	return ""
+}
+
+func AsBool(v interface{}) bool {
+	if b, ok := v.(bool); ok {
+		return b
+	}
+	return false
+}
+
+func AsBytes(v interface{}) []byte {
+	switch b := v.(type) {
+	case []byte:
+		return b
+	case string:
+		dec, err := base64.StdEncoding.DecodeString(b)
+		if err == nil {
+			return dec
+		}
+	}
+	return nil
 }
