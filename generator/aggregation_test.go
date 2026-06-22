@@ -90,7 +90,7 @@ service BetaAPI {
 	var schema string
 	for _, f := range resp.File {
 		counts[f.GetName()]++
-		if f.GetName() == "api/gqlapi/schema.graphql" {
+		if f.GetName() == "api/gqlapi/schema.go" {
 			schema = f.GetContent()
 		}
 	}
@@ -99,12 +99,12 @@ service BetaAPI {
 			t.Fatalf("duplicate generated file %s count=%d", name, count)
 		}
 	}
-	if counts["api/gqlapi/schema.graphql"] != 1 || counts["api/gqlapi/resolver.go"] != 1 {
-		t.Fatalf("expected one aggregated gqlapi output, got counts: %#v", counts)
+	if counts["api/gqlapi/schema.go"] != 1 {
+		t.Fatalf("expected one aggregated gqlapi schema.go, got counts: %#v", counts)
 	}
-	// GetARequest and GetBRequest are empty messages: operation fields have no input arg.
-	if !strings.Contains(schema, "getA: GetAResponse!") ||
-		!strings.Contains(schema, "getB: GetBResponse!") {
+	// Both services from the same Go package aggregate into one schema.go, each
+	// RPC becoming a Query field on the graphql-go schema.
+	if !strings.Contains(schema, `"getA"`) || !strings.Contains(schema, `"getB"`) {
 		t.Fatalf("schema does not include both services:\n%s", schema)
 	}
 }
