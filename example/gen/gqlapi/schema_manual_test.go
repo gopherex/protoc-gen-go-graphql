@@ -2,9 +2,13 @@ package gqlapi
 
 import (
 	"context"
+	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
+	graphqlrt "github.com/gopherex/protoc-gen-go-graphql/graphqlrt"
+	"github.com/gorilla/websocket"
 	"github.com/graphql-go/graphql"
 	"google.golang.org/grpc"
 
@@ -78,5 +82,67 @@ func TestSubscriptionDelegates(t *testing.T) {
 	}
 	if len(ids) != 2 || ids[0] != "b1" || ids[1] != "b2" {
 		t.Fatalf("subscription ids = %v, want [b1 b2]", ids)
+	}
+}
+
+// TestSubscriptionWS drives the graphql-transport-ws handler end-to-end: it
+// connects, inits, subscribes to watchItems, and collects the streamed events.
+func TestSubscriptionWS(t *testing.T) {
+	s := newTestSchema(t)
+	srv := httptest.NewServer(graphqlrt.SubscriptionHandler(&s, nil))
+	defer srv.Close()
+
+	url := "ws" + strings.TrimPrefix(srv.URL, "http")
+	dialer := websocket.Dialer{Subprotocols: []string{"graphql-transport-ws"}}
+	conn, _, err := dialer.Dial(url, nil)
+	if err != nil {
+		t.Fatalf("ws dial: %v", err)
+	}
+	defer conn.Close()
+
+	write := func(m map[string]interface{}) {
+		if err := conn.WriteJSON(m); err != nil {
+			t.Fatalf("write: %v", err)
+		}
+	}
+	read := func() map[string]interface{} {
+		_ = conn.SetReadDeadline(time.Now().Add(5 * time.Second))
+		var m map[string]interface{}
+		if err := conn.ReadJSON(&m); err != nil {
+			t.Fatalf("read: %v", err)
+		}
+		return m
+	}
+
+	write(map[string]interface{}{"type": "connection_init"})
+	if m := read(); m["type"] != "connection_ack" {
+		t.Fatalf("expected connection_ack, got %v", m["type"])
+	}
+	write(map[string]interface{}{
+		"id":      "1",
+		"type":    "subscribe",
+		"payload": map[string]interface{}{"query": "subscription { watchItems(genre: FICTION) { book { id } } }"},
+	})
+
+	var ids []string
+	for {
+		m := read()
+		switch m["type"] {
+		case "next":
+			payload, _ := m["payload"].(map[string]interface{})
+			data, _ := payload["data"].(map[string]interface{})
+			wi, _ := data["watchItems"].(map[string]interface{})
+			book, _ := wi["book"].(map[string]interface{})
+			if id, ok := book["id"].(string); ok {
+				ids = append(ids, id)
+			}
+		case "complete":
+			if len(ids) != 2 || ids[0] != "b1" || ids[1] != "b2" {
+				t.Fatalf("ws subscription ids = %v, want [b1 b2]", ids)
+			}
+			return
+		case "error":
+			t.Fatalf("subscription error: %v", m["payload"])
+		}
 	}
 }
