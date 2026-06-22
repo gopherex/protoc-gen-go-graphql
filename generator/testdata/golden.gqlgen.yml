@@ -10,6 +10,25 @@ autobind:
   - github.com/gopherex/protoc-gen-go-graphql/example/gen
 
 models:
+  Int:
+    model:
+      - github.com/99designs/gqlgen/graphql.Int
+      - github.com/99designs/gqlgen/graphql.Int64
+      - github.com/99designs/gqlgen/graphql.Int32
+  Float:
+    model:
+      - github.com/99designs/gqlgen/graphql.Float
+      - github.com/99designs/gqlgen/graphql.FloatContext
+  String:
+    model:
+      - github.com/99designs/gqlgen/graphql.String
+  Boolean:
+    model:
+      - github.com/99designs/gqlgen/graphql.Boolean
+  ID:
+    model:
+      - github.com/99designs/gqlgen/graphql.ID
+      - github.com/99designs/gqlgen/graphql.IntID
   Int64:     { model: github.com/gopherex/protoc-gen-go-graphql/graphqlpb.Int64 }
   Uint64:     { model: github.com/gopherex/protoc-gen-go-graphql/graphqlpb.Uint64 }
   Bytes:     { model: github.com/gopherex/protoc-gen-go-graphql/graphqlpb.Bytes }

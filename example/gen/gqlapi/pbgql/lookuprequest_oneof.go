@@ -44,9 +44,9 @@ func ToPbLookupRequest(r *LookupRequestInput) (*pb.LookupRequest, error) {
 	}
 	switch {
 	case r.Key.ById != nil:
-		req.Key = &pb.LookupRequest_ById{ById: *r.Key.ById}
+		req.Key = &pb.LookupRequest_ById{ById: string(*r.Key.ById)}
 	case r.Key.ByName != nil:
-		req.Key = &pb.LookupRequest_ByName{ByName: *r.Key.ByName}
+		req.Key = &pb.LookupRequest_ByName{ByName: string(*r.Key.ByName)}
 	}
 	return req, nil
 }

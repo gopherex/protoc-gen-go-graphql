@@ -29,9 +29,9 @@ func ToPbSearchRequest(r *SearchRequestInput) (*pb.SearchRequest, error) {
 	if r.Query != nil {
 		switch {
 		case r.Query.Text != nil:
-			req.Query = &pb.SearchRequest_Text{Text: *r.Query.Text}
+			req.Query = &pb.SearchRequest_Text{Text: string(*r.Query.Text)}
 		case r.Query.Author != nil:
-			req.Query = &pb.SearchRequest_Author{Author: *r.Query.Author}
+			req.Query = &pb.SearchRequest_Author{Author: string(*r.Query.Author)}
 		}
 	}
 	return req, nil

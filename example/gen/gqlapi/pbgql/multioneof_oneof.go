@@ -10,12 +10,12 @@ import (
 // gqlgen requires a Go interface for union models.
 type MultiOneofChoice interface{ IsMultiOneofChoice() }
 
-// MultiOneofChoiceChoiceString wraps *pb. to implement MultiOneofChoice.
+// MultiOneofChoiceChoiceString wraps the "String" scalar variant to implement MultiOneofChoice.
 type MultiOneofChoiceChoiceString struct{ Value string }
 
 func (MultiOneofChoiceChoiceString) IsMultiOneofChoice() {}
 
-// MultiOneofChoiceChoiceInt64 wraps *pb. to implement MultiOneofChoice.
+// MultiOneofChoiceChoiceInt64 wraps the "Int64" scalar variant to implement MultiOneofChoice.
 type MultiOneofChoiceChoiceInt64 struct{ Value int64 }
 
 func (MultiOneofChoiceChoiceInt64) IsMultiOneofChoice() {}
@@ -33,9 +33,9 @@ func WrapMultiOneofChoice(obj *pb.MultiOneof) MultiOneofChoice {
 	}
 	switch v := obj.GetChoice().(type) {
 	case *pb.MultiOneof_ChoiceString:
-		return MultiOneofChoiceChoiceString{Value: v.ChoiceString}
+		return MultiOneofChoiceChoiceString{Value: string(v.ChoiceString)}
 	case *pb.MultiOneof_ChoiceInt64:
-		return MultiOneofChoiceChoiceInt64{Value: v.ChoiceInt64}
+		return MultiOneofChoiceChoiceInt64{Value: int64(v.ChoiceInt64)}
 	case *pb.MultiOneof_ChoiceBook:
 		return MultiOneofChoiceChoiceBook{v.ChoiceBook}
 	default:
@@ -47,12 +47,12 @@ func WrapMultiOneofChoice(obj *pb.MultiOneof) MultiOneofChoice {
 // gqlgen requires a Go interface for union models.
 type MultiOneofStatus interface{ IsMultiOneofStatus() }
 
-// MultiOneofStatusStatusOk wraps *pb. to implement MultiOneofStatus.
+// MultiOneofStatusStatusOk wraps the "Boolean" scalar variant to implement MultiOneofStatus.
 type MultiOneofStatusStatusOk struct{ Value bool }
 
 func (MultiOneofStatusStatusOk) IsMultiOneofStatus() {}
 
-// MultiOneofStatusStatusError wraps *pb. to implement MultiOneofStatus.
+// MultiOneofStatusStatusError wraps the "String" scalar variant to implement MultiOneofStatus.
 type MultiOneofStatusStatusError struct{ Value string }
 
 func (MultiOneofStatusStatusError) IsMultiOneofStatus() {}
@@ -65,9 +65,9 @@ func WrapMultiOneofStatus(obj *pb.MultiOneof) MultiOneofStatus {
 	}
 	switch v := obj.GetStatus().(type) {
 	case *pb.MultiOneof_StatusOk:
-		return MultiOneofStatusStatusOk{Value: v.StatusOk}
+		return MultiOneofStatusStatusOk{Value: bool(v.StatusOk)}
 	case *pb.MultiOneof_StatusError:
-		return MultiOneofStatusStatusError{Value: v.StatusError}
+		return MultiOneofStatusStatusError{Value: string(v.StatusError)}
 	default:
 		return nil
 	}

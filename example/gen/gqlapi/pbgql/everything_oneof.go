@@ -10,12 +10,12 @@ import (
 // gqlgen requires a Go interface for union models.
 type EverythingTerminal interface{ IsEverythingTerminal() }
 
-// EverythingTerminalDone wraps *pb. to implement EverythingTerminal.
+// EverythingTerminalDone wraps the "Boolean" scalar variant to implement EverythingTerminal.
 type EverythingTerminalDone struct{ Value bool }
 
 func (EverythingTerminalDone) IsEverythingTerminal() {}
 
-// EverythingTerminalError wraps *pb. to implement EverythingTerminal.
+// EverythingTerminalError wraps the "String" scalar variant to implement EverythingTerminal.
 type EverythingTerminalError struct{ Value string }
 
 func (EverythingTerminalError) IsEverythingTerminal() {}
@@ -28,9 +28,9 @@ func WrapEverythingTerminal(obj *pb.Everything) EverythingTerminal {
 	}
 	switch v := obj.GetTerminal().(type) {
 	case *pb.Everything_Done:
-		return EverythingTerminalDone{Value: v.Done}
+		return EverythingTerminalDone{Value: bool(v.Done)}
 	case *pb.Everything_Error:
-		return EverythingTerminalError{Value: v.Error}
+		return EverythingTerminalError{Value: string(v.Error)}
 	default:
 		return nil
 	}

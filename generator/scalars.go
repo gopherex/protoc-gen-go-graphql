@@ -92,6 +92,36 @@ func coerceReturnType(field *protogen.Field) string {
 	}
 }
 
+// protoScalarGoType returns the concrete Go type that protoc-gen-go uses for a
+// scalar proto kind (the type of the field on the pb oneof-wrapper struct).
+// This is distinct from the GraphQL-aligned Go type: e.g. a uint32 field maps to
+// the "Int" GraphQL scalar (Go int32) but its pb field is uint32. Oneof adapters
+// must convert between the two. Returns "" for non-scalar kinds (message/enum/group).
+func protoScalarGoType(k protoreflect.Kind) string {
+	switch k {
+	case protoreflect.BoolKind:
+		return "bool"
+	case protoreflect.StringKind:
+		return "string"
+	case protoreflect.Int32Kind, protoreflect.Sint32Kind, protoreflect.Sfixed32Kind:
+		return "int32"
+	case protoreflect.Uint32Kind, protoreflect.Fixed32Kind:
+		return "uint32"
+	case protoreflect.Int64Kind, protoreflect.Sint64Kind, protoreflect.Sfixed64Kind:
+		return "int64"
+	case protoreflect.Uint64Kind, protoreflect.Fixed64Kind:
+		return "uint64"
+	case protoreflect.FloatKind:
+		return "float32"
+	case protoreflect.DoubleKind:
+		return "float64"
+	case protoreflect.BytesKind:
+		return "[]byte"
+	default:
+		return ""
+	}
+}
+
 // scalarForKind maps a scalar proto kind to a GraphQL scalar name.
 // Message/enum/group kinds are handled by the caller (named types).
 // Unsigned 64-bit kinds map to "Uint64" (bound to runtime.MarshalUint64/UnmarshalUint64),

@@ -180,6 +180,7 @@ func buildResolversGraph(g *graph, pkgName, pbImport, pbgqlImport, execImport, r
 		ownerPbType string // e.g. "*pb.ScalarTypes"
 		fieldName   string // camelCase GraphQL field name
 		getter      string // pb getter name, e.g. "GetFieldFloat"
+		pbField     string // pb struct field Go name, e.g. "FieldFloat" (for optional nil-checks)
 		retType     string // return type for resolver method, e.g. "float64" or "int"
 		isOptional  bool   // true when field is optional (returns pointer)
 		isList      bool   // true when field is repeated (returns slice)
@@ -237,6 +238,7 @@ func buildResolversGraph(g *graph, pkgName, pbImport, pbgqlImport, execImport, r
 					ownerPbType: "*" + pbType(msg.GoIdent),
 					fieldName:   camel,
 					getter:      getter,
+					pbField:     string(field.GoName),
 					retType:     retType,
 					isOptional:  field.Desc.HasOptionalKeyword(),
 					isList:      field.Desc.IsList(),
@@ -278,6 +280,15 @@ func buildResolversGraph(g *graph, pkgName, pbImport, pbgqlImport, execImport, r
 				} else if needsForceResolver(field) {
 					camel := gqlFieldName(field)
 					getter := "Get" + string(field.GoName)
+					isWKTJSON := false
+					wktPb := ""
+					if field.Desc.Kind() == protoreflect.MessageKind {
+						fqn := string(field.Desc.Message().FullName())
+						if wktJSONTypes[fqn] {
+							isWKTJSON = true
+							wktPb = wktGoType(fqn)
+						}
+					}
 					retType := coerceReturnType(field)
 					pbElem := pbElemType(field)
 					coerceResolvers = append(coerceResolvers, coerceFieldResolver{
@@ -285,9 +296,13 @@ func buildResolversGraph(g *graph, pkgName, pbImport, pbgqlImport, execImport, r
 						ownerPbType: "*pbgql." + v.WrapperGoName,
 						fieldName:   camel,
 						getter:      getter,
+						pbField:     string(field.GoName),
 						retType:     retType,
+						isOptional:  field.Desc.HasOptionalKeyword(),
 						isList:      field.Desc.IsList(),
 						pbElemType:  pbElem,
+						isWKTJSON:   isWKTJSON,
+						wktPbType:   wktPb,
 					})
 				}
 			}
@@ -362,7 +377,7 @@ func buildResolversGraph(g *graph, pkgName, pbImport, pbgqlImport, execImport, r
 	// Map field resolver methods.
 	for _, mr := range mapResolvers {
 		recvName := strings.ToLower(mr.ownerType[:1]) + mr.ownerType[1:] + "Resolver"
-		capField := strings.ToUpper(mr.fieldName[:1]) + mr.fieldName[1:]
+		capField := goResolverName(mr.fieldName)
 		fmt.Fprintf(&body, "// %s exposes the proto map field as a JSON scalar (field\n", capField)
 		fmt.Fprintf(&body, "// resolver, because the JSON scalar's Go type `any` cannot bind a concrete map).\n")
 		fmt.Fprintf(&body, "func (r %s) %s(ctx context.Context, obj %s) (any, error) {\n",
@@ -376,9 +391,22 @@ func buildResolversGraph(g *graph, pkgName, pbImport, pbgqlImport, execImport, r
 	// These are needed because gqlgen cannot directly bind float32/uint32 to Float/Int.
 	for _, cr := range coerceResolvers {
 		recvName := strings.ToLower(cr.ownerType[:1]) + cr.ownerType[1:] + "Resolver"
-		capField := strings.ToUpper(cr.fieldName[:1]) + cr.fieldName[1:]
+		capField := goResolverName(cr.fieldName)
 		fmt.Fprintf(&body, "// %s coerces the proto field to the gqlgen-compatible type.\n", capField)
-		if cr.isWKTJSON {
+		if cr.isWKTJSON && cr.isList {
+			// Repeated WKT JSON: marshal each element via protojson into []any.
+			fmt.Fprintf(&body, "func (r %s) %s(ctx context.Context, obj %s) ([]any, error) {\n",
+				recvName, capField, cr.ownerPbType)
+			fmt.Fprintf(&body, "\tsrc := obj.%s()\n", cr.getter)
+			body.WriteString("\tout := make([]any, len(src))\n")
+			body.WriteString("\tfor i, v := range src {\n")
+			body.WriteString("\t\tif v == nil {\n\t\t\tcontinue\n\t\t}\n")
+			body.WriteString("\t\tb, err := protojson.Marshal(v)\n")
+			body.WriteString("\t\tif err != nil {\n\t\t\treturn nil, err\n\t\t}\n")
+			body.WriteString("\t\tif err := json.Unmarshal(b, &out[i]); err != nil {\n\t\t\treturn nil, err\n\t\t}\n")
+			body.WriteString("\t}\n")
+			body.WriteString("\treturn out, nil\n")
+		} else if cr.isWKTJSON {
 			// WKT JSON field: marshal via protojson and decode into any.
 			fmt.Fprintf(&body, "func (r %s) %s(ctx context.Context, obj %s) (any, error) {\n",
 				recvName, capField, cr.ownerPbType)
@@ -407,11 +435,12 @@ func buildResolversGraph(g *graph, pkgName, pbImport, pbgqlImport, execImport, r
 			body.WriteString("\treturn out, nil\n")
 		} else if cr.isOptional {
 			// Optional field: proto3 optional generates a *T field (nil when absent).
-			// The resolver returns *RetType (nullable in GraphQL).
-			goFieldName := strings.ToUpper(cr.fieldName[:1]) + cr.fieldName[1:]
+			// The resolver returns *RetType (nullable in GraphQL). The nil-check
+			// accesses the pb struct field directly, so it must use the protoc-gen-go
+			// field name (promoted through the wrapper for union-member resolvers).
 			fmt.Fprintf(&body, "func (r %s) %s(ctx context.Context, obj %s) (*%s, error) {\n",
 				recvName, capField, cr.ownerPbType, cr.retType)
-			fmt.Fprintf(&body, "\tif obj.%s == nil {\n", goFieldName)
+			fmt.Fprintf(&body, "\tif obj.%s == nil {\n", cr.pbField)
 			body.WriteString("\t\treturn nil, nil\n")
 			body.WriteString("\t}\n")
 			fmt.Fprintf(&body, "\tc := %s(obj.%s())\n", cr.retType, cr.getter)
@@ -454,7 +483,7 @@ func buildResolversGraph(g *graph, pkgName, pbImport, pbgqlImport, execImport, r
 			continue
 		}
 		recvName := strings.ToLower(oi.MsgGoName[:1]) + oi.MsgGoName[1:] + "Resolver"
-		capField := strings.ToUpper(oi.GQLFieldName[:1]) + oi.GQLFieldName[1:]
+		capField := goResolverName(oi.GQLFieldName)
 		fmt.Fprintf(&body, "// %s resolves the oneof field %q as a %s union.\n",
 			capField, oi.ProtoName, oi.UnionGQLName)
 		fmt.Fprintf(&body, "// It wraps the pb oneof variant into the appropriate pbgql wrapper type.\n")

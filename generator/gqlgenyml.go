@@ -50,6 +50,20 @@ func buildGqlgenYmlGraph(g *graph, pbImport, pbgqlImport, schemaFilename, execPa
 	// Models section.
 	sb.WriteString("models:\n")
 
+	// Pin the builtin GraphQL scalars to gqlgen's own marshalers. Explicit model
+	// entries take precedence over autobind, so this defends against an autobound
+	// package that happens to export a symbol named like a builtin scalar (e.g.
+	// schemapb.Float / schemapb.String are fluent field-builders, NOT gqlgen
+	// marshalers — without this pin gqlgen autobinds "Float"/"String" to them and
+	// emits an exec that fails to compile). The model lists mirror gqlgen's
+	// defaults so int32/int64 and the FloatContext variants still resolve.
+	const gqlBuiltin = "github.com/99designs/gqlgen/graphql"
+	fmt.Fprintf(&sb, "  Int:\n    model:\n      - %s.Int\n      - %s.Int64\n      - %s.Int32\n", gqlBuiltin, gqlBuiltin, gqlBuiltin)
+	fmt.Fprintf(&sb, "  Float:\n    model:\n      - %s.Float\n      - %s.FloatContext\n", gqlBuiltin, gqlBuiltin)
+	fmt.Fprintf(&sb, "  String:\n    model:\n      - %s.String\n", gqlBuiltin)
+	fmt.Fprintf(&sb, "  Boolean:\n    model:\n      - %s.Boolean\n", gqlBuiltin)
+	fmt.Fprintf(&sb, "  ID:\n    model:\n      - %s.ID\n      - %s.IntID\n", gqlBuiltin, gqlBuiltin)
+
 	// Scalar bindings (only for scalars actually used).
 	usedScalars := collectUsedScalarsGraph(g)
 	runtimePkg := "github.com/gopherex/protoc-gen-go-graphql/graphqlpb"

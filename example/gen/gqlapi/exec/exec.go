@@ -10825,19 +10825,19 @@ func (ec *executionContext) marshalNEverything2ᚕᚖgithubᚗcomᚋgopherexᚋp
 }
 
 func (ec *executionContext) unmarshalNFloat2float64(ctx context.Context, v any) (float64, error) {
-	res, err := graphql.UnmarshalFloatContext(ctx, v)
+	res, err := graphql.UnmarshalFloat(v)
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
 func (ec *executionContext) marshalNFloat2float64(ctx context.Context, sel ast.SelectionSet, v float64) graphql.Marshaler {
 	_ = sel
-	res := graphql.MarshalFloatContext(v)
+	res := graphql.MarshalFloat(v)
 	if res == graphql.Null {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
 			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
 		}
 	}
-	return graphql.WrapContextMarshaler(ctx, res)
+	return res
 }
 
 func (ec *executionContext) unmarshalNFloat2ᚕfloat64ᚄ(ctx context.Context, v any) ([]float64, error) {
@@ -11616,7 +11616,7 @@ func (ec *executionContext) unmarshalOFloat2ᚖfloat64(ctx context.Context, v an
 	if v == nil {
 		return nil, nil
 	}
-	res, err := graphql.UnmarshalFloatContext(ctx, v)
+	res, err := graphql.UnmarshalFloat(v)
 	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
@@ -11625,8 +11625,9 @@ func (ec *executionContext) marshalOFloat2ᚖfloat64(ctx context.Context, sel as
 		return graphql.Null
 	}
 	_ = sel
-	res := graphql.MarshalFloatContext(*v)
-	return graphql.WrapContextMarshaler(ctx, res)
+	_ = ctx
+	res := graphql.MarshalFloat(*v)
+	return res
 }
 
 func (ec *executionContext) unmarshalOFloatValue2ᚖgoogleᚗgolangᚗorgᚋprotobufᚋtypesᚋknownᚋwrapperspbᚐFloatValue(ctx context.Context, v any) (*wrapperspb.FloatValue, error) {

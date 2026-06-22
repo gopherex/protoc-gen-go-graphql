@@ -843,14 +843,15 @@ func methodFieldName(m *protogen.Method) string {
 }
 
 // resolverMethodName returns the Go method name gqlgen will generate for this
-// operation's resolver, i.e. the GraphQL field name with its first letter
-// upper-cased. When no operation_name override is set this equals m.GoName.
+// operation's resolver. gqlgen derives it by running the GraphQL field name
+// through templates.ToGo (Go initialisms applied), so the generator must do the
+// same — e.g. "listApiTokens" → "ListAPITokens".
 func resolverMethodName(m *protogen.Method) string {
 	name := methodFieldName(m)
 	if name == "" {
 		return name
 	}
-	return strings.ToUpper(name[:1]) + name[1:]
+	return goResolverName(name)
 }
 
 // isIdempotentMutation returns true iff the method is a Mutation with
